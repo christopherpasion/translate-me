@@ -120,14 +120,34 @@ const INITIAL_LOCAL_GLOSSARY: GlossaryEntry[] = [
     updatedAt: '2026-08-01T12:00:00Z'
   },
   {
-    id: 'g-102',
-    originalZh: '熏儿',
-    translatedEn: 'Xun Er',
+    id: 'g-101',
+    originalZh: '华裔中年男子',
+    translatedEn: 'middle-aged Chinese man',
     category: 'character',
     scope: 'local',
-    gender: 'female',
-    notes: 'Gu Clan prodigy and Xiao Yan\'s childhood partner',
-    occurrences: 32,
+    gender: 'male',
+    notes: 'Key scientist overseeing the genetic asset incubation program',
+    occurrences: 24,
+    updatedAt: '2026-08-01T12:00:00Z'
+  },
+  {
+    id: 'g-108',
+    originalZh: '金色竖瞳',
+    translatedEn: 'golden slit pupils',
+    category: 'character',
+    scope: 'local',
+    notes: 'Iconic golden reptilian eyes of the asset',
+    occurrences: 18,
+    updatedAt: '2026-08-01T12:00:00Z'
+  },
+  {
+    id: 'g-109',
+    originalZh: '科技造物',
+    translatedEn: 'artificially engineered life-form',
+    category: 'item',
+    scope: 'local',
+    notes: 'Genetically engineered creature brought back from extinction',
+    occurrences: 14,
     updatedAt: '2026-08-01T12:00:00Z'
   },
   {

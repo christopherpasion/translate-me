@@ -36,11 +36,11 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h1 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>
-              {currentNovel.titleZh}
+            <h1 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>
+              {currentNovel.titleEn}
             </h1>
-            <span style={{ fontSize: '0.85rem', color: 'var(--primary-cyan)', fontWeight: 500 }}>
-              ({currentNovel.titleEn})
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              ({currentNovel.titleZh})
             </span>
             <span className={`badge badge-${currentNovel.genre}`} style={{ textTransform: 'uppercase' }}>
               {currentNovel.genre}

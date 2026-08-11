@@ -164,8 +164,18 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
       text = text.replaceAll(entry.originalZh, entry.translatedEn);
     }
 
-    // Comprehensive Chinese web novel narrative clause map
+    // Comprehensive Master 250+ Web Novel Narrative Clause Map
     const clauseMap: [string, string][] = [
+      // 1. Sci-Fi & User Specific Terms
+      ['华裔中年男子', 'middle-aged Chinese man'],
+      ['华裔男子', 'middle-aged Chinese man'],
+      ['科技造物', 'artificially engineered life-form'],
+      ['金色竖瞳', 'golden slit pupils'],
+      ['黑咕隆咚', 'pitch-black'],
+      ['回收遗体', 'recovered her body'],
+      ['入土为安', 'proper burial'],
+      ['血肉横飞', 'one of the bloody casualties'],
+      ['车脊', 'roofs of the cars'],
       ['生态箱', 'ecological enclosure'],
       ['模棱看', 'vaguely observed'],
       ['腐林', 'decayed forest'],
@@ -191,17 +201,117 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
       ['本能', 'instinct'],
       ['强者', 'The strong'],
       ['怎样炼成的', 'how they are forged'],
-      ['退婚', 'annulment of the marriage contract'],
+
+      // 2. Chengyu & Idioms (成语 & 俗语)
+      ['弱肉强食', 'the law of the jungle'],
+      ['井底之蛙', 'a frog at the bottom of a well'],
+      ['有眼不识泰山', 'fail to recognize Mount Tai'],
+      ['扮猪吃老虎', 'playing the fool to catch the tiger'],
+      ['人外有人，天外有天', 'there are always talents beyond talents'],
+      ['人外有人天外有天', 'there are always talents beyond talents'],
+      ['螳螂捕蝉，黄雀在后', 'the mantis stalks the cicada, unaware of the oriole behind'],
+      ['螳螂捕蝉黄雀在后', 'the mantis stalks the cicada, unaware of the oriole behind'],
+      ['哭笑不得', "didn't know whether to laugh or cry"],
+      ['打脸', 'face-slapping'],
+      ['三十年河东，三十年河西', 'Thirty years east of the river, thirty years west of the river'],
+      ['莫欺少年穷', 'do not look down on a young man for being poor'],
+
+      // 3. Poetic Time Measurements (时间)
+      ['一炷香的时间', 'the time it takes an incense stick to burn'],
+      ['一炷香', 'the time it takes an incense stick to burn'],
+      ['一盏茶的时间', 'the time it takes to drink a cup of tea'],
+      ['一盏茶', 'the time it takes to drink a cup of tea'],
+      ['一息之间', 'in the span of a single breath'],
+      ['一息', 'a breath of time'],
+      ['弹指之间', 'in the flick of a finger'],
+
+      // 4. Alchemy & Elixirs (丹道 & 丹药)
+      ['炼丹师', 'Alchemist'],
+      ['丹师', 'Alchemist'],
+      ['炼丹炉', 'Pill Furnace'],
+      ['丹炉', 'Pill Furnace'],
+      ['炼丹', 'refining pills'],
+      ['丹药', 'Medicinal Pill'],
+      ['灵草', 'Spirit Herb'],
+      ['灵药', 'Spiritual Medicine'],
+      ['洗髓丹', 'Marrow Cleansing Pill'],
+      ['筑基丹', 'Foundation Establishment Pill'],
+      ['聚气丹', 'Qi Gathering Pill'],
+      ['解毒丹', 'Detoxification Pill'],
+
+      // 5. Formations & Arrays (阵法)
+      ['护山大阵', 'Mountain-Protecting Array'],
+      ['五行阵', 'Five Elements Formation'],
+      ['阵法', 'Formation Array'],
+      ['阵眼', 'Eye of the Formation'],
+      ['封印', 'Seal'],
+      ['禁制', 'Restriction Barrier'],
+
+      // 6. Spirit Beasts & Demonic Cores (灵兽 & 妖兽)
+      ['魔兽', 'Magical Beast'],
+      ['灵兽', 'Spirit Beast'],
+      ['妖兽', 'Demonic Beast'],
+      ['兽核', 'Beast Core'],
+      ['妖丹', 'Demon Core'],
+      ['化形', 'humanoid metamorphosis'],
+
+      // 7. Magic Artifacts & Gear (法宝 & 装备)
+      ['本命法宝', 'Life-Bound Artifact'],
+      ['空间戒指', 'Interspatial Ring'],
+      ['储物戒', 'Storage Ring'],
+      ['法宝', 'Magic Treasure'],
+      ['飞剑', 'Flying Sword'],
+      ['灵宝', 'Spiritual Treasure'],
+      ['符箓', 'Talisman'],
+
+      // 8. Martial Arts Movements & Combat Verbs (武功 & 步法)
+      ['轻功', 'Qinggong (Lightness Skill)'],
+      ['步法', 'Footwork'],
+      ['套路', 'Martial Form'],
+      ['内功', 'Internal Skill'],
+      ['外功', 'External Skill'],
+      ['崩拳', 'Crushing Fist'],
+      ['劈掌', 'Cleaving Palm'],
+      ['掌法', 'Palm Technique'],
+      ['剑法', 'Sword Technique'],
+      ['刀法', 'Saber Technique'],
+      ['闪避', 'evasion'],
+      ['招式', 'martial move'],
+
+      // 9. Cultivation Realms & Energy (修炼 & 境界)
       ['斗气大陆', 'Dou Qi Continent'],
       ['乌坦城', 'Wutan City'],
       ['云岚宗', 'Misty Cloud Sect'],
+      ['退婚', 'annulment of the marriage contract'],
+      ['斗气', 'Dou Qi'],
+      ['丹田', 'Dantian'],
+      ['经脉', 'Meridians'],
+      ['金丹', 'Golden Core'],
+      ['元婴', 'Nascent Soul'],
+      ['天劫', 'Heavenly Tribulation'],
       ['大怒', 'furious'],
       ['震惊', 'shocked'],
       ['突破', 'breakthrough'],
       ['修炼', 'cultivate'],
+      ['渡劫', 'undergo tribulation'],
+
+      // 10. Social Honorifics & Titles (称谓 & 身份)
+      ['师父', 'Shifu'],
+      ['师兄', 'Senior Brother'],
+      ['师弟', 'Junior Brother'],
+      ['师姐', 'Senior Sister'],
+      ['师妹', 'Junior Sister'],
+      ['前辈', 'Senior'],
+      ['晚辈', 'Junior'],
+      ['宗主', 'Sect Master'],
+      ['门主', 'Faction Leader'],
+      ['阁主', 'Pavilion Master'],
       ['长老', 'Elder'],
       ['族长', 'Patriarch'],
       ['少主', 'Young Master'],
+      ['老夫', 'this old man'],
+      ['老朽', 'this old man'],
+      ['晚生', 'this junior'],
       ['说道', 'said'],
       ['冷笑', 'sneered'],
       ['怒道', 'roared'],
