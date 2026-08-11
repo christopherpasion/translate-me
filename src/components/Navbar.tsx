@@ -41,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="navbar-brand" onClick={onOpenLibrary}>
         <BookOpen size={24} style={{ color: 'var(--primary-cyan)' }} />
         <span>TranslateMe.AI</span>
-        <span className="brand-badge">SELF-HEALING 2.0</span>
+        {viewMode === 'admin' && <span className="brand-badge">SELF-HEALING 2.0</span>}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -70,9 +70,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </select>
 
-          <button className="btn btn-secondary btn-icon" title="New Novel Project" onClick={onOpenNewNovelModal}>
-            <Plus size={16} />
-          </button>
+          {viewMode === 'admin' && (
+            <button className="btn btn-secondary btn-icon" title="New Novel Project" onClick={onOpenNewNovelModal}>
+              <Plus size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -99,51 +101,52 @@ export const Navbar: React.FC<NavbarProps> = ({
             fontWeight: 700
           }}
         >
-          {viewMode === 'admin' ? '👑 Admin Studio' : '📖 Reader View'}
+          {viewMode === 'admin' ? '👑 Admin Studio' : '👑 Admin Studio'}
         </button>
 
-        {/* AI Engine Settings */}
-        <button className="btn btn-secondary" onClick={onOpenAISettings} title="AI Model & API Provider Settings">
-          <Cpu size={16} style={{ color: 'var(--primary-cyan)' }} />
-          <span>AI Engine</span>
-        </button>
+        {/* Translation Studio Tools (Shown ONLY in Admin Mode) */}
+        {viewMode === 'admin' && (
+          <>
+            <button className="btn btn-secondary" onClick={onOpenAISettings} title="AI Model & API Provider Settings">
+              <Cpu size={16} style={{ color: 'var(--primary-cyan)' }} />
+              <span>AI Engine</span>
+            </button>
 
-        {/* Global Master Glossary */}
-        <button className="btn btn-secondary" onClick={onOpenGlobalGlossary} title="Shared Master Dictionary across all novels">
-          <Database size={16} style={{ color: 'var(--primary-cyan)' }} />
-          <span>Global Glossary</span>
-        </button>
+            <button className="btn btn-secondary" onClick={onOpenGlobalGlossary} title="Shared Master Dictionary across all novels">
+              <Database size={16} style={{ color: 'var(--primary-cyan)' }} />
+              <span>Global Glossary</span>
+            </button>
 
-        {/* AI & Community Governance */}
-        <button className="btn btn-secondary" onClick={onOpenGovernance} style={{ position: 'relative' }}>
-          <ShieldCheck size={16} style={{ color: 'var(--accent-amber)' }} />
-          <span>Governance</span>
-          {pendingGovernanceCount > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '-4px',
-              right: '-4px',
-              background: 'var(--accent-pink)',
-              color: '#fff',
-              fontSize: '0.7rem',
-              fontWeight: 'bold',
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              {pendingGovernanceCount}
-            </span>
-          )}
-        </button>
+            <button className="btn btn-secondary" onClick={onOpenGovernance} style={{ position: 'relative' }}>
+              <ShieldCheck size={16} style={{ color: 'var(--accent-amber)' }} />
+              <span>Governance</span>
+              {pendingGovernanceCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  background: 'var(--accent-pink)',
+                  color: '#fff',
+                  fontSize: '0.7rem',
+                  fontWeight: 'bold',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {pendingGovernanceCount}
+                </span>
+              )}
+            </button>
 
-        {/* Export */}
-        <button className="btn btn-primary" onClick={onOpenExport}>
-          <Download size={16} />
-          <span>Export Novel</span>
-        </button>
+            <button className="btn btn-primary" onClick={onOpenExport}>
+              <Download size={16} />
+              <span>Export Novel</span>
+            </button>
+          </>
+        )}
       </div>
     </header>
   );
