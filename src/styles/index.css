@@ -199,7 +199,8 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
 }
-.badge-xianxia { background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); }
+.badge-xianxia { background: rgba(0, 242, 254, 0.15); color: var(--primary-cyan); border: 1px solid rgba(0, 242, 254, 0.3); }
+body.light-mode .badge-xianxia, [data-theme="light"] .badge-xianxia { background: #e0f2fe !important; color: #0284c7 !important; border: 1px solid #7dd3fc !important; font-weight: 700 !important; }
 .badge-wuxia { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(10, 185, 129, 0.3); }
 .badge-scifi { background: rgba(157, 78, 221, 0.15); color: #c77dff; border: 1px solid rgba(157, 78, 221, 0.3); }
 

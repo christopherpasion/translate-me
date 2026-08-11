@@ -229,7 +229,8 @@ body.light-mode {
   font-size: 0.75rem;
   font-weight: 600;
 }
-.badge-xianxia { background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); }
+.badge-xianxia { background: rgba(0, 242, 254, 0.15); color: var(--primary-cyan); border: 1px solid rgba(0, 242, 254, 0.3); }
+body.light-mode .badge-xianxia, [data-theme="light"] .badge-xianxia { background: #e0f2fe !important; color: #0284c7 !important; border: 1px solid #7dd3fc !important; font-weight: 700 !important; }
 .badge-wuxia { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
 .badge-scifi { background: rgba(157, 78, 221, 0.15); color: #c77dff; border: 1px solid rgba(157, 78, 221, 0.3); }
 
@@ -420,4 +421,79 @@ body.light-mode .term-highlight {
 body.light-mode .navbar {
   background: #ffffff !important;
   border-bottom-color: #e2e8f0 !important;
+}
+
+/* 📱 Comprehensive Mobile & Tablet Touch Responsiveness */
+.mobile-tab-bar {
+  display: none;
+  background: var(--bg-elevated);
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  gap: 0.35rem;
+}
+
+.mobile-tab-btn {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.mobile-tab-btn.active {
+  background: var(--primary-cyan);
+  color: #090d16;
+  border-color: var(--primary-cyan);
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .mobile-tab-bar {
+    display: flex;
+  }
+
+  .pane-split {
+    flex-direction: column !important;
+  }
+
+  .editor-pane.mobile-hidden {
+    display: none !important;
+  }
+
+  .navbar {
+    padding: 0.5rem 0.75rem !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .studio-toolbar {
+    padding: 0.5rem 0.75rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+
+  .modal-content {
+    width: 95vw !important;
+    max-height: 92vh !important;
+  }
+
+  .glossary-sidebar {
+    position: fixed !important;
+    right: 0 !important;
+    top: 60px !important;
+    bottom: 0 !important;
+    width: 300px !important;
+    z-index: 900 !important;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.5) !important;
+  }
+
+  .btn {
+    min-height: 38px !important;
+  }
 }

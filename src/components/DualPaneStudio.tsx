@@ -233,11 +233,36 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     }
   };
 
+  // Mobile Active Tab State ('all' | 'zh' | 'en')
+  const [mobileTab, setMobileTab] = useState<'all' | 'zh' | 'en'>('all');
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      <div className="pane-split">
+      {/* Mobile Touch Tab Bar (< 768px) */}
+      <div className="mobile-tab-bar">
+        <button
+          className={`mobile-tab-btn ${mobileTab === 'all' ? 'active' : ''}`}
+          onClick={() => setMobileTab('all')}
+        >
+          Both
+        </button>
+        <button
+          className={`mobile-tab-btn ${mobileTab === 'zh' ? 'active' : ''}`}
+          onClick={() => setMobileTab('zh')}
+        >
+          🇨🇳 Chinese
+        </button>
+        <button
+          className={`mobile-tab-btn ${mobileTab === 'en' ? 'active' : ''}`}
+          onClick={() => setMobileTab('en')}
+        >
+          🇬🇧 English
+        </button>
+      </div>
+
+      <div className={`pane-split mobile-tab-${mobileTab}`}>
         {/* LEFT PANE: Chinese Raw Text */}
-        <div className="editor-pane">
+        <div className={`editor-pane ${mobileTab === 'en' ? 'mobile-hidden' : ''}`}>
           <div className="pane-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-cyan)' }}></span>
@@ -310,7 +335,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
         </div>
 
         {/* RIGHT PANE: English Translation */}
-        <div className="editor-pane">
+        <div className={`editor-pane ${mobileTab === 'zh' ? 'mobile-hidden' : ''}`}>
           <div className="pane-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-green)' }}></span>
