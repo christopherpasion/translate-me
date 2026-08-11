@@ -363,38 +363,23 @@ export const App: React.FC = () => {
   const pendingGovCount = recommendations.filter(r => r.status === 'pending').length + suggestions.filter(s => s.status === 'pending').length;
 
   const handlePolishProse = async () => {
-    if (!currentChapter || !currentChapter.contentEn) return;
-
-    // Safe English Prose Refinement (Fix quotes, spacing, capitalization without garbling words)
-    let polished = currentChapter.contentEn;
+    if (!currentChapter || !currentChapter.contentZh) return;
 
     try {
       const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
-      if (result.translatedEn && !/[\u4e00-\u9fa5]/.test(result.translatedEn)) {
-        polished = result.translatedEn;
+      if (result.translatedEn) {
+        const updated: Chapter = {
+          ...currentChapter,
+          contentEn: result.translatedEn,
+          status: 'translated',
+          updatedAt: new Date().toISOString()
+        };
+        StorageService.saveChapter(updated);
+        setChapters(StorageService.getChapters(selectedNovelId));
       }
-    } catch {
-      polished = currentChapter.contentEn
-        .split('\n')
-        .map(p => {
-          let line = p.trim();
-          if (!line) return '';
-          if (line.startsWith('"') && !line.endsWith('"') && !line.endsWith('!"') && !line.endsWith('?"') && !line.endsWith('."')) {
-            line += '"';
-          }
-          return line;
-        })
-        .join('\n');
+    } catch (err) {
+      console.warn('Polish prose error:', err);
     }
-
-    const updated: Chapter = {
-      ...currentChapter,
-      contentEn: polished,
-      updatedAt: new Date().toISOString()
-    };
-
-    StorageService.saveChapter(updated);
-    setChapters(chapters.map(c => c.id === updated.id ? updated : c));
   };
 
   const handleDeleteChapter = (chapterId: string) => {
@@ -667,3 +652,5 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
+export default App;
