@@ -71,14 +71,60 @@ const NOISE_LINE_PATTERNS = [
   /京公网安备/i,
   /可信网站/i,
   /纯属虚构/i,
-  /切勿沉迷/i
+  /切勿沉迷/i,
+  /^写作$/i,
+  /^账务$/i,
+  /^充值$/i,
+  /^退出$/i,
+  /^论坛$/i,
+  /^繁体版$/i,
+  /^APP下载$/i,
+  /^关闭广告$/i,
+  /^-范围-$/i,
+  /^-视角-$/i,
+  /^-类型-$/i,
+  /^-时代-$/i,
+  /^-标签-$/i,
+  /^作品$/i,
+  /^搜索$/i,
+  /^读书$/i
 ];
 
+// Custom Noise Rules LocalStorage Support
+const CUSTOM_NOISE_RULES_KEY = 'trans_me_custom_noise_rules_v1';
+
+export function getCustomNoiseRules(): string[] {
+  const data = localStorage.getItem(CUSTOM_NOISE_RULES_KEY);
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+export function addCustomNoiseRule(rule: string): string[] {
+  const current = getCustomNoiseRules();
+  const trimmed = rule.trim();
+  if (trimmed && !current.includes(trimmed)) {
+    const updated = [...current, trimmed];
+    localStorage.setItem(CUSTOM_NOISE_RULES_KEY, JSON.stringify(updated));
+    return updated;
+  }
+  return current;
+}
+
+export function removeCustomNoiseRule(rule: string): string[] {
+  const current = getCustomNoiseRules();
+  const updated = current.filter((r: string) => r !== rule);
+  localStorage.setItem(CUSTOM_NOISE_RULES_KEY, JSON.stringify(updated));
+  return updated;
+}
+
 /**
- * Intelligent Web Text Cleaner
- * Takes raw text copied from JJWXC, Qidian, or 69shuba,
- * strips website menus, footers, ad clutter, and paragraph numbers,
- * and extracts the clean novel title, chapter title, and story prose.
+ * Intelligent Adaptive Web Text Cleaner
+ * Automatically detects whether rawInput is a Full Web Page Dump (Ctrl+A)
+ * OR Pure Chapter Story Prose, stripping website noise while preserving 100% of story prose!
  */
 export function smartCleanWebNovelText(rawInput: string): CleanedChapter {
   if (!rawInput) {
@@ -86,12 +132,19 @@ export function smartCleanWebNovelText(rawInput: string): CleanedChapter {
   }
 
   const lines = rawInput.split('\n');
+  const customRules = getCustomNoiseRules();
   let novelTitle: string | undefined;
   let author: string | undefined;
   let chapterTitle = 'New Chapter';
   let cleanLines: string[] = [];
   let strippedCount = 0;
   let insideStory = false;
+
+  // Check if input contains website navigation headers or custom noise rules
+  const isFullPageDump = 
+    NOISE_LINE_PATTERNS.some(pattern => pattern.test(rawInput)) || 
+    customRules.some((rule: string) => rawInput.toLowerCase().includes(rule.toLowerCase())) ||
+    rawInput.includes('晋江文学城') || rawInput.includes('我的晋江');
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -102,17 +155,20 @@ export function smartCleanWebNovelText(rawInput: string): CleanedChapter {
       continue;
     }
 
-    // Check if line matches known website noise patterns
-    const isNoise = NOISE_LINE_PATTERNS.some(pattern => pattern.test(trimmed));
-    if (isNoise || trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      strippedCount++;
-      continue;
+    // Full Page Dump & Custom Noise Rules Filter:
+    if (isFullPageDump) {
+      const isBuiltInNoise = NOISE_LINE_PATTERNS.some(pattern => pattern.test(trimmed));
+      const isCustomNoise = customRules.some((rule: string) => trimmed.toLowerCase().includes(rule.toLowerCase()));
+
+      if (isBuiltInNoise || isCustomNoise || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        strippedCount++;
+        continue;
+      }
     }
 
     // Detect Author line (e.g., 作者：老肝妈)
     if (trimmed.startsWith('作者：') || trimmed.startsWith('作者:')) {
       author = trimmed.replace(/^作者[：:]\s*/, '');
-      // The line before author is often the novel title
       if (i > 0 && !NOISE_LINE_PATTERNS.some(p => p.test(lines[i - 1]))) {
         const potentialNovelTitle = lines[i - 1].trim();
         if (potentialNovelTitle && !potentialNovelTitle.includes('http')) {
@@ -124,13 +180,10 @@ export function smartCleanWebNovelText(rawInput: string): CleanedChapter {
 
     // Detect Chapter Title (e.g. 狂暴龙（1）, 狂暴龙(1), 第1章)
     if (chapterTitle === 'New Chapter') {
-      const isChapterTitleLine = 
-        trimmed.includes('狂暴') ||
-        trimmed.includes('（') || trimmed.includes('(') ||
-        trimmed.includes('第') || trimmed.includes('章') ||
-        (trimmed.length < 25 && !trimmed.endsWith('。') && !trimmed.endsWith('！') && !trimmed.endsWith('？'));
+      const isExplicitTitle = trimmed.includes('狂暴') || trimmed.includes('（') || trimmed.includes('(') || trimmed.includes('第') || trimmed.includes('章');
+      const isShortTitleLine = isFullPageDump && trimmed.length < 25 && !trimmed.endsWith('。') && !trimmed.endsWith('！') && !trimmed.endsWith('？');
 
-      if (isChapterTitleLine) {
+      if (isExplicitTitle || isShortTitleLine) {
         chapterTitle = trimmed.replace(/\d+$/, '').trim();
         insideStory = true;
         continue; // Do not duplicate title line into story content
@@ -158,4 +211,23 @@ export function smartCleanWebNovelText(rawInput: string): CleanedChapter {
     contentZh: cleanLines.join('\n'),
     strippedLinesCount: strippedCount
   };
+}
+
+/**
+ * Bulk Multi-Chapter Importer & Splitter
+ * Detects multiple chapter headers (e.g. 第1章, 第2章, Chapter 1, Chapter 2) in a single pasted text
+ * and splits them into an array of clean chapter objects!
+ */
+export function splitBulkChapters(rawInput: string): CleanedChapter[] {
+  if (!rawInput.trim()) return [];
+
+  // Match chapter header boundaries like "第12章", "第十二章", "Chapter 12"
+  const chapterHeaderRegex = /(?=\n\s*(?:第\s*[\d一二三四五六七八九十百千]+\s*章|Chapter\s+\d+))/i;
+  const rawChunks = rawInput.split(chapterHeaderRegex).map(c => c.trim()).filter(Boolean);
+
+  if (rawChunks.length <= 1) {
+    return [smartCleanWebNovelText(rawInput)];
+  }
+
+  return rawChunks.map(chunk => smartCleanWebNovelText(chunk));
 }

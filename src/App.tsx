@@ -4,7 +4,7 @@ import { StorageService } from './services/storage';
 import { extractEntitiesFromChinese, type ExtractedEntity } from './services/nerExtractor';
 import { cascadeTermReplacement } from './services/translationEngine';
 import { translateChapterWithAI } from './services/aiProvider';
-import { smartCleanWebNovelText } from './services/textCleaner';
+import { smartCleanWebNovelText, getCustomNoiseRules, addCustomNoiseRule, removeCustomNoiseRule } from './services/textCleaner';
 
 import { Navbar } from './components/Navbar';
 import { NovelLibrary } from './components/NovelLibrary';
@@ -57,9 +57,11 @@ export const App: React.FC = () => {
   const [isNewChapterOpen, setIsNewChapterOpen] = useState(false);
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
 
-  // New Chapter Form State
+  // New Chapter Form & Custom Site Noise Rules State
   const [newChapTitleZh, setNewChapTitleZh] = useState('');
   const [newChapContentZh, setNewChapContentZh] = useState('');
+  const [customRules, setCustomRules] = useState<string[]>(getCustomNoiseRules());
+  const [newRuleInput, setNewRuleInput] = useState('');
 
   // Initial Load
   useEffect(() => {
@@ -73,12 +75,28 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Load Data for Active Novel
+  // Load Data for Active Novel with Auto-Cleaned Chinese Prose
   const loadNovelData = (novelId: string) => {
-    const loadedChapters = StorageService.getChapters(novelId);
-    setChapters(loadedChapters);
-    if (loadedChapters.length > 0) {
-      setSelectedChapterId(loadedChapters[0].id);
+    const rawChapters = StorageService.getChapters(novelId);
+    
+    // Auto-clean any uncleaned raw Chinese chapter content
+    const cleanedChapters = rawChapters.map(ch => {
+      if (ch.contentZh && (ch.contentZh.includes('北京时间') || ch.contentZh.includes('我的晋江') || ch.contentZh.includes('版权专区'))) {
+        const cleaned = smartCleanWebNovelText(ch.contentZh);
+        const updated = {
+          ...ch,
+          contentZh: cleaned.contentZh || ch.contentZh,
+          titleZh: (cleaned.chapterTitle && cleaned.chapterTitle !== 'New Chapter') ? cleaned.chapterTitle : ch.titleZh
+        };
+        StorageService.saveChapter(updated);
+        return updated;
+      }
+      return ch;
+    });
+
+    setChapters(cleanedChapters);
+    if (cleanedChapters.length > 0) {
+      setSelectedChapterId(cleanedChapters[0].id);
     }
 
     const loadedGlossary = StorageService.getGlossary(novelId);
@@ -326,6 +344,21 @@ export const App: React.FC = () => {
 
   const pendingGovCount = recommendations.filter(r => r.status === 'pending').length + suggestions.filter(s => s.status === 'pending').length;
 
+  const handlePolishProse = async () => {
+    if (!currentChapter || !currentChapter.contentEn) return;
+
+    // Run AI / Rule Prose Polish Pass
+    const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
+    const updated: Chapter = {
+      ...currentChapter,
+      contentEn: result.translatedEn,
+      updatedAt: new Date().toISOString()
+    };
+
+    StorageService.saveChapter(updated);
+    setChapters(chapters.map(c => c.id === updated.id ? updated : c));
+  };
+
   return (
     <div className="app-container">
       {/* Top Navbar */}
@@ -384,6 +417,7 @@ export const App: React.FC = () => {
               onSaveContent={handleSaveChapterContent}
               onQuickUpdateGlossary={handleQuickUpdateGlossary}
               onReTranslateChapter={handleRunSelfHealingPass}
+              onPolishProse={handlePolishProse}
             />
 
             {/* 2-Tier Glossary Sidebar */}
@@ -502,6 +536,70 @@ export const App: React.FC = () => {
                     }}
                   />
                 </div>
+
+                {/* Live Smart Cleaner Adaptive Stats Badge */}
+                {newChapContentZh.trim() && (() => {
+                  const cleanedStats = smartCleanWebNovelText(newChapContentZh);
+                  const pCount = cleanedStats.contentZh.split('\n').filter(Boolean).length;
+                  return (
+                    <div style={{ padding: '0.6rem 0.85rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--primary-cyan)', fontWeight: 600 }}>
+                        ✨ Smart Cleaned: {cleanedStats.strippedLinesCount} Noise Lines Stripped | Title: {cleanedStats.chapterTitle}
+                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+                        {pCount} Story Paragraphs Preserved
+                      </span>
+                    </div>
+                  );
+                })()}
+                {/* Custom Site Noise Rules Manager */}
+                <div style={{ padding: '0.6rem 0.85rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>
+                      ⚙️ Custom Site Noise Rules (e.g. www.mysite.com, 支持本站)
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--primary-cyan)', fontWeight: 500 }}>
+                      {customRules.length} Custom Rules Active
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                    <input
+                      type="text"
+                      placeholder="Type keyword/domain to strip (e.g. www.mysite.com)..."
+                      value={newRuleInput}
+                      onChange={(e) => setNewRuleInput(e.target.value)}
+                      style={{ flex: 1, padding: '0.35rem 0.6rem', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                      onClick={() => {
+                        if (newRuleInput.trim()) {
+                          const updated = addCustomNoiseRule(newRuleInput.trim());
+                          setCustomRules(updated);
+                          setNewRuleInput('');
+                        }
+                      }}
+                    >
+                      + Add Rule
+                    </button>
+                  </div>
+                  {customRules.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                      {customRules.map((rule, rIdx) => (
+                        <span key={rIdx} className="badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', color: '#fff', gap: '0.3rem', padding: '0.15rem 0.45rem' }}>
+                          {rule}
+                          <span style={{ cursor: 'pointer', color: 'var(--accent-red)', fontWeight: 'bold', marginLeft: '0.2rem' }} onClick={() => {
+                            const updated = removeCustomNoiseRule(rule);
+                            setCustomRules(updated);
+                          }}>✕</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
                   ✦ Automatically extracts title, strips website headers/footers, removes JJWXC comment numbers (`284`, `62`), and launches AI translation!
                 </p>

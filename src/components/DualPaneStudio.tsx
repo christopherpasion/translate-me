@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { Chapter, GlossaryEntry, SelfHealingRecord } from '../types';
-import { ShieldCheck, Edit2, Check, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Edit2, Check, RefreshCw, Sparkles, Lock, Unlock } from 'lucide-react';
 
 interface DualPaneStudioProps {
   chapter: Chapter | null;
@@ -9,6 +9,7 @@ interface DualPaneStudioProps {
   onSaveContent: (contentZh: string, contentEn: string) => void;
   onQuickUpdateGlossary: (originalZh: string, newEn: string) => void;
   onReTranslateChapter: () => void;
+  onPolishProse?: () => void;
 }
 
 export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
@@ -17,7 +18,8 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   healingRecords,
   onSaveContent,
   onQuickUpdateGlossary,
-  onReTranslateChapter
+  onReTranslateChapter,
+  onPolishProse
 }) => {
   const leftPaneRef = useRef<HTMLDivElement>(null);
   const rightPaneRef = useRef<HTMLDivElement>(null);
@@ -27,28 +29,56 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   const [editingTerm, setEditingTerm] = useState<{ zh: string; en: string; x: number; y: number } | null>(null);
   const [newEnInput, setNewEnInput] = useState('');
 
+  // Synchronous Cross-Highlighting State across Chinese and English panes
+  const [hoveredTermZh, setHoveredTermZh] = useState<string | null>(null);
+
   // Editable raw text states
   const [isEditingZh, setIsEditingZh] = useState(false);
   const [rawZhText, setRawZhText] = useState(chapter?.contentZh || '');
   const [isEditingEn, setIsEditingEn] = useState(false);
   const [rawEnText, setRawEnText] = useState(chapter?.contentEn || '');
 
-  // Synchronized Scrolling Logic
+  // Scroll Sync Lock Toggle State
+  const [isScrollSyncLocked, setIsScrollSyncLocked] = useState(true);
+
+  // Synchronized Paragraph-Aligned Scrolling Logic
   const handleScroll = (source: 'left' | 'right') => {
-    if (isSyncingRef.current) return;
+    if (!isScrollSyncLocked || isSyncingRef.current) return;
     isSyncingRef.current = true;
 
     const sourcePane = source === 'left' ? leftPaneRef.current : rightPaneRef.current;
     const targetPane = source === 'left' ? rightPaneRef.current : leftPaneRef.current;
 
     if (sourcePane && targetPane) {
-      const percentage = sourcePane.scrollTop / (sourcePane.scrollHeight - sourcePane.clientHeight || 1);
-      targetPane.scrollTop = percentage * (targetPane.scrollHeight - targetPane.clientHeight);
+      const sourceParas = Array.from(sourcePane.querySelectorAll('p'));
+      const targetParas = Array.from(targetPane.querySelectorAll('p'));
+
+      if (sourceParas.length > 0 && targetParas.length > 0) {
+        const paneTop = sourcePane.getBoundingClientRect().top;
+        let activeIdx = 0;
+
+        for (let i = 0; i < sourceParas.length; i++) {
+          const pTop = sourceParas[i].getBoundingClientRect().top - paneTop;
+          if (pTop >= 0) {
+            activeIdx = i;
+            break;
+          }
+        }
+
+        const targetActivePara = targetParas[Math.min(activeIdx, targetParas.length - 1)];
+        if (targetActivePara) {
+          const targetOffset = targetActivePara.offsetTop - targetPane.offsetTop;
+          targetPane.scrollTop = targetOffset;
+        }
+      } else {
+        const percentage = sourcePane.scrollTop / (sourcePane.scrollHeight - sourcePane.clientHeight || 1);
+        targetPane.scrollTop = percentage * (targetPane.scrollHeight - targetPane.clientHeight);
+      }
     }
 
     setTimeout(() => {
       isSyncingRef.current = false;
-    }, 50);
+    }, 60);
   };
 
   if (!chapter) {
@@ -67,7 +97,6 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     return paragraphs.map((para, pIdx) => {
       if (!para.trim()) return <br key={pIdx} />;
 
-      // Scan paragraph for polyphonic pinyin or glossary matches
       return (
         <p key={pIdx} style={{ marginBottom: '1rem' }}>
           {renderHighlightedZhParagraph(para)}
@@ -77,7 +106,6 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   };
 
   const renderHighlightedZhParagraph = (para: string) => {
-    // Sort terms by length descending
     const sortedGlossary = [...glossary].sort((a, b) => b.originalZh.length - a.originalZh.length);
     const regexParts = sortedGlossary.map(g => escapeRegExp(g.originalZh)).filter(Boolean);
 
@@ -89,11 +117,14 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     return parts.map((part, i) => {
       const matched = sortedGlossary.find(g => g.originalZh === part);
       if (matched) {
+        const isHovered = hoveredTermZh === matched.originalZh;
         return (
           <span
             key={i}
-            className="term-highlight"
+            className={`term-highlight ${isHovered ? 'term-highlight-active' : ''}`}
             title={`Mapped to: "${matched.translatedEn}" (${matched.category})`}
+            onMouseEnter={() => setHoveredTermZh(matched.originalZh)}
+            onMouseLeave={() => setHoveredTermZh(null)}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               setEditingTerm({ zh: matched.originalZh, en: matched.translatedEn, x: rect.left, y: rect.bottom + 5 });
@@ -108,7 +139,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     });
   };
 
-  // Render Highlighted English Content with Self-Healing Badges
+  // Render Highlighted English Content with Self-Healing Badges & Synchronous Cross-Highlighting
   const renderEnglishContent = (text: string) => {
     if (!text) return null;
     const rawParagraphs = text.split('\n').map(p => p.trim()).filter(Boolean);
@@ -134,7 +165,6 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   };
 
   const renderHighlightedEnParagraph = (para: string) => {
-    // Sort terms by English length descending
     const sortedGlossary = [...glossary].sort((a, b) => b.translatedEn.length - a.translatedEn.length);
     const regexParts = sortedGlossary.map(g => escapeRegExp(g.translatedEn)).filter(Boolean);
 
@@ -146,14 +176,16 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     return parts.map((part, i) => {
       const matched = sortedGlossary.find(g => g.translatedEn.toLowerCase() === part.toLowerCase());
       if (matched) {
-        // Check if this term was self-healed in this chapter
+        const isHovered = hoveredTermZh === matched.originalZh;
         const healedRecord = healingRecords.find(h => h.termZh === matched.originalZh);
         if (healedRecord) {
           return (
             <span
               key={i}
-              className="self-healed-badge"
+              className={`self-healed-badge ${isHovered ? 'term-highlight-active' : ''}`}
               title={`[Self-Healed Agent] Auto-corrected drift "${healedRecord.incorrectEn}" -> "${matched.translatedEn}"`}
+              onMouseEnter={() => setHoveredTermZh(matched.originalZh)}
+              onMouseLeave={() => setHoveredTermZh(null)}
             >
               <ShieldCheck size={12} style={{ display: 'inline', marginRight: '3px' }} />
               {part}
@@ -164,8 +196,10 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
         return (
           <span
             key={i}
-            className="term-highlight"
+            className={`term-highlight ${isHovered ? 'term-highlight-active' : ''}`}
             title={`Glossary Term (${matched.category}): Original ZH "${matched.originalZh}"`}
+            onMouseEnter={() => setHoveredTermZh(matched.originalZh)}
+            onMouseLeave={() => setHoveredTermZh(null)}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               setEditingTerm({ zh: matched.originalZh, en: matched.translatedEn, x: rect.left, y: rect.bottom + 5 });
@@ -198,6 +232,17 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
               <span>Raw Chinese Source (原文)</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {/* Scroll Sync Lock Toggle */}
+              <button
+                className={`btn ${isScrollSyncLocked ? 'btn-secondary' : 'btn-primary'}`}
+                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', gap: '0.3rem' }}
+                onClick={() => setIsScrollSyncLocked(!isScrollSyncLocked)}
+                title={isScrollSyncLocked ? 'Scroll Sync Locked: Both panes scroll together paragraph by paragraph. Click to unlock.' : 'Scroll Sync Unlocked: Panes scroll independently. Click to lock.'}
+              >
+                {isScrollSyncLocked ? <Lock size={12} style={{ color: 'var(--primary-cyan)' }} /> : <Unlock size={12} />}
+                <span>{isScrollSyncLocked ? 'Sync Scroll' : 'Free Scroll'}</span>
+              </button>
+
               {isEditingZh ? (
                 <button
                   className="btn btn-primary"
@@ -274,6 +319,17 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
               >
                 <RefreshCw size={12} /> Re-Translate
               </button>
+
+              {onPolishProse && (
+                <button
+                  className="btn btn-secondary"
+                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', color: 'var(--accent-purple)', borderColor: 'var(--accent-purple)' }}
+                  onClick={onPolishProse}
+                  title="Upgrade English translation into smooth, literary prose"
+                >
+                  <Sparkles size={12} /> Polish Prose
+                </button>
+              )}
 
               {isEditingEn ? (
                 <button

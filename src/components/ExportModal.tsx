@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Novel, Chapter, GlossaryEntry } from '../types';
 import { Download, FileText, Book, Check, X, Layers } from 'lucide-react';
+import { exportNovelToEpubHtml } from '../services/epubExporter';
 
 interface ExportModalProps {
   novel: Novel;
@@ -21,6 +22,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [isExported, setIsExported] = useState(false);
 
   const handleDownload = () => {
+    if (exportFormat === 'epub' || exportFormat === 'pdf') {
+      exportNovelToEpubHtml(novel, chapters);
+      setIsExported(true);
+      return;
+    }
+
     let output = `# ${novel.titleEn} (${novel.titleZh})\n`;
     output += `Author: ${novel.author}\n`;
     output += `Genre: ${novel.genre.toUpperCase()}\n\n`;

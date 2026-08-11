@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Novel, Chapter } from '../types';
-import { Sparkles, ShieldCheck, GitFork, Plus, Sidebar } from 'lucide-react';
+import { Sparkles, GitFork, Plus, Sidebar } from 'lucide-react';
 
 interface StudioHeaderProps {
   currentNovel: Novel;
@@ -9,7 +9,7 @@ interface StudioHeaderProps {
   onSelectChapter: (chapterId: string) => void;
   onOpenNewChapterModal: () => void;
   onRunEntityScan: () => void;
-  onRunSelfHealing: () => void;
+  onRunSelfHealing?: () => void;
   onOpenCharacterGraph: () => void;
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
@@ -23,7 +23,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   onSelectChapter,
   onOpenNewChapterModal,
   onRunEntityScan,
-  onRunSelfHealing,
   onOpenCharacterGraph,
   onToggleSidebar,
   isSidebarOpen,
@@ -80,34 +79,25 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
 
       {/* Action Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-        {/* Pre-Pass Entity Scanner */}
+        {/* Prominent 1-Click Paste & Translate Primary Button */}
+        <button
+          className="btn btn-primary"
+          onClick={onOpenNewChapterModal}
+          title="Paste raw web novel text to clean & translate into English"
+          style={{ fontWeight: 700, gap: '0.4rem', padding: '0.45rem 0.9rem' }}
+        >
+          <Plus size={16} />
+          <span>📋 Paste New Chapter</span>
+        </button>
+
+        {/* Scan Terms */}
         <button
           className="btn btn-secondary"
           onClick={onRunEntityScan}
-          title="Scan raw Chinese chapter for character names, sects, and realms before translation"
+          title="Scan raw Chinese chapter for character names, sects, and proper nouns"
         >
           <Sparkles size={16} style={{ color: 'var(--primary-cyan)' }} />
-          <span>Entity Scanner</span>
-        </button>
-
-        {/* Self-Healing Pass */}
-        <button
-          className="btn btn-secondary"
-          onClick={onRunSelfHealing}
-          title="Run Self-Healing agent verification pass to fix term drifts"
-        >
-          <ShieldCheck size={16} style={{ color: 'var(--accent-amber)' }} />
-          <span>Self-Heal Pass</span>
-        </button>
-
-        {/* Character Graph */}
-        <button
-          className="btn btn-secondary"
-          onClick={onOpenCharacterGraph}
-          title="View visual character relationship tree & sect hierarchy"
-        >
-          <GitFork size={16} style={{ color: 'var(--accent-purple)' }} />
-          <span>Character Graph</span>
+          <span>Scan Terms</span>
         </button>
 
         {/* Glossary Sidebar Toggle */}
@@ -117,6 +107,16 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         >
           <Sidebar size={16} />
           <span>Glossary ({glossaryCount})</span>
+        </button>
+
+        {/* Character Graph */}
+        <button
+          className="btn btn-secondary"
+          onClick={onOpenCharacterGraph}
+          title="View visual character relationship tree & sect hierarchy"
+        >
+          <GitFork size={16} style={{ color: 'var(--accent-purple)' }} />
+          <span>Graph</span>
         </button>
       </div>
     </div>

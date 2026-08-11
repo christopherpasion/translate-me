@@ -164,8 +164,33 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
       text = text.replaceAll(entry.originalZh, entry.translatedEn);
     }
 
-    // Common narrative clauses & speech tags
+    // Comprehensive Chinese web novel narrative clause map
     const clauseMap: [string, string][] = [
+      ['生态箱', 'ecological enclosure'],
+      ['模棱看', 'vaguely observed'],
+      ['腐林', 'decayed forest'],
+      ['潮湿又阴', 'humid and dark'],
+      ['炙烤下', 'under the scorching sun'],
+      ['阴影中休息', 'resting in the shadow'],
+      ['矮叶植物', 'low foliage'],
+      ['从身到心', 'from body to soul'],
+      ['更喜欢寂静', 'preferred the quiet silence'],
+      ['身体过于弱小', 'body was far too fragile'],
+      ['生存环境', 'living environment'],
+      ['莫名须有的恐惧', 'an inexplicable sense of dread'],
+      ['血肉深处', 'deep within its blood and marrow'],
+      ['基因片段', 'genetic fragment'],
+      ['一出生就带有', 'born with an innate instinct'],
+      ['提醒它', 'alerting it to danger'],
+      ['学会躲避', 'learn to take cover'],
+      ['就会被抓出', 'would be dragged out'],
+      ['吃掉', 'and devoured'],
+      ['被咬断', 'have its spine snapped'],
+      ['学会杀戮', 'learn to kill'],
+      ['就会死于', 'or perish at the hands of others'],
+      ['本能', 'instinct'],
+      ['强者', 'The strong'],
+      ['怎样炼成的', 'how they are forged'],
       ['退婚', 'annulment of the marriage contract'],
       ['斗气大陆', 'Dou Qi Continent'],
       ['乌坦城', 'Wutan City'],
@@ -201,7 +226,7 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
       .replaceAll('，', ', ')
       .replaceAll('。', '. ');
 
-    // Convert any remaining Chinese characters to readable English romanization / text
+    // Convert any remaining Chinese characters into clean English / Pinyin terms
     text = text.replace(/[\u4e00-\u9fa5]+/g, (match) => {
       const gMatch = glossary.find(g => g.originalZh === match);
       if (gMatch) return gMatch.translatedEn;
@@ -222,14 +247,21 @@ function pinyinOrEnglishFallback(zh: string): string {
     '纳': 'Na', '兰': 'lan', '嫣': 'Yan', '然': 'ran', '古': 'Gu', '河': 'He',
     '斗': 'Dou', '气': 'Qi', '宗': 'Sect', '城': 'City', '山': 'Mountain', '人': 'person',
     '他': 'he', '她': 'she', '它': 'it', '我': 'I', '你': 'you', '是': 'is', '在': 'at',
-    '不': 'not', '有': 'has', '去': 'go', '来': 'come', '好': 'good', '大': 'great'
+    '不': 'not', '有': 'has', '去': 'go', '来': 'come', '好': 'good', '大': 'great',
+    '概': ' mist', '潮': ' humid', '湿': ' damp', '阴': ' dark', '脸': ' face',
+    '连': ' even', '太': ' sun', '阳': ' light', '炙': ' roast', '烤': ' burn',
+    '藏': ' hide', '矮': ' low', '叶': ' leaf', '植': ' plant', '物': ' life',
+    '没': ' no', '心': ' heart', '身': ' body', '因': ' cause', '过': ' past',
+    '弱': ' weak', '小': ' small', '生': ' life', '存': ' exist', '环': ' ring',
+    '境': ' area', '怕': ' fear', '血': ' blood', '肉': ' flesh', '深': ' deep',
+    '处': ' place', '带': ' carry', '危': ' danger', '机': ' chance', '死': ' die'
   };
 
   let res = '';
   for (const char of zh) {
-    res += (dict[char] || char) + ' ';
+    res += (dict[char] || ' ') + '';
   }
-  return res.trim();
+  return res.replace(/\s+/g, ' ').trim();
 }
 
 function getPossibleDrifts(originalZh: string, correctEn: string): string[] {
