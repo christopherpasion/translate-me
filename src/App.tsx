@@ -65,6 +65,10 @@ export const App: React.FC = () => {
 
   // Initial Load
   useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+
     const loadedNovels = StorageService.getNovels();
     setNovels(loadedNovels);
 
