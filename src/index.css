@@ -486,11 +486,12 @@ body.light-mode .navbar {
   .glossary-sidebar {
     position: fixed !important;
     right: 0 !important;
-    top: 60px !important;
+    top: 55px !important;
     bottom: 0 !important;
-    width: 300px !important;
-    z-index: 900 !important;
-    box-shadow: -10px 0 30px rgba(0,0,0,0.5) !important;
+    width: 320px !important;
+    max-width: 85vw !important;
+    z-index: 9999 !important;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.6) !important;
   }
 
   .btn {
