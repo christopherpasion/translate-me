@@ -48,6 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Novel Selector Dropdown */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <select
+            className="navbar-novel-select"
             value={selectedNovelId}
             onChange={(e) => onSelectNovel(e.target.value)}
             style={{

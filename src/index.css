@@ -494,6 +494,16 @@ body.light-mode .navbar {
     box-shadow: -10px 0 30px rgba(0,0,0,0.6) !important;
   }
 
+  .navbar-novel-select {
+    max-width: 130px !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .reader-toolbar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
   .btn {
     min-height: 38px !important;
   }

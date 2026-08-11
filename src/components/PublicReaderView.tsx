@@ -159,13 +159,15 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
       <div style={{ width: '100%', maxWidth: '900px', padding: '1.5rem 1rem' }}>
         {/* Reader Controls Toolbar */}
       <div
-        className="glass-panel"
+        className="glass-panel reader-toolbar"
         style={{
           padding: '0.75rem 1.25rem',
           marginBottom: '1.5rem',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-color)',
           background: 'var(--bg-card)',
