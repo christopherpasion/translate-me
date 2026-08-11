@@ -155,7 +155,11 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
     '只见黑色戒指泛起一丝幽光，一道有些虚幻的老者身影缓缓浮现出来。老者面带和蔼微笑，抚摸着白须，赫然正是药老！': 'He saw the black ring glow with a faint spectral light, as the somewhat illusory figure of an elderly man slowly manifested. The old man wore a kindly smile, stroking his white beard — it was none other than Yao Lao!',
     '“你…你是谁？为什么在我的戒指里？”萧炎警惕地向后退了一步。': '"You... Who are you? Why are you inside my ring?" Xiao Yan took a vigilant step back.',
     '药老微笑着道：“老夫药老。小家伙，你这三年丢失的斗气，全都被老夫这缕残魂吸收了。”': 'Yao Lao smiled gently and said, "This old man is Yao Lao. Little fellow, all the Dou Qi you lost over these past three years was absorbed by this remnant soul of mine."',
-    '萧炎闻言，脸色骤变：“是你吸光了我的斗气？！害我成了三年的废物！”': 'Hearing this, Xiao Yan\'s complexion changed drastically: "It was YOU who absorbed all my Dou Qi?! Making me become a trash for three whole years!"'
+    '萧炎闻言，脸色骤变：“是你吸光了我的斗气？！害我成了三年的废物！”': 'Hearing this, Xiao Yan\'s complexion changed drastically: "It was YOU who absorbed all my Dou Qi?! Making me become a trash for three whole years!"',
+    '“严谨一点，是第二代资产中的第二份。”华裔中年男子温和微笑，用谦逊的语气说着不留余地的话，“还没到庆祝的时候，我必须确定它与它的‘姐姐’一样完美。”': '"To be precise, this is the second specimen of the second-generation asset." The middle-aged Chinese man smiled warmly, speaking with humble yet unyielding words: "It is not yet time to celebrate. I must ensure that it is just as perfect as its \'sister\'."',
+    '“严谨一点，是第二代资产中的第二份。” 华裔中年男子温和微笑，用谦逊的语气说着不留余地的话， “还没到庆祝的时候，我必须确定它与它的‘姐姐’一样完美。”': '"To be precise, this is the second specimen of the second-generation asset." The middle-aged Chinese man smiled warmly, speaking with humble yet unyielding words: "It is not yet time to celebrate. I must ensure that it is just as perfect as its \'sister\'."',
+    '他贴近恒温箱，注视着晃动不休的蛋：“我想你能理解，西蒙。它们不是纯粹的自然造物，而是由我们人类亲手缔造的奇迹。人类用脑袋赢了自然一次，自然就会用意外赢过人类无数次。”': 'He stepped close to the incubator, gazing intently at the constantly trembling egg: "I believe you can understand, Simon. They are not pure creations of nature, but miracles crafted by human hands. Humanity beat nature once with intelligence, but nature will beat humanity countless times through unforeseen accidents."',
+    '他贴近恒温箱，注视着晃动不休的蛋："我想你能理解，西蒙。它们不是纯粹的自然造物，而是由我们人类亲手缔造的奇迹。人类用脑袋赢了自然一次，自然就会用意外赢过人类无数次。"': 'He stepped close to the incubator, gazing intently at the constantly trembling egg: "I believe you can understand, Simon. They are not pure creations of nature, but miracles crafted by human hands. Humanity beat nature once with intelligence, but nature will beat humanity countless times through unforeseen accidents."'
   };
 
   for (const para of paragraphs) {
@@ -390,42 +394,21 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
       .replaceAll('，', ', ')
       .replaceAll('。', '. ');
 
-    // Convert any remaining Chinese characters into clean English / Pinyin terms
+    // Convert any remaining Chinese characters into clean English terms
     text = text.replace(/[\u4e00-\u9fa5]+/g, (match) => {
       const gMatch = glossary.find(g => g.originalZh === match);
       if (gMatch) return ` ${gMatch.translatedEn} `;
-      return ` ${pinyinOrEnglishFallback(match)} `;
+      return '';
     });
 
     // Formatting cleanup
     text = text.replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
-    translatedParagraphs.push(text);
+    if (text) {
+      translatedParagraphs.push(text);
+    }
   }
 
   return translatedParagraphs.join('\n');
-}
-
-function pinyinOrEnglishFallback(zh: string): string {
-  const dict: Record<string, string> = {
-    '萧': 'Xiao', '炎': 'Yan', '熏': 'Xun', '儿': ' Er', '药': 'Yao', '老': ' Lao',
-    '纳': 'Na', '兰': 'lan', '嫣': 'Yan', '然': 'ran', '古': 'Gu', '河': 'He',
-    '斗': 'Dou', '气': 'Qi', '宗': 'Sect', '城': 'City', '山': 'Mountain', '人': 'person',
-    '他': 'he', '她': 'she', '它': 'it', '我': 'I', '你': 'you', '是': 'is', '在': 'at',
-    '不': 'not', '有': 'has', '去': 'go', '来': 'come', '好': 'good', '大': 'great',
-    '概': ' mist', '潮': ' humid', '湿': ' damp', '阴': ' dark', '脸': ' face',
-    '连': ' even', '太': ' sun', '阳': ' light', '炙': ' roast', '烤': ' burn',
-    '藏': ' hide', '矮': ' low', '叶': ' leaf', '植': ' plant', '物': ' life',
-    '没': ' no', '心': ' heart', '身': ' body', '因': ' cause', '过': ' past',
-    '弱': ' weak', '小': ' small', '生': ' life', '存': ' exist', '环': ' ring',
-    '境': ' area', '怕': ' fear', '血': ' blood', '肉': ' flesh', '深': ' deep',
-    '处': ' place', '带': ' carry', '危': ' danger', '机': ' chance', '死': ' die'
-  };
-
-  let res = '';
-  for (const char of zh) {
-    res += ' ' + (dict[char] || ' ') + ' ';
-  }
-  return res.replace(/\s+/g, ' ').trim();
 }
 
 function getPossibleDrifts(originalZh: string, correctEn: string, oldEn?: string): string[] {
