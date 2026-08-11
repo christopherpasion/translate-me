@@ -330,6 +330,42 @@ He saw the black ring glow with a faint spectral light, as the somewhat illusory
 Yao Lao smiled gently and said, "This old man is Yao Lao. Little fellow, all the Dou Qi you lost over these past three years was absorbed by this remnant soul of mine."
 
 Hearing this, Xiao Yan's complexion changed drastically: "It was YOU who absorbed all my Dou Qi?! Making me become a trash for three whole years!"`
+  },
+  {
+    id: 'chap-1-3',
+    novelId: 'novel-1',
+    chapterNumber: 3,
+    titleZh: '第三章 狂暴龙（1）',
+    titleEn: 'Chapter 3: Indominus Dragon (1)',
+    status: 'translated',
+    extractedTermsCount: 8,
+    selfHealedCount: 4,
+    summary: 'The hatching of the second generation genetic asset and Simon and Henry’s dialogue.',
+    updatedAt: '2026-08-11T14:00:00Z',
+    contentZh: `“恭喜你，亨利。我们的第二个‘资产’快要孵化了。”
+
+“严谨一点，是第二代资产中的第二份。”华裔中年男子温和微笑，用谦逊的语气说着不留余地的话，“还没到庆祝的时候，我必须确定它与它的‘姐姐’一样完美。”
+
+他贴近恒温箱，注视着晃动不休的蛋：“我想你能理解，西蒙。它们不是纯粹的自然造物，而是由我们人类亲手缔造的奇迹。人类用脑袋赢了自然一次，自然就会用意外赢过人类无数次。”
+
+“恕我不能理解，什么是‘意外’？”
+
+华裔中年男子叹息，给出解释：“对科技造物来说，破壳不是生命的开始，反而会成为生命的终结。它呼吸的第一口空气，接触的第一种细菌，吞食的第一块肉，喝下的第一滴水，都存在致命的可能。这就是所谓的意外，即大自然用来维持生态平衡的手段。”
+
+“在历史上，它们早就灭绝了。我们让本不该出现的生物出现了，你觉得大自然会放过它吗？”`,
+    contentEn: `“Congratulations, Henry. Our second ‘asset’ is about to hatch.”
+
+“Strictly speaking, it’s the second asset of the second generation.” The middle-aged Chinese man smiled gently, his humble tone belying the ruthlessness of his words. “It’s too early to celebrate. I need to make sure it’s just as perfect as its ‘sister.’”
+
+He leaned closer to the incubator, watching the egg tremble violently.
+
+“I think you can understand, Simon. They aren’t purely natural creations. They’re miracles brought into existence by human hands. Humanity may outwit nature once with its intellect, but nature can repay us with countless accidents.”
+
+“Forgive me, but what exactly do you mean by ‘accidents’?”
+
+The Chinese man sighed before explaining. “For an artificially engineered life-form, hatching isn’t necessarily the beginning of life. It could just as easily be the end. The first breath it takes, the first bacterium it encounters, the first piece of meat it swallows, the first drop of water it drinks—any one of them could prove fatal. That’s what we call an accident. It’s simply nature’s way of maintaining ecological balance.”
+
+“They went extinct long ago. We’ve brought a creature back into existence that was never meant to exist. Do you really think nature will let it live?”`
   }
 ];
 
