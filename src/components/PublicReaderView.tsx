@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Novel, Chapter, GlossaryEntry } from '../types';
 import { StorageService } from '../services/storage';
-import { BookOpen, ChevronLeft, ChevronRight, MessageSquarePlus, Check, Sparkles, Sun, Moon, Type } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, MessageSquarePlus, Check, Sparkles, Type } from 'lucide-react';
 
 interface PublicReaderViewProps {
   currentNovel: Novel;
@@ -21,7 +21,6 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
   onOpenAdminMode
 }) => {
   const [fontSize, setFontSize] = useState<number>(18);
-  const [theme, setTheme] = useState<'dark' | 'sepia' | 'midnight'>('dark');
   const [hoveredTerm, setHoveredTerm] = useState<GlossaryEntry | null>(null);
   const [isSuggestingOpen, setIsSuggestingOpen] = useState(false);
   const [selectedTextForSuggest, setSelectedTextForSuggest] = useState('');
@@ -153,17 +152,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
     );
   };
 
-  // Theme Styles
-  const themeBgMap = {
-    dark: 'rgba(15, 23, 42, 0.75)',
-    sepia: '#fbf0d9',
-    midnight: '#070b14'
-  };
-  const themeTextMap = {
-    dark: 'var(--text-main)',
-    sepia: '#3f2d1d',
-    midnight: '#e2e8f0'
-  };
+
 
   return (
     <div className="reader-container" style={{ flex: 1, overflowY: 'auto', maxWidth: '900px', width: '100%', margin: '0 auto', padding: '1.5rem 1rem' }}>
@@ -177,13 +166,15 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-color)'
+          border: '1px solid var(--border-color)',
+          background: 'var(--bg-card)',
+          color: 'var(--text-main)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <BookOpen size={20} style={{ color: 'var(--primary-cyan)' }} />
           <div>
-            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{currentNovel.titleEn}</h2>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>{currentNovel.titleEn}</h2>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Public Reader View • 100% Fluent English</span>
           </div>
         </div>
@@ -191,56 +182,38 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
         {/* Reader Display Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {/* Font Size Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-sm)', padding: '0.2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', padding: '0.2rem', border: '1px solid var(--border-color)' }}>
             <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.max(14, fontSize - 2))} title="Smaller Font">
               <Type size={12} />
             </button>
-            <span style={{ fontSize: '0.8rem', padding: '0 0.4rem', color: '#fff' }}>{fontSize}px</span>
+            <span style={{ fontSize: '0.8rem', padding: '0 0.4rem', color: 'var(--text-main)' }}>{fontSize}px</span>
             <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.min(26, fontSize + 2))} title="Larger Font">
               <Type size={16} />
             </button>
           </div>
 
-          {/* Theme Selector */}
-          <div style={{ display: 'flex', gap: '0.3rem' }}>
-            <button
-              className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setTheme('dark')}
-              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
-            >
-              <Moon size={12} /> Dark
-            </button>
-            <button
-              className={`btn ${theme === 'sepia' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setTheme('sepia')}
-              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
-            >
-              <Sun size={12} /> Sepia
-            </button>
-          </div>
-
-          {/* Suggest Correction Button */}
+          {/* Reader Fix Suggestion Button */}
           <button
             className="btn btn-secondary"
             onClick={() => setIsSuggestingOpen(true)}
-            style={{ fontSize: '0.8rem', color: 'var(--accent-amber)' }}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', gap: '0.35rem', color: 'var(--accent-amber)', borderColor: 'var(--accent-amber)' }}
           >
-            <MessageSquarePlus size={14} />
-            <span>Suggest Fix</span>
+            <MessageSquarePlus size={14} /> Suggest Fix
           </button>
         </div>
       </div>
 
-      {/* Novel Reading Card */}
+      {/* Main Chapter Content Card */}
       <div
         className="glass-panel"
         style={{
-          padding: '2.5rem 3rem',
-          background: themeBgMap[theme],
-          color: themeTextMap[theme],
+          background: 'var(--bg-card)',
+          color: 'var(--text-main)',
           borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
-          position: 'relative'
+          padding: '2.5rem 3rem',
+          border: '1px solid var(--border-color)',
+          boxShadow: 'var(--shadow-card)',
+          transition: 'all 0.3s ease'
         }}
       >
         {/* Floating Glossary Tooltip */}
@@ -272,13 +245,13 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
         )}
 
         {/* Chapter Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1.5rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: theme === 'sepia' ? '#2c1e11' : '#fff' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-main)' }}>
             {currentChapter?.titleEn || 'Select a Published Chapter'}
           </h1>
-          <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             Chapter {currentChapter?.chapterNumber || 1} • Translated by Owner Studio
-          </p>
+          </span>
         </div>
 
         {/* Chapter Prose Content */}
@@ -309,8 +282,8 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
               value={currentChapter.id}
               onChange={(e) => onSelectChapter(e.target.value)}
               style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                color: theme === 'sepia' ? '#3f2d1d' : '#fff',
+                background: 'var(--bg-elevated)',
+                color: 'var(--text-main)',
                 border: '1px solid var(--border-color)',
                 padding: '0.5rem 1rem',
                 borderRadius: 'var(--radius-sm)',
@@ -318,7 +291,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
               }}
             >
               {publishedChapters.map(ch => (
-                <option key={ch.id} value={ch.id} style={{ background: '#0f172a', color: '#fff' }}>
+                <option key={ch.id} value={ch.id} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
                   Ch. {ch.chapterNumber}: {ch.titleEn}
                 </option>
               ))}
