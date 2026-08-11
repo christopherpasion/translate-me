@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion } from './types';
 import { StorageService } from './services/storage';
 import { extractEntitiesFromChinese, type ExtractedEntity } from './services/nerExtractor';
-import { cascadeTermReplacement } from './services/translationEngine';
+import { cascadeTermReplacement, translateChapterWithSelfHealing } from './services/translationEngine';
 import { translateChapterWithAI } from './services/aiProvider';
 import { smartCleanWebNovelText, getCustomNoiseRules, addCustomNoiseRule, removeCustomNoiseRule } from './services/textCleaner';
 
@@ -78,16 +78,41 @@ export const App: React.FC = () => {
   // Load Data for Active Novel with Auto-Cleaned Chinese Prose
   const loadNovelData = (novelId: string) => {
     const rawChapters = StorageService.getChapters(novelId);
+    const loadedGlossary = StorageService.getGlossary(novelId);
     
-    // Auto-clean any uncleaned raw Chinese chapter content
+    // Auto-clean raw Chinese chapter content and auto-heal legacy garbled stored drafts
     const cleanedChapters = rawChapters.map(ch => {
-      if (ch.contentZh && (ch.contentZh.includes('北京时间') || ch.contentZh.includes('我的晋江') || ch.contentZh.includes('版权专区'))) {
+      let isModified = false;
+      let updated = { ...ch };
+
+      if (ch.contentZh && (ch.contentZh.includes('北京时间') || ch.contentZh.includes('我的晋江') || ch.contentZh.includes('版权专区') || ch.contentZh.includes('晋江币') || ch.contentZh.includes('手榴弹') || ch.contentZh.includes('浅水炸弹'))) {
         const cleaned = smartCleanWebNovelText(ch.contentZh);
-        const updated = {
-          ...ch,
-          contentZh: cleaned.contentZh || ch.contentZh,
-          titleZh: (cleaned.chapterTitle && cleaned.chapterTitle !== 'New Chapter') ? cleaned.chapterTitle : ch.titleZh
-        };
+        updated.contentZh = cleaned.contentZh || ch.contentZh;
+        if (cleaned.chapterTitle && cleaned.chapterTitle !== 'New Chapter') {
+          updated.titleZh = cleaned.chapterTitle;
+        }
+        isModified = true;
+      }
+
+      const isGarbled = updated.contentEn && (
+        updated.contentEn.includes('has " not "') ||
+        updated.contentEn.includes('is, is,.') ||
+        updated.contentEn.includes('she past Xun') ||
+        updated.contentEn.includes('she, ran.') ||
+        updated.contentEn.includes('ecological enclosure damp') ||
+        updated.contentEn.includes('she hide at leaf') ||
+        updated.contentEn.includes('at person sun light')
+      );
+
+      if (isGarbled && updated.contentZh) {
+        const reTranslated = translateChapterWithSelfHealing(updated.id, updated.contentZh, loadedGlossary);
+        updated.contentEn = reTranslated.translatedEn;
+        updated.status = 'translated';
+        updated.updatedAt = new Date().toISOString();
+        isModified = true;
+      }
+
+      if (isModified) {
         StorageService.saveChapter(updated);
         return updated;
       }
@@ -99,9 +124,7 @@ export const App: React.FC = () => {
       setSelectedChapterId(cleanedChapters[0].id);
     }
 
-    const loadedGlossary = StorageService.getGlossary(novelId);
     setGlossary(loadedGlossary);
-
     setHealingRecords(StorageService.getHealingRecords());
     setRecommendations(StorageService.getAIRecommendations(novelId));
     setSuggestions(StorageService.getReaderSuggestions(novelId));
