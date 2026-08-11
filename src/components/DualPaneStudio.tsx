@@ -127,7 +127,13 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
             onMouseLeave={() => setHoveredTermZh(null)}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
-              setEditingTerm({ zh: matched.originalZh, en: matched.translatedEn, x: rect.left, y: rect.bottom + 5 });
+              const isBottomScreen = rect.bottom > window.innerHeight - 200;
+              setEditingTerm({
+                zh: matched.originalZh,
+                en: matched.translatedEn,
+                x: rect.left,
+                y: isBottomScreen ? rect.top - 165 : rect.bottom + 5
+              });
               setNewEnInput(matched.translatedEn);
             }}
           >
@@ -202,7 +208,13 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
             onMouseLeave={() => setHoveredTermZh(null)}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
-              setEditingTerm({ zh: matched.originalZh, en: matched.translatedEn, x: rect.left, y: rect.bottom + 5 });
+              const isBottomScreen = rect.bottom > window.innerHeight - 200;
+              setEditingTerm({
+                zh: matched.originalZh,
+                en: matched.translatedEn,
+                x: rect.left,
+                y: isBottomScreen ? rect.top - 165 : rect.bottom + 5
+              });
               setNewEnInput(matched.translatedEn);
             }}
           >
@@ -406,16 +418,26 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
           className="glass-panel"
           style={{
             position: 'fixed',
-            left: `${Math.min(window.innerWidth - 320, editingTerm.x)}px`,
-            top: `${editingTerm.y}px`,
-            zIndex: 90,
-            padding: '0.75rem',
-            width: '300px',
-            boxShadow: 'var(--shadow-glow)'
+            left: `${Math.max(10, Math.min(window.innerWidth - 330, editingTerm.x))}px`,
+            top: `${Math.max(10, Math.min(window.innerHeight - 170, editingTerm.y))}px`,
+            zIndex: 9999,
+            padding: '0.85rem',
+            width: '310px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5), var(--shadow-glow)',
+            border: '1px solid var(--primary-cyan)',
+            background: 'var(--bg-panel)'
           }}
         >
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-            Self-Learning Edit for: <strong style={{ color: 'var(--primary-cyan)' }}>{editingTerm.zh}</strong>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+              Self-Learning Edit for: <strong style={{ color: 'var(--primary-cyan)' }}>{editingTerm.zh}</strong>
+            </div>
+            <button
+              onClick={() => setEditingTerm(null)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', padding: '0 0.2rem', lineHeight: 1 }}
+            >
+              ×
+            </button>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <input
@@ -428,12 +450,13 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
                 background: 'rgba(255, 255, 255, 0.08)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-sm)',
-                color: '#fff',
+                color: 'var(--text-main)',
                 fontSize: '0.85rem'
               }}
+              autoFocus
             />
             <button className="btn btn-primary" style={{ padding: '0.4rem 0.75rem' }} onClick={handleSaveInlineEdit}>
-              Update & Heal
+              Update
             </button>
           </div>
           <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
