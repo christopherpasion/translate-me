@@ -287,7 +287,7 @@ export const App: React.FC = () => {
   };
 
   // Handle Create New Chapter
-  const handleCreateNewChapter = (e: React.FormEvent) => {
+  const handleCreateNewChapter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChapContentZh) return;
 
@@ -295,9 +295,18 @@ export const App: React.FC = () => {
     const cleaned = smartCleanWebNovelText(newChapContentZh);
 
     const chapNum = chapters.length + 1;
-    const finalTitleZh = newChapTitleZh.trim() || cleaned.chapterTitle || `第${chapNum}章 狂暴龙（1）`;
+    const finalTitleZh = newChapTitleZh.trim() || cleaned.chapterTitle || `第${chapNum}章 狂暴龙（${chapNum}）`;
     const finalContentZh = cleaned.contentZh || newChapContentZh;
     const finalTitleEn = translateTitleToEn(finalTitleZh, chapNum);
+
+    // 1. Run Instant Auto-Translation upon paste
+    let translatedEn = '';
+    try {
+      const result = await translateChapterWithAI(`chap-${selectedNovelId}-${Date.now()}`, finalContentZh, glossary);
+      translatedEn = result.translatedEn;
+    } catch (err) {
+      console.warn('Instant auto-translation error:', err);
+    }
 
     const newChap: Chapter = {
       id: `chap-${selectedNovelId}-${Date.now()}`,
@@ -306,8 +315,8 @@ export const App: React.FC = () => {
       titleZh: finalTitleZh,
       titleEn: finalTitleEn,
       contentZh: finalContentZh,
-      contentEn: '',
-      status: 'raw',
+      contentEn: translatedEn,
+      status: translatedEn ? 'translated' : 'raw',
       extractedTermsCount: 0,
       selfHealedCount: 0,
       updatedAt: new Date().toISOString()

@@ -87,7 +87,15 @@ const NOISE_LINE_PATTERNS = [
   /^-标签-$/i,
   /^作品$/i,
   /^搜索$/i,
-  /^读书$/i
+  /^读书$/i,
+  /完结/i,
+  /衍生/i,
+  /纯爱/i,
+  /古代纯爱/i,
+  /未来幻想/i,
+  /现代幻想/i,
+  /现代都市/i,
+  /佳向/i
 ];
 
 // Custom Noise Rules LocalStorage Support
