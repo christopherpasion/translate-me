@@ -476,6 +476,16 @@ export const StorageService = {
           changed = true;
         }
       }
+
+      // Auto-repair any stored chapter with noise titles like '佳向' or '-性向-'
+      for (const ch of all) {
+        if (ch.titleZh.includes('佳向') || ch.titleZh.includes('性向') || ch.titleEn.includes('佳向') || ch.titleEn.includes('性向')) {
+          ch.titleZh = `第${ch.chapterNumber}章 狂暴龙（${ch.chapterNumber}）`;
+          ch.titleEn = `Chapter ${ch.chapterNumber}: Indominus Dragon (${ch.chapterNumber})`;
+          changed = true;
+        }
+      }
+
       if (changed) {
         localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
       }

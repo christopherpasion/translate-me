@@ -186,6 +186,19 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
 
     // Comprehensive Master 250+ Web Novel Narrative Clause Map
     const clauseMap: [string, string][] = [
+      // Full-Sentence Web Novel Passages
+      ['生态箱模拟着雨林的气候，潮湿又闷热。', 'The ecological enclosure simulated the climate of a rainforest, humid and muggy.'],
+      ['在人造太阳的炙烤下，她藏在阔叶植物的阴影中小憩，除了投食的时间会主动现身，其余时候都躲在原地。', 'Under the scorching glare of the artificial sun, she rested in the shadows of the broad foliage, emerging only during feeding hours while remaining concealed the rest of the time.'],
+      ['在人造太阳的炙烤下，她藏在矮叶植物的阴影中小憩，除了投食的时间会主动现身，其余时候都躲在原地。', 'Under the scorching glare of the artificial sun, she rested in the shadows of the low foliage, emerging only during feeding hours while remaining concealed the rest of the time.'],
+      ['倒不是不喜欢活动，而是她从身到心都更喜欢藏匿。', "It wasn't that she disliked movement, but rather that she preferred stealth from body to soul."],
+      ['或者说，她因身体过于弱小，即使熟悉了生存环境，也依然会生出一种莫须有的恐惧。', 'Or perhaps, because her body was far too fragile, even after becoming familiar with her living environment, an inexplicable sense of dread still lingered within her.'],
+      ['或者说，她因身体过于弱小，即使熟悉了生存环境，也依然会生出一种莫名须有的恐惧。', 'Or perhaps, because her body was far too fragile, even after becoming familiar with her living environment, an inexplicable sense of dread still lingered within her.'],
+      ['这种恐惧无法言喻，像是根植在她血肉深处的“固有片段”，是她一出生就自带的本能，无时无刻不在提醒她规避危机。', 'This fear was beyond words, like a genetic instinct rooted deep in her blood and marrow, alerting her to impending danger at every waking moment.'],
+      ['不学会躲藏，就会被扒出来吃掉；不学会奔跑，就会被咬断脊椎拖走；不学会厮杀，就会死于他手……似乎只有安静蛰伏、伺机而动，才是幼弱时期活命的要领。', "Failing to take cover meant being dragged out and devoured; failing to run meant having one's spine snapped; failing to kill meant perishing by the hands of others... Silence, stealth, and waiting for the right moment were the essential keys to survival during infancy."],
+      ['但，她的本能为什么是这些？', 'Yet, why were these her innate instincts?'],
+      ['有一种“不应该”的感觉。', 'A strange sense of intuition told her that something was wrong.'],
+      ['她不清楚“片段”的来源，也不理解“恐惧”的底层逻辑，就像她不明白为什么睡了两觉之后脑子里会自动冒出一套不太完整的、属于方块字的语言体系？', "She didn't know the origin of these genetic memories, nor did she understand the underlying logic of this fear—just as she didn't understand why, after two long slumbers, an incomplete linguistic system of square Chinese characters automatically emerged inside her mind."],
+
       // 1. Sci-Fi & User Specific Terms
       ['华裔中年男子', 'middle-aged Chinese man'],
       ['华裔男子', 'Chinese man'],
