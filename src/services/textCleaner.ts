@@ -189,9 +189,10 @@ export function smartCleanWebNovelText(rawInput: string): CleanedChapter {
     // Detect Chapter Title (e.g. 狂暴龙（1）, 狂暴龙(1), 第1章)
     if (chapterTitle === 'New Chapter') {
       const isExplicitTitle = trimmed.includes('狂暴') || trimmed.includes('（') || trimmed.includes('(') || trimmed.includes('第') || trimmed.includes('章');
-      const isShortTitleLine = isFullPageDump && trimmed.length < 25 && !trimmed.endsWith('。') && !trimmed.endsWith('！') && !trimmed.endsWith('？');
+      const isNoiseTag = NOISE_LINE_PATTERNS.some(p => p.test(trimmed));
+      const isShortTitleLine = isFullPageDump && !isNoiseTag && trimmed.length < 25 && !trimmed.endsWith('。') && !trimmed.endsWith('！') && !trimmed.endsWith('？');
 
-      if (isExplicitTitle || isShortTitleLine) {
+      if (!isNoiseTag && (isExplicitTitle || isShortTitleLine)) {
         chapterTitle = trimmed.replace(/\d+$/, '').trim();
         insideStory = true;
         continue; // Do not duplicate title line into story content

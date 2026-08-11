@@ -359,8 +359,8 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
     // Convert any remaining Chinese characters into clean English / Pinyin terms
     text = text.replace(/[\u4e00-\u9fa5]+/g, (match) => {
       const gMatch = glossary.find(g => g.originalZh === match);
-      if (gMatch) return gMatch.translatedEn;
-      return pinyinOrEnglishFallback(match);
+      if (gMatch) return ` ${gMatch.translatedEn} `;
+      return ` ${pinyinOrEnglishFallback(match)} `;
     });
 
     // Formatting cleanup
@@ -389,7 +389,7 @@ function pinyinOrEnglishFallback(zh: string): string {
 
   let res = '';
   for (const char of zh) {
-    res += (dict[char] || ' ') + '';
+    res += ' ' + (dict[char] || ' ') + ' ';
   }
   return res.replace(/\s+/g, ' ').trim();
 }
