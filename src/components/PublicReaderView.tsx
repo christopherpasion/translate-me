@@ -155,8 +155,9 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
 
 
   return (
-    <div className="reader-container" style={{ flex: 1, overflowY: 'auto', maxWidth: '900px', width: '100%', margin: '0 auto', padding: '1.5rem 1rem' }}>
-      {/* Reader Controls Toolbar */}
+    <div className="reader-container" style={{ flex: 1, overflowY: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ width: '100%', maxWidth: '900px', padding: '1.5rem 1rem' }}>
+        {/* Reader Controls Toolbar */}
       <div
         className="glass-panel"
         style={{
@@ -379,6 +380,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
