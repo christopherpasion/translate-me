@@ -457,6 +457,81 @@ body.light-mode .navbar {
   .mobile-tab-bar {
     display: flex;
   }
+}
+
+/* 🍔 Mobile Navigation Hamburger Button & Drawer Overlay */
+.mobile-hamburger-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-nav-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mobile-nav-drawer {
+  width: 310px;
+  max-width: 85vw;
+  height: 100%;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.25s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.mobile-drawer-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-drawer-content {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .mobile-hamburger-btn {
+    display: flex !important;
+  }
+
+  .desktop-admin-tools {
+    display: none !important;
+  }
+
+  .desktop-role-btn {
+    display: none !important;
+  }
+
+  .desktop-theme-text {
+    display: none !important;
+  }
 
   .pane-split {
     flex-direction: column !important;
@@ -469,15 +544,6 @@ body.light-mode .navbar {
   .navbar {
     padding: 0.5rem 0.75rem !important;
   }
-
-@media (max-width: 480px) {
-  .brand-title {
-    display: none !important;
-  }
-  .navbar-brand {
-    gap: 0 !important;
-  }
-}
 
   .studio-toolbar {
     padding: 0.5rem 0.75rem !important;
@@ -499,11 +565,6 @@ body.light-mode .navbar {
     max-width: 85vw !important;
     z-index: 9999 !important;
     box-shadow: -10px 0 30px rgba(0,0,0,0.6) !important;
-  }
-
-  .navbar-novel-select {
-    max-width: 130px !important;
-    text-overflow: ellipsis !important;
   }
 
   .reader-toolbar {

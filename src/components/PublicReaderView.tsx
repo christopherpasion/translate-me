@@ -157,45 +157,31 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
   return (
     <div className="reader-container" style={{ flex: 1, overflowY: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: '900px', padding: '1.5rem 1rem' }}>
-        {/* Reader Controls Toolbar */}
+      {/* Reader Controls Toolbar: Clean 2-Row Layout */}
       <div
-        className="glass-panel reader-toolbar"
+        className="glass-panel reader-toolbar-box"
         style={{
-          padding: '0.75rem 1.25rem',
+          padding: '1rem 1.25rem',
           marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-color)',
           background: 'var(--bg-card)',
-          color: 'var(--text-main)'
+          color: 'var(--text-main)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <BookOpen size={20} style={{ color: 'var(--primary-cyan)' }} />
-          <div>
-            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>{currentNovel.titleEn}</h2>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Public Reader View • 100% Fluent English</span>
-          </div>
-        </div>
-
-        {/* Reader Display Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Font Size Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', padding: '0.2rem', border: '1px solid var(--border-color)' }}>
-            <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.max(14, fontSize - 2))} title="Smaller Font">
-              <Type size={12} />
-            </button>
-            <span style={{ fontSize: '0.8rem', padding: '0 0.4rem', color: 'var(--text-main)' }}>{fontSize}px</span>
-            <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.min(26, fontSize + 2))} title="Larger Font">
-              <Type size={16} />
-            </button>
+        {/* Row 1: Novel Title Meta & Action Button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <BookOpen size={22} style={{ color: 'var(--primary-cyan)', flexShrink: 0 }} />
+            <div>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>{currentNovel.titleEn}</h2>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Public Reader View • 100% Fluent English</span>
+            </div>
           </div>
 
-          {/* Reader Fix Suggestion Button */}
           <button
             className="btn btn-secondary"
             onClick={() => setIsSuggestingOpen(true)}
@@ -203,6 +189,68 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
           >
             <MessageSquarePlus size={14} /> Suggest Fix
           </button>
+        </div>
+
+        {/* Row 2: Aligned Navigation Pill & Font Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+          {/* Chapter Navigation Pill Group */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: '240px' }}>
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={handlePrev}
+              disabled={currentIndex <= 0}
+              title="Previous Chapter"
+              style={{ flexShrink: 0 }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <select
+              value={currentChapter?.id || ''}
+              onChange={(e) => onSelectChapter(e.target.value)}
+              style={{
+                flex: 1,
+                background: 'var(--bg-elevated)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--border-color)',
+                padding: '0.4rem 0.6rem',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+                minWidth: 0,
+                textOverflow: 'ellipsis'
+              }}
+            >
+              {publishedChapters.map(ch => (
+                <option key={ch.id} value={ch.id}>
+                  {ch.titleEn}
+                </option>
+              ))}
+            </select>
+
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={handleNext}
+              disabled={currentIndex >= publishedChapters.length - 1}
+              title="Next Chapter"
+              style={{ flexShrink: 0 }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Font Size Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', padding: '0.2rem 0.4rem', border: '1px solid var(--border-color)' }}>
+            <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.max(14, fontSize - 2))} title="Smaller Font">
+              <Type size={12} />
+            </button>
+            <span style={{ fontSize: '0.8rem', padding: '0 0.4rem', color: 'var(--text-main)', fontWeight: 600 }}>{fontSize}px</span>
+            <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.min(26, fontSize + 2))} title="Larger Font">
+              <Type size={16} />
+            </button>
+          </div>
         </div>
       </div>
 

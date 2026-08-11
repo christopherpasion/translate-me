@@ -1,5 +1,5 @@
-import React from 'react';
-import { BookOpen, ShieldCheck, Download, Database, Plus, Cpu, Sun, Moon } from 'lucide-react';
+import React, { useState } from 'react';
+import { BookOpen, ShieldCheck, Download, Database, Cpu, Sun, Moon, Menu, X } from 'lucide-react';
 import type { Novel } from '../types';
 
 interface NavbarProps {
@@ -10,7 +10,7 @@ interface NavbarProps {
   onOpenGlobalGlossary: () => void;
   onOpenGovernance: () => void;
   onOpenExport: () => void;
-  onOpenNewNovelModal: () => void;
+  onOpenNewNovelModal?: () => void;
   onOpenAISettings: () => void;
   pendingGovernanceCount: number;
   viewMode: 'admin' | 'reader';
@@ -27,7 +27,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenGlobalGlossary,
   onOpenGovernance,
   onOpenExport,
-  onOpenNewNovelModal,
   onOpenAISettings,
   pendingGovernanceCount,
   viewMode,
@@ -35,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   appTheme,
   onToggleAppTheme
 }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <header className="navbar">
@@ -44,45 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {viewMode === 'admin' && <span className="brand-badge">SELF-HEALING 2.0</span>}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
-        {/* Novel Selector Dropdown */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, width: '100%' }}>
-          <select
-            className="navbar-novel-select"
-            value={selectedNovelId}
-            onChange={(e) => onSelectNovel(e.target.value)}
-            style={{
-              background: 'rgba(255, 255, 255, 0.06)',
-              color: 'var(--text-main)',
-              border: '1px solid var(--border-color)',
-              padding: '0.35rem 0.6rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              outline: 'none',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              width: '100%'
-            }}
-          >
-            {novels.map(novel => (
-              <option key={novel.id} value={novel.id} style={{ background: '#111827', color: '#fff' }}>
-                {novel.titleZh} ({novel.titleEn})
-              </option>
-            ))}
-          </select>
-
-          {viewMode === 'admin' && (
-            <button className="btn btn-secondary btn-icon" title="New Novel Project" onClick={onOpenNewNovelModal} style={{ flexShrink: 0 }}>
-              <Plus size={16} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="navbar-actions" style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+      <div className="navbar-actions">
         {/* White / Dark Theme Switcher */}
         <button
           className="btn btn-secondary"
@@ -91,12 +53,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           style={{ fontWeight: 600, whiteSpace: 'nowrap' }}
         >
           {appTheme === 'dark' ? <Sun size={16} style={{ color: '#f59e0b', flexShrink: 0 }} /> : <Moon size={16} style={{ color: '#0284c7', flexShrink: 0 }} />}
-          <span>{appTheme === 'dark' ? 'White' : 'Dark'}</span>
+          <span className="desktop-theme-text">{appTheme === 'dark' ? 'White' : 'Dark'}</span>
         </button>
 
         {/* Role Switcher (Admin Studio vs Public Reader View) */}
         <button
-          className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'} desktop-role-btn`}
           onClick={onToggleViewMode}
           title={viewMode === 'admin' ? 'Switch to Reader Mode' : 'Switch to Admin Translation Studio'}
           style={{
@@ -106,12 +68,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             whiteSpace: 'nowrap'
           }}
         >
-          {viewMode === 'admin' ? '👑 Admin' : '👑 Admin'}
+          {viewMode === 'admin' ? '👑 Admin' : '📖 Reader'}
         </button>
 
-        {/* Translation Studio Tools (Shown ONLY in Admin Mode) */}
+        {/* Mobile Hamburger Toggle Button (< 768px) */}
+        <button
+          className="mobile-hamburger-btn"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          title="Toggle Menu"
+        >
+          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
+        {/* Translation Studio Tools (Shown ONLY in Admin Mode Desktop) */}
         {viewMode === 'admin' && (
-          <>
+          <div className="desktop-admin-tools" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button className="btn btn-secondary" onClick={onOpenAISettings} title="AI Model & API Provider Settings">
               <Cpu size={16} style={{ color: 'var(--primary-cyan)' }} />
               <span>AI Engine</span>
@@ -150,9 +121,100 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Download size={16} />
               <span>Export Novel</span>
             </button>
-          </>
+          </div>
         )}
       </div>
+
+      {/* Slide-over Mobile Navigation Drawer */}
+      {isMobileMenuOpen && (
+        <div className="mobile-nav-backdrop" onClick={() => setIsMobileMenuOpen(false)}>
+          <div className="mobile-nav-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-drawer-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BookOpen size={20} style={{ color: 'var(--primary-cyan)' }} />
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>TranslateMe.AI</span>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.2rem' }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="mobile-drawer-content">
+              {/* Novel Selector */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
+                  ACTIVE NOVEL PROJECT
+                </label>
+                <select
+                  value={selectedNovelId}
+                  onChange={(e) => {
+                    onSelectNovel(e.target.value);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.68rem 0.8rem',
+                    background: 'var(--bg-elevated)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '0.9rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {novels.map(novel => (
+                    <option key={novel.id} value={novel.id}>
+                      {novel.titleZh} ({novel.titleEn})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* View Switcher */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <button
+                  className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.68rem', fontWeight: 700 }}
+                  onClick={() => {
+                    onToggleViewMode();
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  {viewMode === 'admin' ? '👑 Admin Studio Active' : '📖 Reader View Active'}
+                </button>
+              </div>
+
+              {/* Admin Tools */}
+              {viewMode === 'admin' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.8rem' }} onClick={() => { onOpenAISettings(); setIsMobileMenuOpen(false); }}>
+                    <Cpu size={16} style={{ color: 'var(--primary-cyan)' }} />
+                    <span>AI Engine</span>
+                  </button>
+
+                  <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.8rem' }} onClick={() => { onOpenGlobalGlossary(); setIsMobileMenuOpen(false); }}>
+                    <Database size={16} style={{ color: 'var(--primary-cyan)' }} />
+                    <span>Global Glossary</span>
+                  </button>
+
+                  <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.8rem' }} onClick={() => { onOpenGovernance(); setIsMobileMenuOpen(false); }}>
+                    <ShieldCheck size={16} style={{ color: 'var(--accent-amber)' }} />
+                    <span>Governance ({pendingGovernanceCount})</span>
+                  </button>
+
+                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', padding: '0.68rem' }} onClick={() => { onOpenExport(); setIsMobileMenuOpen(false); }}>
+                    <Download size={16} />
+                    <span>Export Novel</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
