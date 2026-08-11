@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, ShieldCheck, Download, Database, Plus, Cpu } from 'lucide-react';
+import { BookOpen, ShieldCheck, Download, Database, Plus, Cpu, Sun, Moon } from 'lucide-react';
 import type { Novel } from '../types';
 
 interface NavbarProps {
@@ -15,6 +15,8 @@ interface NavbarProps {
   pendingGovernanceCount: number;
   viewMode: 'admin' | 'reader';
   onToggleViewMode: () => void;
+  appTheme: 'dark' | 'light';
+  onToggleAppTheme: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,7 +31,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAISettings,
   pendingGovernanceCount,
   viewMode,
-  onToggleViewMode
+  onToggleViewMode,
+  appTheme,
+  onToggleAppTheme
 }) => {
 
   return (
@@ -72,6 +76,17 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div className="navbar-actions">
+        {/* White / Dark Theme Switcher */}
+        <button
+          className="btn btn-secondary"
+          onClick={onToggleAppTheme}
+          title={appTheme === 'dark' ? 'Switch to Clean White Background Theme' : 'Switch to Dark Mode'}
+          style={{ fontWeight: 600 }}
+        >
+          {appTheme === 'dark' ? <Sun size={16} style={{ color: '#f59e0b' }} /> : <Moon size={16} style={{ color: '#0284c7' }} />}
+          <span>{appTheme === 'dark' ? 'White Theme' : 'Dark Theme'}</span>
+        </button>
+
         {/* Role Switcher (Admin Studio vs Public Reader View) */}
         <button
           className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'}`}

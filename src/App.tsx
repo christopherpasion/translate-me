@@ -33,6 +33,19 @@ export const App: React.FC = () => {
   // Role View Mode ('admin' | 'reader')
   const [viewMode, setViewMode] = useState<'admin' | 'reader'>('reader');
 
+  // App Theme State ('dark' | 'light') - Default to White Theme as requested
+  const [appTheme, setAppTheme] = useState<'dark' | 'light'>('light');
+
+  useEffect(() => {
+    if (appTheme === 'light') {
+      document.body.classList.add('light-mode');
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.body.classList.remove('light-mode');
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }, [appTheme]);
+
   // Modals & Panels State
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -329,6 +342,8 @@ export const App: React.FC = () => {
         pendingGovernanceCount={pendingGovCount}
         viewMode={viewMode}
         onToggleViewMode={() => setViewMode(viewMode === 'admin' ? 'reader' : 'admin')}
+        appTheme={appTheme}
+        onToggleAppTheme={() => setAppTheme(appTheme === 'dark' ? 'light' : 'dark')}
       />
 
       {/* Main View Router: Public Reader View vs Admin Translation Studio */}
