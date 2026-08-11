@@ -168,7 +168,7 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
     const clauseMap: [string, string][] = [
       // 1. Sci-Fi & User Specific Terms
       ['华裔中年男子', 'middle-aged Chinese man'],
-      ['华裔男子', 'middle-aged Chinese man'],
+      ['华裔男子', 'Chinese man'],
       ['科技造物', 'artificially engineered life-form'],
       ['金色竖瞳', 'golden slit pupils'],
       ['黑咕隆咚', 'pitch-black'],

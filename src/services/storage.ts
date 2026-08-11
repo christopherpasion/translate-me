@@ -131,6 +131,17 @@ const INITIAL_LOCAL_GLOSSARY: GlossaryEntry[] = [
     updatedAt: '2026-08-01T12:00:00Z'
   },
   {
+    id: 'g-110',
+    originalZh: '华裔男子',
+    translatedEn: 'Chinese man',
+    category: 'character',
+    scope: 'local',
+    gender: 'male',
+    notes: 'General description for a Chinese man in narrative prose',
+    occurrences: 15,
+    updatedAt: '2026-08-01T12:00:00Z'
+  },
+  {
     id: 'g-108',
     originalZh: '金色竖瞳',
     translatedEn: 'golden slit pupils',
