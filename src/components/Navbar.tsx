@@ -38,15 +38,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="navbar">
-      <div className="navbar-brand" onClick={onOpenLibrary}>
-        <BookOpen size={24} style={{ color: 'var(--primary-cyan)' }} />
-        <span>TranslateMe.AI</span>
+      <div className="navbar-brand" onClick={onOpenLibrary} style={{ flexShrink: 0, cursor: 'pointer' }}>
+        <BookOpen size={24} style={{ color: 'var(--primary-cyan)', flexShrink: 0 }} />
+        <span className="brand-title">TranslateMe.AI</span>
         {viewMode === 'admin' && <span className="brand-badge">SELF-HEALING 2.0</span>}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
         {/* Novel Selector Dropdown */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, width: '100%' }}>
           <select
             className="navbar-novel-select"
             value={selectedNovelId}
@@ -55,12 +55,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               background: 'rgba(255, 255, 255, 0.06)',
               color: 'var(--text-main)',
               border: '1px solid var(--border-color)',
-              padding: '0.4rem 1rem',
+              padding: '0.35rem 0.6rem',
               borderRadius: 'var(--radius-sm)',
-              fontSize: '0.9rem',
+              fontSize: '0.85rem',
               fontWeight: 600,
               cursor: 'pointer',
-              outline: 'none'
+              outline: 'none',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              width: '100%'
             }}
           >
             {novels.map(novel => (
@@ -71,23 +75,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </select>
 
           {viewMode === 'admin' && (
-            <button className="btn btn-secondary btn-icon" title="New Novel Project" onClick={onOpenNewNovelModal}>
+            <button className="btn btn-secondary btn-icon" title="New Novel Project" onClick={onOpenNewNovelModal} style={{ flexShrink: 0 }}>
               <Plus size={16} />
             </button>
           )}
         </div>
       </div>
 
-      <div className="navbar-actions">
+      <div className="navbar-actions" style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
         {/* White / Dark Theme Switcher */}
         <button
           className="btn btn-secondary"
           onClick={onToggleAppTheme}
           title={appTheme === 'dark' ? 'Switch to Clean White Background Theme' : 'Switch to Dark Mode'}
-          style={{ fontWeight: 600 }}
+          style={{ fontWeight: 600, whiteSpace: 'nowrap' }}
         >
-          {appTheme === 'dark' ? <Sun size={16} style={{ color: '#f59e0b' }} /> : <Moon size={16} style={{ color: '#0284c7' }} />}
-          <span>{appTheme === 'dark' ? 'White Theme' : 'Dark Theme'}</span>
+          {appTheme === 'dark' ? <Sun size={16} style={{ color: '#f59e0b', flexShrink: 0 }} /> : <Moon size={16} style={{ color: '#0284c7', flexShrink: 0 }} />}
+          <span>{appTheme === 'dark' ? 'White' : 'Dark'}</span>
         </button>
 
         {/* Role Switcher (Admin Studio vs Public Reader View) */}
@@ -98,10 +102,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           style={{
             border: viewMode === 'admin' ? '1px solid var(--primary-cyan)' : '1px solid var(--accent-amber)',
             color: viewMode === 'admin' ? '#fff' : 'var(--accent-amber)',
-            fontWeight: 700
+            fontWeight: 700,
+            whiteSpace: 'nowrap'
           }}
         >
-          {viewMode === 'admin' ? '👑 Admin Studio' : '👑 Admin Studio'}
+          {viewMode === 'admin' ? '👑 Admin' : '👑 Admin'}
         </button>
 
         {/* Translation Studio Tools (Shown ONLY in Admin Mode) */}
