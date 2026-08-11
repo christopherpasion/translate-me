@@ -95,13 +95,13 @@ export const App: React.FC = () => {
       }
 
       const isGarbled = updated.contentEn && (
-        updated.contentEn.includes('has " not "') ||
-        updated.contentEn.includes('is, is,.') ||
-        updated.contentEn.includes('she past Xun') ||
-        updated.contentEn.includes('she, ran.') ||
-        updated.contentEn.includes('ecological enclosure damp') ||
-        updated.contentEn.includes('she hide at leaf') ||
-        updated.contentEn.includes('at person sun light')
+        /has.*not/i.test(updated.contentEn) ||
+        /is,\s*is/i.test(updated.contentEn) ||
+        /she.*Xun/i.test(updated.contentEn) ||
+        /she,\s*ran/i.test(updated.contentEn) ||
+        /at person sun/i.test(updated.contentEn) ||
+        /she hide at/i.test(updated.contentEn) ||
+        /ecological enclosure damp/i.test(updated.contentEn)
       );
 
       if (isGarbled && updated.contentZh) {
