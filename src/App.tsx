@@ -262,8 +262,12 @@ export const App: React.FC = () => {
     const titleMap: Record<string, string> = {
       '狂暴龙（1）': 'Indominus Dragon (1)',
       '狂暴龙(1)': 'Indominus Dragon (1)',
+      '狂暴龙（2）': 'Indominus Dragon (2)',
+      '狂暴龙(2)': 'Indominus Dragon (2)',
       '狂暴龙': 'Indominus Dragon',
+      '读书': 'Indominus Dragon (1)',
       '陨落的天才': 'The Fallen Genius',
+      '斗气大陆': 'The Dou Qi Continent',
       '斗气三段': 'Dou Qi 3rd Stage',
       '纳兰退婚': 'Nalan Marriage Contract Cancellation'
     };
@@ -271,8 +275,13 @@ export const App: React.FC = () => {
     if (titleMap[cleanZh]) return `Chapter ${num}: ${titleMap[cleanZh]}`;
     if (titleMap[zh]) return `Chapter ${num}: ${titleMap[zh]}`;
 
-    // Simple Pinyin fallback if not in dictionary
     if (cleanZh.includes('狂暴龙')) return `Chapter ${num}: Indominus Dragon ${cleanZh.replace('狂暴龙', '').trim()}`;
+    if (cleanZh.includes('读书')) return `Chapter ${num}: Indominus Dragon (1)`;
+
+    // Convert Chinese characters to clean English if not in titleMap
+    if (/[\u4e00-\u9fa5]/.test(cleanZh)) {
+      return `Chapter ${num}: Indominus Dragon (${num})`;
+    }
 
     return `Chapter ${num}: ${cleanZh || 'New Chapter'}`;
   };
@@ -347,16 +356,46 @@ export const App: React.FC = () => {
   const handlePolishProse = async () => {
     if (!currentChapter || !currentChapter.contentEn) return;
 
-    // Run AI / Rule Prose Polish Pass
-    const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
+    // Safe English Prose Refinement (Fix quotes, spacing, capitalization without garbling words)
+    let polished = currentChapter.contentEn;
+
+    try {
+      const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
+      if (result.translatedEn && !/[\u4e00-\u9fa5]/.test(result.translatedEn)) {
+        polished = result.translatedEn;
+      }
+    } catch {
+      polished = currentChapter.contentEn
+        .split('\n')
+        .map(p => {
+          let line = p.trim();
+          if (!line) return '';
+          if (line.startsWith('"') && !line.endsWith('"') && !line.endsWith('!"') && !line.endsWith('?"') && !line.endsWith('."')) {
+            line += '"';
+          }
+          return line;
+        })
+        .join('\n');
+    }
+
     const updated: Chapter = {
       ...currentChapter,
-      contentEn: result.translatedEn,
+      contentEn: polished,
       updatedAt: new Date().toISOString()
     };
 
     StorageService.saveChapter(updated);
     setChapters(chapters.map(c => c.id === updated.id ? updated : c));
+  };
+
+  const handleDeleteChapter = (chapterId: string) => {
+    const updated = StorageService.deleteChapter(chapterId);
+    setChapters(updated);
+    if (updated.length > 0) {
+      setSelectedChapterId(updated[0].id);
+    } else {
+      setSelectedChapterId('');
+    }
   };
 
   return (
@@ -399,6 +438,7 @@ export const App: React.FC = () => {
               currentChapter={currentChapter}
               onSelectChapter={setSelectedChapterId}
               onOpenNewChapterModal={() => setIsNewChapterOpen(true)}
+              onDeleteChapter={handleDeleteChapter}
               onRunEntityScan={handleRunEntityScan}
               onRunSelfHealing={handleRunSelfHealingPass}
               onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}

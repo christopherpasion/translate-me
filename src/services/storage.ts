@@ -426,6 +426,28 @@ export const StorageService = {
     return chapter;
   },
 
+  deleteChapter(chapterId: string): Chapter[] {
+    const data = localStorage.getItem(CHAPTERS_KEY);
+    let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
+    const target = all.find(c => c.id === chapterId);
+    all = all.filter(c => c.id !== chapterId);
+    localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
+
+    if (target) {
+      const novels = this.getNovels();
+      const novel = novels.find(n => n.id === target.novelId);
+      if (novel) {
+        const novelChaps = all.filter(c => c.novelId === target.novelId);
+        novel.chaptersCount = novelChaps.length;
+        novel.translatedCount = novelChaps.filter(c => c.status === 'translated' || c.status === 'edited').length;
+        novel.updatedAt = new Date().toISOString();
+        this.saveNovel(novel);
+      }
+      return all.filter(c => c.novelId === target.novelId);
+    }
+    return all;
+  },
+
   getGlossary(novelId?: string): GlossaryEntry[] {
     const data = localStorage.getItem(GLOSSARY_KEY);
     let all: GlossaryEntry[];

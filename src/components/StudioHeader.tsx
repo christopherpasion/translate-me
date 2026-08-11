@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Novel, Chapter } from '../types';
-import { Sparkles, GitFork, Plus, Sidebar } from 'lucide-react';
+import { Sparkles, GitFork, Plus, Sidebar, Trash2 } from 'lucide-react';
 
 interface StudioHeaderProps {
   currentNovel: Novel;
@@ -8,6 +8,7 @@ interface StudioHeaderProps {
   currentChapter: Chapter | null;
   onSelectChapter: (chapterId: string) => void;
   onOpenNewChapterModal: () => void;
+  onDeleteChapter?: (chapterId: string) => void;
   onRunEntityScan: () => void;
   onRunSelfHealing?: () => void;
   onOpenCharacterGraph: () => void;
@@ -22,6 +23,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   currentChapter,
   onSelectChapter,
   onOpenNewChapterModal,
+  onDeleteChapter,
   onRunEntityScan,
   onOpenCharacterGraph,
   onToggleSidebar,
@@ -45,7 +47,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
             {/* Chapter Dropdown */}
             <select
               value={currentChapter?.id || ''}
@@ -73,6 +75,22 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
               <Plus size={14} />
               <span style={{ fontSize: '0.75rem' }}>New Ch.</span>
             </button>
+
+            {currentChapter && onDeleteChapter && (
+              <button
+                className="btn btn-secondary btn-icon"
+                style={{ padding: '0.25rem 0.5rem', color: 'var(--accent-red)', borderColor: 'rgba(239,68,68,0.3)' }}
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete Chapter ${currentChapter.chapterNumber}: ${currentChapter.titleZh}?`)) {
+                    onDeleteChapter(currentChapter.id);
+                  }
+                }}
+                title="Delete Chapter"
+              >
+                <Trash2 size={14} />
+                <span style={{ fontSize: '0.75rem' }}>Delete</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
