@@ -464,6 +464,21 @@ export const StorageService = {
     let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
     if (!data) {
       localStorage.setItem(CHAPTERS_KEY, JSON.stringify(INITIAL_CHAPTERS));
+    } else {
+      let changed = false;
+      for (const initCh of INITIAL_CHAPTERS) {
+        const idx = all.findIndex(c => c.id === initCh.id);
+        if (idx === -1) {
+          all.push(initCh);
+          changed = true;
+        } else if (all[idx].id === 'chap-1-3' && all[idx].contentEn && (all[idx].contentEn.includes('The Chinese Man sighed') || all[idx].contentEn.includes('spine of vehicles'))) {
+          all[idx] = { ...initCh };
+          changed = true;
+        }
+      }
+      if (changed) {
+        localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
+      }
     }
     return all.filter(c => c.novelId === novelId).sort((a, b) => a.chapterNumber - b.chapterNumber);
   },
