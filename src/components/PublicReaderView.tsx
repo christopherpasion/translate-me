@@ -312,44 +312,64 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
           <div style={{ textAlign: 'center', padding: '3rem' }}>Please select a chapter from the dropdown above.</div>
         )}
 
-        {/* Chapter Navigation Footer */}
+        {/* Bottom Chapter Navigation Bar */}
         {currentChapter && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
               marginTop: '3rem',
               paddingTop: '1.5rem',
-              borderTop: '1px solid rgba(255,255,255,0.08)'
+              borderTop: '1px solid var(--border-color)',
+              width: '100%'
             }}
           >
-            <button className="btn btn-secondary" onClick={handlePrev} disabled={currentIndex <= 0}>
+            <button
+              className="btn btn-secondary"
+              onClick={handlePrev}
+              disabled={currentIndex <= 0}
+              style={{ flexShrink: 0, padding: '0.4rem 0.75rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+            >
               <ChevronLeft size={16} />
-              <span>Previous Chapter</span>
+              <span>Prev</span>
             </button>
 
             <select
               value={currentChapter.id}
               onChange={(e) => onSelectChapter(e.target.value)}
               style={{
+                flex: 1,
+                minWidth: 0,
+                maxWidth: '220px',
                 background: 'var(--bg-elevated)',
                 color: 'var(--text-main)',
                 border: '1px solid var(--border-color)',
-                padding: '0.5rem 1rem',
+                padding: '0.4rem 0.6rem',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '0.85rem'
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+                textOverflow: 'ellipsis'
               }}
             >
               {publishedChapters.map(ch => (
                 <option key={ch.id} value={ch.id} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
-                  Ch. {ch.chapterNumber}: {ch.titleEn}
+                  {ch.titleEn}
                 </option>
               ))}
             </select>
 
-            <button className="btn btn-primary" onClick={handleNext} disabled={currentIndex >= publishedChapters.length - 1}>
-              <span>Next Chapter</span>
+            <button
+              className="btn btn-primary"
+              onClick={handleNext}
+              disabled={currentIndex >= publishedChapters.length - 1}
+              style={{ flexShrink: 0, padding: '0.4rem 0.75rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+            >
+              <span>Next</span>
               <ChevronRight size={16} />
             </button>
           </div>
