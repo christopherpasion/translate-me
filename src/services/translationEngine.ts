@@ -79,29 +79,49 @@ export function cascadeTermReplacement(
 ): number {
   const chapters = StorageService.getChapters(novelId);
   let updatedChaptersCount = 0;
+  const drifts = getPossibleDrifts(termZh, newEn, oldEn);
 
   for (const chapter of chapters) {
     if (!chapter.contentEn) continue;
 
-    const regex = new RegExp(`\\b${escapeRegExp(oldEn)}\\b`, 'gi');
-    if (regex.test(chapter.contentEn)) {
-      chapter.contentEn = chapter.contentEn.replace(regex, newEn);
-      chapter.selfHealedCount = (chapter.selfHealedCount || 0) + 1;
+    let contentEn = chapter.contentEn;
+    let healedInChap = 0;
+
+    for (const drift of drifts) {
+      if (!drift || drift === newEn) continue;
+      const regex = new RegExp(`\\b${escapeRegExp(drift)}\\b`, 'gi');
+
+      if (regex.test(contentEn)) {
+        contentEn = contentEn.replace(regex, (match: string) => {
+          healedInChap++;
+          if (match === match.toLowerCase()) {
+            return newEn.toLowerCase();
+          }
+          if (match === match.toUpperCase()) {
+            return newEn.toUpperCase();
+          }
+          return newEn;
+        });
+
+        StorageService.addHealingRecord({
+          id: 'cascade-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          chapterId: chapter.id,
+          originalDraftText: drift,
+          autoHealedText: newEn,
+          termZh,
+          incorrectEn: drift,
+          correctedEn: newEn,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    if (healedInChap > 0) {
+      chapter.contentEn = contentEn;
+      chapter.selfHealedCount = (chapter.selfHealedCount || 0) + healedInChap;
       chapter.updatedAt = new Date().toISOString();
       StorageService.saveChapter(chapter);
       updatedChaptersCount++;
-
-      // Log self healing record
-      StorageService.addHealingRecord({
-        id: 'cascade-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-        chapterId: chapter.id,
-        originalDraftText: oldEn,
-        autoHealedText: newEn,
-        termZh,
-        incorrectEn: oldEn,
-        correctedEn: newEn,
-        timestamp: new Date().toISOString()
-      });
     }
   }
 
@@ -374,28 +394,33 @@ function pinyinOrEnglishFallback(zh: string): string {
   return res.replace(/\s+/g, ' ').trim();
 }
 
-function getPossibleDrifts(originalZh: string, correctEn: string): string[] {
-  const drifts: string[] = [];
-  
+function getPossibleDrifts(originalZh: string, correctEn: string, oldEn?: string): string[] {
+  const drifts = new Set<string>();
+
+  if (oldEn && oldEn !== correctEn) {
+    drifts.add(oldEn);
+    drifts.add(oldEn.toLowerCase());
+    drifts.add(oldEn.charAt(0).toUpperCase() + oldEn.slice(1));
+  }
+
+  if (correctEn) {
+    drifts.add(correctEn.toLowerCase());
+    drifts.add(correctEn.charAt(0).toUpperCase() + correctEn.slice(1));
+  }
+
   if (originalZh === '萧炎') {
-    drifts.push('Little Flame', 'Xiao Flame', 'Fire Xiao');
+    drifts.add('Little Flame');
+    drifts.add('Xiao Flame');
   } else if (originalZh === '云岚宗') {
-    drifts.push('Cloud Mist Sect', 'Mist Cloud Sect', 'Yunlan Sect');
-  } else if (originalZh === '药老') {
-    drifts.push('Medicine Old', 'Old Medicine', 'Elder Yao');
-  } else if (originalZh === '纳兰嫣然') {
-    drifts.push('Nalan Yan Ran', 'Graceful Nalan');
+    drifts.add('Cloud Mist Sect');
+    drifts.add('Mist Cloud Sect');
+  } else if (originalZh === '华裔中年男子' || originalZh === '华裔男子') {
+    drifts.add('Chinese-descent Man');
+    drifts.add('Chinese Descent Man');
   }
 
-  // Generic drift heuristics
-  if (correctEn.includes(' ')) {
-    const parts = correctEn.split(' ');
-    if (parts.length === 2) {
-      drifts.push(`${parts[0]} ${parts[1]} (drift)`);
-    }
-  }
-
-  return drifts;
+  drifts.delete(correctEn);
+  return Array.from(drifts);
 }
 
 function escapeRegExp(str: string): string {
