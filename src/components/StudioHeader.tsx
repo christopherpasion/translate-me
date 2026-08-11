@@ -31,81 +31,79 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   glossaryCount
 }) => {
   return (
-    <div className="studio-toolbar">
-      {/* Novel & Chapter Info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h1 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              {currentNovel.titleEn}
-            </h1>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              ({currentNovel.titleZh})
-            </span>
-            <span className={`badge badge-${currentNovel.genre}`} style={{ textTransform: 'uppercase' }}>
-              {currentNovel.genre}
-            </span>
-          </div>
+    <div className="studio-toolbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: '0.75rem 1rem' }}>
+      {/* Row 1: Novel Meta & Chapter Selector */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            {currentNovel.titleEn}
+          </h1>
+          <span className={`badge badge-${currentNovel.genre}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>
+            {currentNovel.genre}
+          </span>
+        </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
-            {/* Chapter Dropdown */}
-            <select
-              value={currentChapter?.id || ''}
-              onChange={(e) => onSelectChapter(e.target.value)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: '#fff',
-                border: '1px solid var(--border-color)',
-                padding: '0.25rem 0.5rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                outline: 'none',
-                cursor: 'pointer'
+        {/* Chapter Dropdown & Quick Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: '240px', justifyContent: 'flex-end' }}>
+          <select
+            value={currentChapter?.id || ''}
+            onChange={(e) => onSelectChapter(e.target.value)}
+            style={{
+              flex: 1,
+              maxWidth: '280px',
+              minWidth: '120px',
+              background: 'var(--bg-elevated)',
+              color: '#fff',
+              border: '1px solid var(--border-color)',
+              padding: '0.35rem 0.5rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              outline: 'none',
+              cursor: 'pointer',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            {chapters.map(ch => (
+              <option key={ch.id} value={ch.id} style={{ background: '#111827' }}>
+                Ch. {ch.chapterNumber}: {ch.titleEn.replace(/^Chapter\s+\d+:\s*/i, '')}
+              </option>
+            ))}
+          </select>
+
+          <button className="btn btn-secondary" style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={onOpenNewChapterModal} title="Add New Chapter">
+            <Plus size={14} />
+            <span>New Ch.</span>
+          </button>
+
+          {currentChapter && onDeleteChapter && (
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', color: 'var(--accent-red)', borderColor: 'rgba(239,68,68,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}
+              onClick={() => {
+                if (confirm(`Are you sure you want to delete Chapter ${currentChapter.chapterNumber}: ${currentChapter.titleEn}?`)) {
+                  onDeleteChapter(currentChapter.id);
+                }
               }}
+              title="Delete Chapter"
             >
-              {chapters.map(ch => (
-                <option key={ch.id} value={ch.id} style={{ background: '#111827' }}>
-                  Ch. {ch.chapterNumber}: {ch.titleZh} ({ch.titleEn})
-                </option>
-              ))}
-            </select>
-
-            <button className="btn btn-secondary btn-icon" style={{ padding: '0.25rem 0.5rem' }} onClick={onOpenNewChapterModal} title="Add New Chapter">
-              <Plus size={14} />
-              <span style={{ fontSize: '0.75rem' }}>New Ch.</span>
+              <Trash2 size={14} />
             </button>
-
-            {currentChapter && onDeleteChapter && (
-              <button
-                className="btn btn-secondary btn-icon"
-                style={{ padding: '0.25rem 0.5rem', color: 'var(--accent-red)', borderColor: 'rgba(239,68,68,0.3)' }}
-                onClick={() => {
-                  if (confirm(`Are you sure you want to delete Chapter ${currentChapter.chapterNumber}: ${currentChapter.titleZh}?`)) {
-                    onDeleteChapter(currentChapter.id);
-                  }
-                }}
-                title="Delete Chapter"
-              >
-                <Trash2 size={14} />
-                <span style={{ fontSize: '0.75rem' }}>Delete</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Action Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+      {/* Row 2: Studio Action Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', width: '100%', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         {/* Prominent 1-Click Paste & Translate Primary Button */}
         <button
           className="btn btn-primary"
           onClick={onOpenNewChapterModal}
           title="Paste raw web novel text to clean & translate into English"
-          style={{ fontWeight: 700, gap: '0.4rem', padding: '0.45rem 0.9rem' }}
+          style={{ fontWeight: 700, gap: '0.35rem', padding: '0.35rem 0.75rem', fontSize: '0.8rem', flex: 1, minWidth: '130px', justifyContent: 'center' }}
         >
-          <Plus size={16} />
-          <span>📋 Paste New Chapter</span>
+          <Plus size={14} />
+          <span>📋 Paste Chapter</span>
         </button>
 
         {/* Scan Terms */}
@@ -113,8 +111,9 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           className="btn btn-secondary"
           onClick={onRunEntityScan}
           title="Scan raw Chinese chapter for character names, sects, and proper nouns"
+          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
         >
-          <Sparkles size={16} style={{ color: 'var(--primary-cyan)' }} />
+          <Sparkles size={14} style={{ color: 'var(--primary-cyan)' }} />
           <span>Scan Terms</span>
         </button>
 
@@ -122,8 +121,9 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         <button
           className={`btn ${isSidebarOpen ? 'btn-primary' : 'btn-secondary'}`}
           onClick={onToggleSidebar}
+          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
         >
-          <Sidebar size={16} />
+          <Sidebar size={14} />
           <span>Glossary ({glossaryCount})</span>
         </button>
 
@@ -132,8 +132,9 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           className="btn btn-secondary"
           onClick={onOpenCharacterGraph}
           title="View visual character relationship tree & sect hierarchy"
+          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
         >
-          <GitFork size={16} style={{ color: 'var(--accent-purple)' }} />
+          <GitFork size={14} style={{ color: 'var(--accent-purple)' }} />
           <span>Graph</span>
         </button>
       </div>

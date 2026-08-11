@@ -550,6 +550,10 @@ body.light-mode .navbar {
     display: none !important;
   }
 
+  .pane-btn-text {
+    display: none !important;
+  }
+
   .pane-split {
     flex-direction: column !important;
   }

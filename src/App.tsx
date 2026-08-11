@@ -102,6 +102,9 @@ export const App: React.FC = () => {
         updated.contentEn.includes('has " not "') ||
         (updated.contentEn.includes('has') && updated.contentEn.includes('not') && updated.contentEn.includes('"')) ||
         /is,\s*is/i.test(updated.contentEn) ||
+        /^she\.\s*$/m.test(updated.contentEn) ||
+        /person,\s*not/i.test(updated.contentEn) ||
+        /blood past\.\s*die/i.test(updated.contentEn) ||
         /she.*Xun/i.test(updated.contentEn) ||
         /she,\s*ran/i.test(updated.contentEn) ||
         /at person sun/i.test(updated.contentEn) ||

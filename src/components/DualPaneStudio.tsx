@@ -264,43 +264,43 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
         {/* LEFT PANE: Chinese Raw Text */}
         <div className={`editor-pane ${mobileTab === 'en' ? 'mobile-hidden' : ''}`}>
           <div className="pane-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-cyan)' }}></span>
-              <span>Raw Chinese Source (原文)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-cyan)', flexShrink: 0 }}></span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Raw Chinese Source</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
               {/* Scroll Sync Lock Toggle */}
               <button
                 className={`btn ${isScrollSyncLocked ? 'btn-secondary' : 'btn-primary'}`}
-                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', gap: '0.3rem' }}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
                 onClick={() => setIsScrollSyncLocked(!isScrollSyncLocked)}
-                title={isScrollSyncLocked ? 'Scroll Sync Locked: Both panes scroll together paragraph by paragraph. Click to unlock.' : 'Scroll Sync Unlocked: Panes scroll independently. Click to lock.'}
+                title={isScrollSyncLocked ? 'Scroll Sync Locked: Panes scroll together paragraph by paragraph. Click to unlock.' : 'Scroll Sync Unlocked: Panes scroll independently. Click to lock.'}
               >
                 {isScrollSyncLocked ? <Lock size={12} style={{ color: 'var(--primary-cyan)' }} /> : <Unlock size={12} />}
-                <span>{isScrollSyncLocked ? 'Sync Scroll' : 'Free Scroll'}</span>
+                <span className="pane-btn-text">{isScrollSyncLocked ? 'Sync' : 'Free'}</span>
               </button>
 
               {isEditingZh ? (
                 <button
                   className="btn btn-primary"
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
                   onClick={() => {
                     onSaveContent(rawZhText, chapter.contentEn);
                     setIsEditingZh(false);
                   }}
                 >
-                  <Check size={12} /> Save Raw
+                  <Check size={12} /> <span className="pane-btn-text">Save</span>
                 </button>
               ) : (
                 <button
                   className="btn btn-secondary"
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
                   onClick={() => {
                     setRawZhText(chapter.contentZh);
                     setIsEditingZh(true);
                   }}
                 >
-                  <Edit2 size={12} /> Edit Raw
+                  <Edit2 size={12} /> <span className="pane-btn-text">Edit</span>
                 </button>
               )}
             </div>
@@ -337,58 +337,58 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
         {/* RIGHT PANE: English Translation */}
         <div className={`editor-pane ${mobileTab === 'zh' ? 'mobile-hidden' : ''}`}>
           <div className="pane-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-green)' }}></span>
-              <span>Self-Healed English Translation</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-green)', flexShrink: 0 }}></span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>English Translation</span>
               {chapter.selfHealedCount > 0 && (
-                <span className="badge badge-xianxia" style={{ fontSize: '0.7rem' }}>
-                  {chapter.selfHealedCount} Terms Auto-Healed
+                <span className="badge badge-xianxia desktop-theme-text" style={{ fontSize: '0.7rem' }}>
+                  {chapter.selfHealedCount} Healed
                 </span>
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
               <button
                 className="btn btn-secondary"
-                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
                 onClick={onReTranslateChapter}
                 title="Re-translate using updated Glossary Map"
               >
-                <RefreshCw size={12} /> Re-Translate
+                <RefreshCw size={12} /> <span className="pane-btn-text">Re-Translate</span>
               </button>
 
               {onPolishProse && (
                 <button
                   className="btn btn-secondary"
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', color: 'var(--accent-purple)', borderColor: 'var(--accent-purple)' }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--accent-purple)', borderColor: 'var(--accent-purple)', gap: '0.25rem' }}
                   onClick={onPolishProse}
                   title="Upgrade English translation into smooth, literary prose"
                 >
-                  <Sparkles size={12} /> Polish Prose
+                  <Sparkles size={12} /> <span className="pane-btn-text">Polish</span>
                 </button>
               )}
 
               {isEditingEn ? (
                 <button
                   className="btn btn-primary"
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
                   onClick={() => {
                     onSaveContent(chapter.contentZh, rawEnText);
                     setIsEditingEn(false);
                   }}
                 >
-                  <Check size={12} /> Save Draft
+                  <Check size={12} /> <span className="pane-btn-text">Save</span>
                 </button>
               ) : (
                 <button
                   className="btn btn-secondary"
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
                   onClick={() => {
                     setRawEnText(chapter.contentEn);
                     setIsEditingEn(true);
                   }}
                 >
-                  <Edit2 size={12} /> Edit Draft
+                  <Edit2 size={12} /> <span className="pane-btn-text">Edit</span>
                 </button>
               )}
             </div>
