@@ -27,7 +27,7 @@ export function getAISettings(): AISettings {
   }
   const parsed = JSON.parse(data);
   // Ensure default to deepseek if provider not set
-  if (!parsed.provider || parsed.provider === 'built-in') {
+  if (!parsed.provider) {
     parsed.provider = 'deepseek';
     parsed.apiKey = parsed.apiKey || DEFAULT_DEEPSEEK_KEY;
   }
@@ -77,8 +77,12 @@ export async function translateChapterWithAI(
       console.error('[TranslateMe] DeepSeek API failed:', message);
       const isBalanceError = message.includes('402') || message.includes('Insufficient Balance');
       const friendlyMsg = isBalanceError
-        ? 'DeepSeek account balance is empty ($0). Auto-switched to Built-In Local Engine.'
+        ? 'DeepSeek account balance is empty ($0). Switched active AI Engine to Built-In Local.'
         : `DeepSeek API Error: ${message}`;
+      
+      // Auto-switch saved setting to built-in local so future translations use local engine immediately
+      saveAISettings({ ...settings, provider: 'built-in' });
+
       const event = new CustomEvent('translation-error', {
         detail: { message: friendlyMsg, provider: 'DeepSeek API' }
       });
@@ -92,8 +96,12 @@ export async function translateChapterWithAI(
       console.error('[TranslateMe] Gemini API failed:', message);
       const isKeyError = message.includes('400') || message.includes('API key not valid');
       const friendlyMsg = isKeyError
-        ? 'Gemini API Key is invalid or expired. Auto-switched to Built-In Local Engine.'
+        ? 'Gemini API Key is invalid or expired. Switched active AI Engine to Built-In Local.'
         : `Gemini API Error: ${message}`;
+
+      // Auto-switch saved setting to built-in local so future translations use local engine immediately
+      saveAISettings({ ...settings, provider: 'built-in' });
+
       const event = new CustomEvent('translation-error', {
         detail: { message: friendlyMsg, provider: 'Gemini API' }
       });
