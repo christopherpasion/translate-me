@@ -113,6 +113,11 @@ export const App: React.FC = () => {
 
       const isGarbled = updated.contentEn && (
         updated.contentEn.includes('has " not "') ||
+        updated.contentEn.includes('subscription') ||
+        updated.contentEn.includes('qrst') ||
+        updated.contentEn.includes('0/10000') ||
+        updated.contentEn.includes('Ran Region') ||
+        /2\s*Indominus Dragon/i.test(updated.contentEn) ||
         (updated.contentEn.includes('has') && updated.contentEn.includes('not') && updated.contentEn.includes('"')) ||
         /is,\s*is/i.test(updated.contentEn) ||
         /^she\.\s*$/m.test(updated.contentEn) ||

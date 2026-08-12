@@ -8,6 +8,12 @@ export interface CleanedChapter {
 
 // Noise patterns to strip out (Headers, Sidebars, Footers, Comment widgets, Copyrights)
 const NOISE_LINE_PATTERNS = [
+  /^subscription$/i,
+  /^qrst$/i,
+  /^\d+%$/,
+  /^\d+\/\d+$/,
+  /^\d+\s*(Indominus Dragon|狂暴龙)/i,
+  /^[\s,.'"?!:`~*—…-]*$/,
   /北京时间/i,
   /客户号：/i,
   /欢迎您，/i,

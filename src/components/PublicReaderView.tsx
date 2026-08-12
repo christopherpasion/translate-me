@@ -93,13 +93,29 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
       .trim()
       .toLowerCase();
 
-    // Filter out redundant chapter title headers from leading paragraphs
+    const noisePatterns = [
+      /^subscription$/i,
+      /^qrst$/i,
+      /^\d+%$/,
+      /^\d+\/\d+$/,
+      /^\d+\s*(Indominus Dragon|狂暴龙)/i,
+      /^[\s,.'"?!:`~*—…-]*$/,
+      /^Ran Region/i,
+      /^0\/10000$/
+    ];
+
+    // Filter out redundant chapter title headers & web footer noise
     const paragraphs = rawParagraphs.filter((pText, idx) => {
+      const trimmed = pText.trim();
+      if (noisePatterns.some(pat => pat.test(trimmed))) {
+        return false; // Skip web footer garbage!
+      }
+
       if (idx <= 1) {
-        const pClean = pText.toLowerCase().replace(/\s*\(\d+\)\s*$/i, '').trim();
+        const pClean = trimmed.toLowerCase().replace(/\s*\(\d+\)\s*$/i, '').trim();
         const isHeaderMatch = baseTitle && (pClean === baseTitle || baseTitle.includes(pClean) || pClean.includes(baseTitle));
-        const isChapterPattern = /^(Chapter\s+\d+|Ch\.\s*\d+|Indominus Dragon|第一章|第二章|第三章|狂暴龙)/i.test(pText.trim());
-        const isShortTitleLine = pText.trim().length < 35 && !/[.!?]$/.test(pText.trim());
+        const isChapterPattern = /^(Chapter\s+\d+|Ch\.\s*\d+|Indominus Dragon|第一章|第二章|第三章|狂暴龙)/i.test(trimmed);
+        const isShortTitleLine = trimmed.length < 35 && !/[.!?]$/.test(trimmed);
 
         if (isHeaderMatch || (isChapterPattern && isShortTitleLine)) {
           return false; // Skip redundant title line!
