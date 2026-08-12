@@ -69,7 +69,10 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
                   #1 for Chinese Xianxia & web novel prose. Fast & cheap.
                 </p>
-                <span className="badge" style={{ marginTop: '0.5rem', fontSize: '0.65rem', background: '#2563eb', color: '#fff' }}>
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', margin: '0.25rem 0 0 0' }}>
+                  💰 $0.14/1M input · $0.28/1M output
+                </p>
+                <span className="badge" style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: '#2563eb', color: '#fff' }}>
                   Recommended
                 </span>
               </div>
@@ -91,10 +94,13 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                   <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>Gemini API</strong>
                 </div>
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Google Gemini 2.0 Flash engine with glossary prompt injection.
+                  Google Gemini 2.0 Flash with glossary prompt injection.
                 </p>
-                <span className="badge badge-scifi" style={{ marginTop: '0.5rem', fontSize: '0.65rem' }}>
-                  Google API
+                <p style={{ fontSize: '0.65rem', color: '#a78bfa', margin: '0.25rem 0 0 0' }}>
+                  🆓 15 req/min · 1,500 req/day
+                </p>
+                <span className="badge badge-scifi" style={{ marginTop: '0.4rem', fontSize: '0.65rem' }}>
+                  Free Tier
                 </span>
               </div>
 
@@ -115,10 +121,13 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                   <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>Built-In Local</strong>
                 </div>
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Offline fallback translator. Uses local NER & Glossary Map.
+                  Offline fallback. Uses local NER & Glossary Map.
                 </p>
-                <span className="badge badge-xianxia" style={{ marginTop: '0.5rem', fontSize: '0.65rem' }}>
-                  Offline Mode
+                <p style={{ fontSize: '0.65rem', color: 'var(--primary-cyan)', margin: '0.25rem 0 0 0' }}>
+                  ∞ Unlimited · No API needed
+                </p>
+                <span className="badge badge-xianxia" style={{ marginTop: '0.4rem', fontSize: '0.65rem' }}>
+                  Offline
                 </span>
               </div>
 
@@ -139,10 +148,13 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                   <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>Groq</strong>
                 </div>
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Llama 3.3 70B on Groq Cloud. Lightning fast & free.
+                  Llama 3.3 70B on Groq Cloud. Lightning fast.
                 </p>
-                <span className="badge" style={{ marginTop: '0.5rem', fontSize: '0.65rem', background: '#059669', color: '#fff' }}>
-                  🆓 FREE
+                <p style={{ fontSize: '0.65rem', color: '#34d399', margin: '0.25rem 0 0 0' }}>
+                  🆓 30 req/min · 14.4K req/day
+                </p>
+                <span className="badge" style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: '#059669', color: '#fff' }}>
+                  FREE
                 </span>
               </div>
             </div>
