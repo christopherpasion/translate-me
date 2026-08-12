@@ -287,21 +287,31 @@ export const App: React.FC = () => {
     }
   };
 
-  // Handle Self-Healing Pass Trigger
+  // Handle Self-Healing Pass / Re-Translate Trigger
   const handleRunSelfHealingPass = async () => {
-    if (!currentChapter) return;
-    const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
+    if (!currentChapter || !currentChapter.contentZh) return;
+    setIsTranslating(true);
+    try {
+      const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
 
-    const updatedCh: Chapter = {
-      ...currentChapter,
-      contentEn: result.translatedEn,
-      selfHealedCount: (currentChapter.selfHealedCount || 0) + result.selfHealedRecords.length,
-      updatedAt: new Date().toISOString()
-    };
-    StorageService.saveChapter(updatedCh);
+      if (result.translatedEn) {
+        const updatedCh: Chapter = {
+          ...currentChapter,
+          contentEn: result.translatedEn,
+          status: 'translated',
+          selfHealedCount: (currentChapter.selfHealedCount || 0) + result.selfHealedRecords.length,
+          updatedAt: new Date().toISOString()
+        };
+        StorageService.saveChapter(updatedCh);
 
-    setChapters(chapters.map(c => c.id === updatedCh.id ? updatedCh : c));
-    setHealingRecords(StorageService.getHealingRecords());
+        setChapters(StorageService.getChapters(selectedNovelId));
+        setHealingRecords(StorageService.getHealingRecords());
+      }
+    } catch (err) {
+      console.error('[TranslateMe] Re-Translate error:', err);
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   // Helper to translate chapter title to clean English

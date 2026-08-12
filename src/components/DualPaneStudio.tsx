@@ -38,6 +38,14 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   const [isEditingEn, setIsEditingEn] = useState(false);
   const [rawEnText, setRawEnText] = useState(chapter?.contentEn || '');
 
+  // Synchronize raw text state when chapter props change (e.g. after Re-Translate or Polish)
+  React.useEffect(() => {
+    if (chapter) {
+      setRawZhText(chapter.contentZh || '');
+      setRawEnText(chapter.contentEn || '');
+    }
+  }, [chapter?.id, chapter?.contentZh, chapter?.contentEn]);
+
   // Scroll Sync Lock Toggle State
   const [isScrollSyncLocked, setIsScrollSyncLocked] = useState(true);
 
