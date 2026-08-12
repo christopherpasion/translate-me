@@ -69,7 +69,7 @@ export const App: React.FC = () => {
     glossaryEntries: GlossaryEntry[]
   ) => {
     const settings = getAISettings();
-    const providerName = settings.provider === 'deepseek' ? 'DeepSeek-V3 AI' : settings.provider === 'gemini' ? 'Google Gemini API' : 'Built-In Local Engine';
+    const providerName = settings.provider === 'deepseek' ? 'DeepSeek-V3 AI' : settings.provider === 'gemini' ? 'Google Gemini API' : settings.provider === 'groq' ? 'Groq (Llama 3) 🆓' : 'Built-In Local Engine';
     setActiveEngineLabel(providerName);
     setIsTranslating(true);
     setTranslationProgress(10);

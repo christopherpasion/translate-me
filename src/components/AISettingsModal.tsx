@@ -38,7 +38,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
             <Zap size={22} style={{ color: '#60a5fa' }} />
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>AI Engine & Provider Settings</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Configure DeepSeek-V3, Gemini, or Local Fallback Engine</p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Configure DeepSeek-V3, Gemini, Groq (Free), or Local Fallback Engine</p>
             </div>
           </div>
           <button className="btn btn-secondary btn-icon" onClick={onClose}>
@@ -49,7 +49,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
         <form onSubmit={handleSave}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Provider Options Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.5rem' }}>
               {/* DeepSeek-V3 Option */}
               <div
                 onClick={() => setProvider('deepseek')}
@@ -121,6 +121,30 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                   Offline Mode
                 </span>
               </div>
+
+              {/* Groq (Llama 3) Option — FREE */}
+              <div
+                onClick={() => setProvider('groq')}
+                className="glass-panel"
+                style={{
+                  padding: '0.85rem',
+                  cursor: 'pointer',
+                  borderRadius: 'var(--radius-md)',
+                  border: provider === 'groq' ? '2px solid #10b981' : '1px solid var(--border-color)',
+                  background: provider === 'groq' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
+                  <Zap size={16} style={{ color: '#10b981' }} />
+                  <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>Groq</strong>
+                </div>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Llama 3.3 70B on Groq Cloud. Lightning fast & free.
+                </p>
+                <span className="badge" style={{ marginTop: '0.5rem', fontSize: '0.65rem', background: '#059669', color: '#fff' }}>
+                  🆓 FREE
+                </span>
+              </div>
             </div>
 
             {/* API Key Input */}
@@ -128,11 +152,11 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
               <div className="glass-panel" style={{ padding: '0.85rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)' }}>
                 <label style={{ fontSize: '0.82rem', color: 'var(--text-main)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
                   <Key size={14} style={{ color: 'var(--accent-amber)' }} />
-                  {provider === 'deepseek' ? 'DeepSeek API Key' : 'Gemini API Key'}
+                  {provider === 'deepseek' ? 'DeepSeek API Key' : provider === 'gemini' ? 'Gemini API Key' : 'Groq API Key'}
                 </label>
                 <input
                   type="password"
-                  placeholder={provider === 'deepseek' ? 'sk-5e1262...' : 'AIzaSy...'}
+                  placeholder={provider === 'deepseek' ? 'sk-5e1262...' : provider === 'gemini' ? 'AIzaSy...' : 'gsk_4vbF...'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   style={{

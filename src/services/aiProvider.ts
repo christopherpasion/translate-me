@@ -2,7 +2,7 @@ import type { GlossaryEntry } from '../types';
 import { translateChapterWithSelfHealing, type TranslationResult } from './translationEngine';
 import { StorageService } from './storage';
 
-export type AIProvider = 'built-in' | 'gemini' | 'openai' | 'deepseek';
+export type AIProvider = 'built-in' | 'gemini' | 'openai' | 'deepseek' | 'groq';
 
 export interface AISettings {
   provider: AIProvider;
@@ -13,6 +13,7 @@ export interface AISettings {
 const SETTINGS_KEY = 'trans_me_ai_settings_v2';
 const DEFAULT_DEEPSEEK_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || 'sk-5e12625473254c3194517df12b11edd1';
 const DEFAULT_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const DEFAULT_GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
 export function getAISettings(): AISettings {
   const data = localStorage.getItem(SETTINGS_KEY);
@@ -67,6 +68,7 @@ export async function translateChapterWithAI(
   const settings = getAISettings();
   const deepseekKey = settings.provider === 'deepseek' ? (settings.apiKey || DEFAULT_DEEPSEEK_KEY) : DEFAULT_DEEPSEEK_KEY;
   const geminiKey = settings.provider === 'gemini' ? (settings.apiKey || DEFAULT_GEMINI_KEY) : DEFAULT_GEMINI_KEY;
+  const groqKey = settings.provider === 'groq' ? (settings.apiKey || DEFAULT_GROQ_KEY) : DEFAULT_GROQ_KEY;
 
   // Try DeepSeek API first if selected or available
   if (settings.provider === 'deepseek' || (deepseekKey && !geminiKey)) {
@@ -104,6 +106,24 @@ export async function translateChapterWithAI(
 
       const event = new CustomEvent('translation-error', {
         detail: { message: friendlyMsg, provider: 'Gemini API' }
+      });
+      window.dispatchEvent(event);
+    }
+  } else if (settings.provider === 'groq' || groqKey) {
+    try {
+      return await translateWithGroqAPI(chapterId, rawChinese, glossary, groqKey);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[TranslateMe] Groq API failed:', message);
+      const friendlyMsg = message.includes('401') || message.includes('Invalid')
+        ? 'Groq API Key is invalid. Switched active AI Engine to Built-In Local.'
+        : `Groq API Error: ${message}`;
+
+      // Auto-switch saved setting to built-in local so future translations use local engine immediately
+      saveAISettings({ ...settings, provider: 'built-in' });
+
+      const event = new CustomEvent('translation-error', {
+        detail: { message: friendlyMsg, provider: 'Groq API' }
       });
       window.dispatchEvent(event);
     }
@@ -265,4 +285,74 @@ LITERARY PROSE & STYLE GUIDELINES:
   }
 
   throw new Error('Gemini API failed after 3 attempts.');
+}
+
+/**
+ * Groq Cloud API (Llama 3.3 70B) Translation Engine — FREE
+ * Uses OpenAI-compatible Chat Completions format
+ */
+async function translateWithGroqAPI(
+  _chapterId: string,
+  rawChinese: string,
+  glossary: GlossaryEntry[],
+  apiKey: string
+): Promise<TranslationResult> {
+  const activeTerms = glossary
+    .filter(g => rawChinese.includes(g.originalZh))
+    .map(g => `- ${g.originalZh} -> ${g.translatedEn} (${g.category}${g.gender ? ', ' + g.gender : ''})`)
+    .join('\n');
+
+  const systemPrompt = `You are an elite, award-winning Chinese web novel translator and literary editor specializing in Xianxia, Wuxia, Xuanhuan, and Sci-Fi.
+Translate the raw Chinese text into clean, high-rhythm, natural, fluent English prose.
+
+STRICT GLOSSARY MAPPING RULES:
+You MUST strictly use the following active glossary translations for names, places, and terms:
+${activeTerms || '(No specific glossary terms required)'}
+
+LITERARY PROSE & STYLE GUIDELINES:
+1. NATURAL NARRATIVE LOWERCASE: Use natural English lowercasing in descriptive prose rather than robotic, capitalized machine terms.
+2. HIGH-RHYTHM PREPOSITIONAL CADENCE: Avoid literal, stiff translations. Translate speech tags and actions naturally.
+3. IDIOMATIC NOVEL PHRASING: Translate idioms and expressions into natural English equivalents.
+4. ZERO CONVERSATIONAL NOISE: Output ONLY the clean, translated English prose matching paragraph by paragraph. Do not add intro, markdown commentary, or outro notes.`;
+
+  const url = 'https://api.groq.com/openai/v1/chat/completions';
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: rawChinese }
+      ],
+      temperature: 0.3
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const translatedEn = data?.choices?.[0]?.message?.content || '';
+
+  if (!translatedEn) {
+    throw new Error('Groq returned an empty response.');
+  }
+
+  // Record usage metrics from API response
+  const promptTokens = data?.usage?.prompt_tokens || Math.ceil(rawChinese.length * 1.5);
+  const completionTokens = data?.usage?.completion_tokens || Math.ceil(translatedEn.length / 4);
+  StorageService.addTokenUsage(promptTokens, completionTokens);
+
+  return {
+    translatedEn,
+    selfHealedRecords: [],
+    activeGlossaryCount: glossary.length
+  };
 }
