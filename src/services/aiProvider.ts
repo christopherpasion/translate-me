@@ -1,5 +1,6 @@
 import type { GlossaryEntry } from '../types';
 import { translateChapterWithSelfHealing, type TranslationResult } from './translationEngine';
+import { StorageService } from './storage';
 
 export type AIProvider = 'built-in' | 'gemini' | 'openai' | 'deepseek';
 
@@ -136,6 +137,11 @@ LITERARY PROSE & STYLE GUIDELINES:
   if (!translatedEn) {
     throw new Error('DeepSeek returned an empty response.');
   }
+
+  // Record usage metrics from API response
+  const promptTokens = data?.usage?.prompt_tokens || Math.ceil(rawChinese.length * 1.5);
+  const completionTokens = data?.usage?.completion_tokens || Math.ceil(translatedEn.length / 4);
+  StorageService.addTokenUsage(promptTokens, completionTokens);
 
   return {
     translatedEn,

@@ -1,4 +1,4 @@
-import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion } from '../types';
+import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion, TokenUsage } from '../types';
 
 const NOVELS_KEY = 'trans_me_novels_v2';
 const CHAPTERS_KEY = 'trans_me_chapters_v2';
@@ -634,5 +634,53 @@ export const StorageService = {
       item.status = status;
       localStorage.setItem(SUGGESTIONS_KEY, JSON.stringify(all));
     }
+  },
+
+  getTokenUsage(): TokenUsage {
+    const KEY = 'trans_me_token_usage_v2';
+    const data = localStorage.getItem(KEY);
+    if (!data) {
+      const initial: TokenUsage = {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        totalCostUsd: 0,
+        lastUpdated: new Date().toISOString()
+      };
+      localStorage.setItem(KEY, JSON.stringify(initial));
+      return initial;
+    }
+    return JSON.parse(data);
+  },
+
+  addTokenUsage(promptTokens: number, completionTokens: number): TokenUsage {
+    const KEY = 'trans_me_token_usage_v2';
+    const current = this.getTokenUsage();
+    const costPrompt = (promptTokens * 0.14) / 1000000;
+    const costCompletion = (completionTokens * 0.28) / 1000000;
+    const addedCost = costPrompt + costCompletion;
+
+    const updated: TokenUsage = {
+      promptTokens: current.promptTokens + promptTokens,
+      completionTokens: current.completionTokens + completionTokens,
+      totalTokens: current.totalTokens + promptTokens + completionTokens,
+      totalCostUsd: current.totalCostUsd + addedCost,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem(KEY, JSON.stringify(updated));
+    return updated;
+  },
+
+  resetTokenUsage(): TokenUsage {
+    const KEY = 'trans_me_token_usage_v2';
+    const reset: TokenUsage = {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      totalCostUsd: 0,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem(KEY, JSON.stringify(reset));
+    return reset;
   }
 };

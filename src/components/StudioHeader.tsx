@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Novel, Chapter } from '../types';
-import { Sparkles, GitFork, Plus, Sidebar, Trash2 } from 'lucide-react';
+import { StorageService } from '../services/storage';
+import { Sparkles, GitFork, Plus, Sidebar, Trash2, Cpu } from 'lucide-react';
 
 interface StudioHeaderProps {
   currentNovel: Novel;
@@ -13,6 +14,7 @@ interface StudioHeaderProps {
   onRunSelfHealing?: () => void;
   onOpenCharacterGraph: () => void;
   onToggleSidebar: () => void;
+  onOpenAISettings?: () => void;
   isSidebarOpen: boolean;
   glossaryCount: number;
 }
@@ -27,9 +29,18 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   onRunEntityScan,
   onOpenCharacterGraph,
   onToggleSidebar,
+  onOpenAISettings,
   isSidebarOpen,
   glossaryCount
 }) => {
+  const tokenStats = StorageService.getTokenUsage();
+  const formattedTokens = tokenStats.totalTokens > 1000 
+    ? `${(tokenStats.totalTokens / 1000).toFixed(1)}k` 
+    : tokenStats.totalTokens.toString();
+  const formattedCost = tokenStats.totalCostUsd < 0.01 && tokenStats.totalCostUsd > 0
+    ? '<$0.01'
+    : `$${tokenStats.totalCostUsd.toFixed(4)}`;
+
   return (
     <div className="studio-toolbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: '0.75rem 1rem' }}>
       {/* Row 1: Novel Meta & Chapter Selector */}
@@ -41,6 +52,29 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <span className={`badge badge-${currentNovel.genre}`} style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>
             {currentNovel.genre}
           </span>
+
+          {/* DeepSeek API Token Tracker Bar */}
+          <button
+            onClick={onOpenAISettings}
+            title={`DeepSeek API Token Tracker: ${tokenStats.totalTokens.toLocaleString()} Total Tokens (${tokenStats.promptTokens.toLocaleString()} Prompt + ${tokenStats.completionTokens.toLocaleString()} Completion). Estimated Cost: $${tokenStats.totalCostUsd.toFixed(6)} USD.`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.2rem 0.55rem',
+              borderRadius: '9999px',
+              background: 'rgba(59, 130, 246, 0.12)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              color: '#60a5fa',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Cpu size={12} style={{ color: '#60a5fa' }} />
+            <span>DeepSeek: {formattedTokens} Tokens ({formattedCost})</span>
+          </button>
         </div>
 
         {/* Chapter Dropdown & Quick Actions */}

@@ -521,6 +521,7 @@ export const App: React.FC = () => {
               onRunSelfHealing={handleRunSelfHealingPass}
               onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+              onOpenAISettings={() => setIsAISettingsOpen(true)}
               isSidebarOpen={isSidebarOpen}
               glossaryCount={glossary.length}
             />

@@ -82,6 +82,14 @@ export interface Novel {
   updatedAt: string;
 }
 
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  totalCostUsd: number;
+  lastUpdated: string;
+}
+
 export interface CharacterNode {
   id: string;
   nameZh: string;
