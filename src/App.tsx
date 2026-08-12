@@ -56,12 +56,25 @@ export const App: React.FC = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isNewChapterOpen, setIsNewChapterOpen] = useState(false);
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   // New Chapter Form & Custom Site Noise Rules State
   const [newChapTitleZh, setNewChapTitleZh] = useState('');
   const [newChapContentZh, setNewChapContentZh] = useState('');
   const [customRules, setCustomRules] = useState<string[]>(getCustomNoiseRules());
   const [newRuleInput, setNewRuleInput] = useState('');
+
+  // Translation error event listener
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ message: string }>).detail;
+      setTranslationError(detail.message);
+      setTimeout(() => setTranslationError(null), 8000);
+    };
+    window.addEventListener('translation-error', handler);
+    return () => window.removeEventListener('translation-error', handler);
+  }, []);
 
   // Initial Load
   useEffect(() => {
@@ -394,7 +407,7 @@ export const App: React.FC = () => {
 
   const handlePolishProse = async () => {
     if (!currentChapter || !currentChapter.contentZh) return;
-
+    setIsTranslating(true);
     try {
       const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
       if (result.translatedEn) {
@@ -408,7 +421,9 @@ export const App: React.FC = () => {
         setChapters(StorageService.getChapters(selectedNovelId));
       }
     } catch (err) {
-      console.warn('Polish prose error:', err);
+      console.error('Polish prose error:', err);
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -424,6 +439,45 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
+      {/* Translation Loading Overlay */}
+      {isTranslating && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.4)', zIndex: 99999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+            borderRadius: '1rem', padding: '2rem 2.5rem', textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>⚡</div>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)', marginBottom: '0.4rem' }}>Gemini AI Translating...</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Translating chapter with glossary injection & self-healing. Please wait.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Translation Error Toast */}
+      {translationError && (
+        <div style={{
+          position: 'fixed', top: '1rem', right: '1rem', zIndex: 99998,
+          background: '#dc2626', color: '#fff',
+          borderRadius: '0.6rem', padding: '0.75rem 1.25rem',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          maxWidth: '380px', fontSize: '0.85rem', fontWeight: 600,
+          display: 'flex', alignItems: 'flex-start', gap: '0.5rem'
+        }}>
+          <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>⚠️</span>
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>Gemini API Error</div>
+            <div style={{ fontWeight: 400, opacity: 0.9, fontSize: '0.8rem' }}>{translationError}</div>
+          </div>
+          <button onClick={() => setTranslationError(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1rem', marginLeft: 'auto', flexShrink: 0 }}>✕</button>
+        </div>
+      )}
+
       {/* Top Navbar */}
       <Navbar
         novels={novels}

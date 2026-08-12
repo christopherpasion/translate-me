@@ -40,17 +40,26 @@ export async function translateChapterWithAI(
   glossary: GlossaryEntry[]
 ): Promise<TranslationResult> {
   const settings = getAISettings();
-  const apiKey = settings.apiKey || DEFAULT_KEY;
+  // Always prefer the .env key if available, fallback to localStorage
+  const apiKey = DEFAULT_KEY || settings.apiKey || '';
 
-  if (settings.provider === 'gemini' || apiKey) {
+  if (apiKey) {
     try {
       return await translateWithGeminiAPI(chapterId, rawChinese, glossary, apiKey);
-    } catch (err) {
-      console.warn('Gemini API call failed, falling back to built-in engine:', err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[TranslateMe] Gemini API failed:', message);
+      // Show visible error notification so user knows what happened
+      const event = new CustomEvent('translation-error', { detail: { message } });
+      window.dispatchEvent(event);
     }
+  } else {
+    console.warn('[TranslateMe] No Gemini API key configured. Add VITE_GEMINI_API_KEY to .env');
+    const event = new CustomEvent('translation-error', { detail: { message: 'No API key configured. Add your Gemini API key in Settings.' } });
+    window.dispatchEvent(event);
   }
 
-  // Fallback / Built-in Engine
+  // Fallback to built-in engine only if API key missing or call failed
   return translateChapterWithSelfHealing(chapterId, rawChinese, glossary);
 }
 
@@ -85,33 +94,53 @@ LITERARY PROSE & STYLE GUIDELINES:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-goog-api-key': apiKey
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: `${systemPrompt}\n\nRaw Chinese Chapter:\n${rawChinese}` }
-          ]
-        }
-      ]
-    })
-  });
+  // Retry up to 2 times on 429 rate limit with backoff
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': apiKey
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: `${systemPrompt}\n\nRaw Chinese Chapter:\n${rawChinese}` }
+            ]
+          }
+        ]
+      })
+    });
 
-  if (!response.ok) {
-    throw new Error(`Gemini API HTTP Error ${response.status}: ${response.statusText}`);
+    if (response.status === 429) {
+      if (attempt < 3) {
+        // Exponential backoff: wait 2s, 4s
+        await new Promise(r => setTimeout(r, attempt * 2000));
+        continue;
+      }
+      const errText = await response.text();
+      throw new Error(`Gemini API rate limited (429). ${errText}`);
+    }
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini API Error ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    const translatedEn = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!translatedEn) {
+      throw new Error('Gemini API returned empty translation. Check API key and quota.');
+    }
+
+    return {
+      translatedEn,
+      selfHealedRecords: [],
+      activeGlossaryCount: glossary.length
+    };
   }
 
-  const data = await response.json();
-  const translatedEn = data?.candidates?.[0]?.content?.parts?.[0]?.text || rawChinese;
-
-  return {
-    translatedEn,
-    selfHealedRecords: [],
-    activeGlossaryCount: glossary.length
-  };
+  throw new Error('Gemini API failed after 3 attempts.');
 }
