@@ -3,7 +3,7 @@ import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation
 import { StorageService } from './services/storage';
 import { extractEntitiesFromChinese, type ExtractedEntity } from './services/nerExtractor';
 import { cascadeTermReplacement, translateChapterWithSelfHealing } from './services/translationEngine';
-import { translateChapterWithAI } from './services/aiProvider';
+import { translateChapterWithAI, getAISettings } from './services/aiProvider';
 import { smartCleanWebNovelText, getCustomNoiseRules, addCustomNoiseRule, removeCustomNoiseRule } from './services/textCleaner';
 
 import { Navbar } from './components/Navbar';
@@ -58,6 +58,52 @@ export const App: React.FC = () => {
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState(0);
+  const [translationStep, setTranslationStep] = useState('Initializing AI Translation...');
+  const [activeEngineLabel, setActiveEngineLabel] = useState('DeepSeek-V3 AI');
+
+  const executeTranslationWithProgress = async (
+    chapterId: string,
+    rawZh: string,
+    glossaryEntries: GlossaryEntry[]
+  ) => {
+    const settings = getAISettings();
+    const providerName = settings.provider === 'deepseek' ? 'DeepSeek-V3 AI' : settings.provider === 'gemini' ? 'Google Gemini API' : 'Built-In Local Engine';
+    setActiveEngineLabel(providerName);
+    setIsTranslating(true);
+    setTranslationProgress(10);
+    setTranslationStep('🔍 Scanning & Injecting Glossary Terms...');
+
+    let progressValue = 10;
+    const interval = setInterval(() => {
+      progressValue += Math.floor(Math.random() * 8) + 4;
+      if (progressValue > 92) {
+        progressValue = 92;
+        setTranslationStep('🛡️ Finalizing Xianxia & Sci-Fi Prose Alignment...');
+      } else if (progressValue > 60) {
+        setTranslationStep(`✍️ Translating Prose with ${providerName}...`);
+      } else if (progressValue > 30) {
+        setTranslationStep(`⚡ Calling ${providerName} Engine...`);
+      }
+      setTranslationProgress(progressValue);
+    }, 180);
+
+    try {
+      const result = await translateChapterWithAI(chapterId, rawZh, glossaryEntries);
+      clearInterval(interval);
+      setTranslationProgress(100);
+      setTranslationStep('✨ Translation Complete!');
+      await new Promise(r => setTimeout(r, 200));
+      return result;
+    } catch (err) {
+      clearInterval(interval);
+      throw err;
+    } finally {
+      clearInterval(interval);
+      setIsTranslating(false);
+      setTranslationProgress(0);
+    }
+  };
 
   // New Chapter Form & Custom Site Noise Rules State
   const [newChapTitleZh, setNewChapTitleZh] = useState('');
@@ -290,9 +336,8 @@ export const App: React.FC = () => {
   // Handle Self-Healing Pass / Re-Translate Trigger
   const handleRunSelfHealingPass = async () => {
     if (!currentChapter || !currentChapter.contentZh) return;
-    setIsTranslating(true);
     try {
-      const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
+      const result = await executeTranslationWithProgress(currentChapter.id, currentChapter.contentZh, glossary);
 
       if (result.translatedEn) {
         const updatedCh: Chapter = {
@@ -309,8 +354,6 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error('[TranslateMe] Re-Translate error:', err);
-    } finally {
-      setIsTranslating(false);
     }
   };
 
@@ -422,9 +465,8 @@ export const App: React.FC = () => {
 
   const handlePolishProse = async () => {
     if (!currentChapter || !currentChapter.contentZh) return;
-    setIsTranslating(true);
     try {
-      const result = await translateChapterWithAI(currentChapter.id, currentChapter.contentZh, glossary);
+      const result = await executeTranslationWithProgress(currentChapter.id, currentChapter.contentZh, glossary);
       if (result.translatedEn) {
         const updated: Chapter = {
           ...currentChapter,
@@ -437,8 +479,6 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Polish prose error:', err);
-    } finally {
-      setIsTranslating(false);
     }
   };
 
@@ -454,22 +494,46 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* Translation Loading Overlay */}
+      {/* Translation Loading Overlay with Real-Time Progress Bar & Percentage */}
       {isTranslating && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.4)', zIndex: 99999,
+          background: 'rgba(0,0,0,0.6)', zIndex: 99999,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(4px)'
+          backdropFilter: 'blur(6px)'
         }}>
           <div style={{
             background: 'var(--bg-card)', border: '1px solid var(--border-color)',
-            borderRadius: '1rem', padding: '2rem 2.5rem', textAlign: 'center',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+            borderRadius: '1.25rem', padding: '2rem 2.5rem', textAlign: 'center',
+            boxShadow: '0 25px 70px rgba(0,0,0,0.6)', maxWidth: '440px', width: '90%'
           }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>⚡</div>
-            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)', marginBottom: '0.4rem' }}>Gemini AI Translating...</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Translating chapter with glossary injection & self-healing. Please wait.</div>
+            <div style={{ fontSize: '2.4rem', marginBottom: '0.4rem', filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.5))' }}>⚡</div>
+            <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-main)', marginBottom: '0.2rem' }}>
+              {activeEngineLabel}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              {translationStep}
+            </div>
+
+            {/* Glowing Progress Bar Track */}
+            <div style={{
+              width: '100%', height: '10px', background: 'rgba(255,255,255,0.08)',
+              borderRadius: '9999px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)',
+              position: 'relative', marginBottom: '0.75rem'
+            }}>
+              <div style={{
+                width: `${translationProgress}%`, height: '100%',
+                background: 'linear-gradient(90deg, #3b82f6 0%, #06b6d4 100%)',
+                borderRadius: '9999px', transition: 'width 0.15s ease-out',
+                boxShadow: '0 0 12px rgba(6, 182, 212, 0.8)'
+              }} />
+            </div>
+
+            {/* Percentage & Status Text */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Live Progress</span>
+              <span style={{ color: '#60a5fa', fontWeight: 800, fontSize: '0.95rem' }}>{translationProgress}%</span>
+            </div>
           </div>
         </div>
       )}
