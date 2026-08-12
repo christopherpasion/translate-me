@@ -199,6 +199,8 @@ LITERARY PROSE & STYLE GUIDELINES:
   const promptTokens = data?.usage?.prompt_tokens || Math.ceil(rawChinese.length * 1.5);
   const completionTokens = data?.usage?.completion_tokens || Math.ceil(translatedEn.length / 4);
   StorageService.addTokenUsage(promptTokens, completionTokens);
+  StorageService.recordApiCall('deepseek');
+  StorageService.recordDailyApiCall('deepseek');
 
   return {
     translatedEn,
@@ -277,6 +279,9 @@ LITERARY PROSE & STYLE GUIDELINES:
       throw new Error('Gemini API returned empty translation. Check API key and quota.');
     }
 
+    StorageService.recordApiCall('gemini');
+    StorageService.recordDailyApiCall('gemini');
+
     return {
       translatedEn,
       selfHealedRecords: [],
@@ -349,6 +354,8 @@ LITERARY PROSE & STYLE GUIDELINES:
   const promptTokens = data?.usage?.prompt_tokens || Math.ceil(rawChinese.length * 1.5);
   const completionTokens = data?.usage?.completion_tokens || Math.ceil(translatedEn.length / 4);
   StorageService.addTokenUsage(promptTokens, completionTokens);
+  StorageService.recordApiCall('groq');
+  StorageService.recordDailyApiCall('groq');
 
   return {
     translatedEn,

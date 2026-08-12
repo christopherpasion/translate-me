@@ -682,5 +682,50 @@ export const StorageService = {
     };
     localStorage.setItem(KEY, JSON.stringify(reset));
     return reset;
+  },
+
+  // Per-provider rate limit tracking
+  recordApiCall(provider: string): void {
+    const KEY = `trans_me_rate_${provider}`;
+    const now = Date.now();
+    const data = localStorage.getItem(KEY);
+    const calls: number[] = data ? JSON.parse(data) : [];
+    calls.push(now);
+    // Keep only calls from the last 60 seconds
+    const recent = calls.filter(t => now - t < 60000);
+    localStorage.setItem(KEY, JSON.stringify(recent));
+  },
+
+  getApiCallsThisMinute(provider: string): number {
+    const KEY = `trans_me_rate_${provider}`;
+    const now = Date.now();
+    const data = localStorage.getItem(KEY);
+    if (!data) return 0;
+    const calls: number[] = JSON.parse(data);
+    return calls.filter(t => now - t < 60000).length;
+  },
+
+  getApiCallsToday(provider: string): number {
+    const KEY = `trans_me_daily_${provider}`;
+    const today = new Date().toISOString().split('T')[0];
+    const data = localStorage.getItem(KEY);
+    if (!data) return 0;
+    const parsed = JSON.parse(data);
+    if (parsed.date !== today) return 0;
+    return parsed.count || 0;
+  },
+
+  recordDailyApiCall(provider: string): void {
+    const KEY = `trans_me_daily_${provider}`;
+    const today = new Date().toISOString().split('T')[0];
+    const data = localStorage.getItem(KEY);
+    let count = 0;
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed.date === today) {
+        count = parsed.count || 0;
+      }
+    }
+    localStorage.setItem(KEY, JSON.stringify({ date: today, count: count + 1 }));
   }
 };

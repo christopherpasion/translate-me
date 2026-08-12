@@ -14,6 +14,14 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
   const [tokenStats, setTokenStats] = useState(StorageService.getTokenUsage());
   const [isSaved, setIsSaved] = useState(false);
 
+  // Live per-provider usage counters
+  const deepseekMinute = StorageService.getApiCallsThisMinute('deepseek');
+  const deepseekDaily = StorageService.getApiCallsToday('deepseek');
+  const geminiMinute = StorageService.getApiCallsThisMinute('gemini');
+  const geminiDaily = StorageService.getApiCallsToday('gemini');
+  const groqMinute = StorageService.getApiCallsThisMinute('groq');
+  const groqDaily = StorageService.getApiCallsToday('groq');
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     saveAISettings({ provider, apiKey: apiKey.trim() });
@@ -70,7 +78,10 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                   #1 for Chinese Xianxia & web novel prose. Fast & cheap.
                 </p>
                 <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', margin: '0.25rem 0 0 0' }}>
-                  💰 $0.14/1M input · $0.28/1M output
+                  💰 $0.14/1M in · $0.28/1M out
+                </p>
+                <p style={{ fontSize: '0.65rem', color: '#60a5fa', margin: '0.2rem 0 0 0', fontWeight: 600 }}>
+                  📊 {deepseekMinute} req/min · {deepseekDaily} today
                 </p>
                 <span className="badge" style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: '#2563eb', color: '#fff' }}>
                   Recommended
@@ -98,6 +109,9 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                 </p>
                 <p style={{ fontSize: '0.65rem', color: '#a78bfa', margin: '0.25rem 0 0 0' }}>
                   🆓 15 req/min · 1,500 req/day
+                </p>
+                <p style={{ fontSize: '0.65rem', color: '#c4b5fd', margin: '0.2rem 0 0 0', fontWeight: 600 }}>
+                  📊 {geminiMinute}/15 min · {geminiDaily}/1,500 day
                 </p>
                 <span className="badge badge-scifi" style={{ marginTop: '0.4rem', fontSize: '0.65rem' }}>
                   Free Tier
@@ -152,6 +166,9 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                 </p>
                 <p style={{ fontSize: '0.65rem', color: '#34d399', margin: '0.25rem 0 0 0' }}>
                   🆓 30 req/min · 14.4K req/day
+                </p>
+                <p style={{ fontSize: '0.65rem', color: '#6ee7b7', margin: '0.2rem 0 0 0', fontWeight: 600 }}>
+                  📊 {groqMinute}/30 min · {groqDaily}/14,400 day
                 </p>
                 <span className="badge" style={{ marginTop: '0.4rem', fontSize: '0.65rem', background: '#059669', color: '#fff' }}>
                   FREE
