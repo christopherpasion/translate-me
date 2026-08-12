@@ -38,6 +38,9 @@ export function saveAISettings(settings: AISettings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
+let lastApiCallTime = 0;
+const API_COOLDOWN_MS = 5000;
+
 /**
  * High-level translation router
  * Dispatches to DeepSeek or Gemini API if configured with API key, otherwise uses built-in engine
@@ -47,6 +50,20 @@ export async function translateChapterWithAI(
   rawChinese: string,
   glossary: GlossaryEntry[]
 ): Promise<TranslationResult> {
+  const now = Date.now();
+  if (now - lastApiCallTime < API_COOLDOWN_MS && lastApiCallTime !== 0) {
+    console.warn('[TranslateMe] API cooldown guard: Request throttled to protect key balance. Using Built-In Local Engine.');
+    const event = new CustomEvent('translation-error', {
+      detail: {
+        message: '⏳ Please wait 5 seconds between translations to protect your API balance. Using Built-In Local Engine.',
+        provider: 'API Cooldown Guard'
+      }
+    });
+    window.dispatchEvent(event);
+    return translateChapterWithSelfHealing(chapterId, rawChinese, glossary);
+  }
+  lastApiCallTime = now;
+
   const settings = getAISettings();
   const deepseekKey = settings.provider === 'deepseek' ? (settings.apiKey || DEFAULT_DEEPSEEK_KEY) : DEFAULT_DEEPSEEK_KEY;
   const geminiKey = settings.provider === 'gemini' ? (settings.apiKey || DEFAULT_GEMINI_KEY) : DEFAULT_GEMINI_KEY;

@@ -228,22 +228,15 @@ export const App: React.FC = () => {
     handleSelectNovel(created.id);
   };
 
-  // Handle Save Chapter Raw/Translation with Smart Cleaner & AI Auto-Translate
+  // Handle Save Chapter Text Edits (Saves locally; use Re-Translate/Polish for AI calls)
   const handleSaveChapterContent = async (rawContentZh: string, rawContentEn: string) => {
     if (!currentChapter) return;
 
-    // 1. Smart clean the raw Chinese input to strip website headers/footers/numbers
+    // 1. Smart clean raw Chinese input
     const cleaned = smartCleanWebNovelText(rawContentZh);
     const cleanContentZh = cleaned.contentZh || rawContentZh;
 
-    // 2. Automatically translate clean Chinese text into fluent English prose
-    let finalContentEn = rawContentEn;
-    if (cleanContentZh) {
-      const result = await translateChapterWithAI(currentChapter.id, cleanContentZh, glossary);
-      finalContentEn = result.translatedEn;
-    }
-
-    // 3. Translate title if needed
+    // 2. Translate title if needed
     const finalTitleZh = (cleaned.chapterTitle && cleaned.chapterTitle !== 'New Chapter') ? cleaned.chapterTitle : currentChapter.titleZh;
     const finalTitleEn = translateTitleToEn(finalTitleZh, currentChapter.chapterNumber);
 
@@ -252,7 +245,7 @@ export const App: React.FC = () => {
       titleZh: finalTitleZh,
       titleEn: finalTitleEn,
       contentZh: cleanContentZh,
-      contentEn: finalContentEn,
+      contentEn: rawContentEn || currentChapter.contentEn,
       status: 'translated',
       updatedAt: new Date().toISOString()
     };
