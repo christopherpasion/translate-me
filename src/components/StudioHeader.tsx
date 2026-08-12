@@ -15,6 +15,7 @@ interface StudioHeaderProps {
   onOpenCharacterGraph: () => void;
   onToggleSidebar: () => void;
   onOpenAISettings?: () => void;
+  onSyncSupabaseCloud?: () => void;
   isSidebarOpen: boolean;
   glossaryCount: number;
 }
@@ -30,6 +31,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   onOpenCharacterGraph,
   onToggleSidebar,
   onOpenAISettings,
+  onSyncSupabaseCloud,
   isSidebarOpen,
   glossaryCount
 }) => {
@@ -171,6 +173,18 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <GitFork size={14} style={{ color: 'var(--accent-purple)' }} />
           <span>Graph</span>
         </button>
+
+        {/* Supabase Cloud Sync */}
+        {onSyncSupabaseCloud && (
+          <button
+            className="btn btn-secondary"
+            onClick={onSyncSupabaseCloud}
+            title="Sync all chapters & terms to Supabase Cloud Database"
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#60a5fa', borderColor: 'rgba(96,165,250,0.3)' }}
+          >
+            <span>☁️ Cloud Sync</span>
+          </button>
+        )}
       </div>
     </div>
   );

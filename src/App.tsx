@@ -5,6 +5,7 @@ import { extractEntitiesFromChinese, type ExtractedEntity } from './services/ner
 import { cascadeTermReplacement, translateChapterWithSelfHealing } from './services/translationEngine';
 import { translateChapterWithAI, getAISettings } from './services/aiProvider';
 import { smartCleanWebNovelText, getCustomNoiseRules, addCustomNoiseRule, removeCustomNoiseRule } from './services/textCleaner';
+import { SupabaseService } from './services/supabaseService';
 
 import { Navbar } from './components/Navbar';
 import { NovelLibrary } from './components/NovelLibrary';
@@ -478,6 +479,27 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSyncSupabaseCloud = async () => {
+    setIsTranslating(true);
+    setTranslationProgress(35);
+    setTranslationStep('☁️ Syncing local chapters & terms to Supabase Cloud...');
+    try {
+      const res = await SupabaseService.syncAllLocalToCloud(selectedNovelId);
+      setTranslationProgress(100);
+      setTranslationStep(res.message);
+      await new Promise(r => setTimeout(r, 600));
+      const event = new CustomEvent('translation-error', {
+        detail: { message: res.message, provider: 'Supabase Cloud' }
+      });
+      window.dispatchEvent(event);
+    } catch (err) {
+      console.error('[Supabase] Sync error:', err);
+    } finally {
+      setIsTranslating(false);
+      setTranslationProgress(0);
+    }
+  };
+
   const handleDeleteChapter = (chapterId: string) => {
     const updated = StorageService.deleteChapter(chapterId);
     setChapters(updated);
@@ -606,6 +628,7 @@ export const App: React.FC = () => {
               onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               onOpenAISettings={() => setIsAISettingsOpen(true)}
+              onSyncSupabaseCloud={handleSyncSupabaseCloud}
               isSidebarOpen={isSidebarOpen}
               glossaryCount={glossary.length}
             />
