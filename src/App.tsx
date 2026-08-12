@@ -116,9 +116,20 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ message: string; provider?: string }>).detail;
+      const rawMsg = detail.message || '';
+      let detectedProvider = detail.provider || 'AI Engine';
+
+      if (rawMsg.toLowerCase().includes('deepseek')) {
+        detectedProvider = 'DeepSeek API';
+      } else if (rawMsg.toLowerCase().includes('gemini')) {
+        detectedProvider = 'Gemini API';
+      } else if (rawMsg.toLowerCase().includes('supabase')) {
+        detectedProvider = 'Supabase Cloud';
+      }
+
       setTranslationError({
-        provider: detail.provider || 'AI Engine',
-        message: detail.message
+        provider: detectedProvider,
+        message: rawMsg
       });
       setTimeout(() => setTranslationError(null), 9000);
     };
@@ -556,31 +567,34 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Translation Notification / Error Toast */}
+      {/* Translation Notification / Error Toast with Clean Word-Wrapping & Dynamic Header */}
       {translationError && (
         <div style={{
           position: 'fixed', top: '1.25rem', right: '1.25rem', zIndex: 99998,
-          background: translationError.message.includes('Auto-switched') ? 'rgba(15, 23, 42, 0.95)' : '#dc2626',
-          border: translationError.message.includes('Auto-switched') ? '1px solid var(--primary-cyan)' : 'none',
+          background: translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? 'rgba(15, 23, 42, 0.95)' : '#dc2626',
+          border: translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? '1px solid var(--primary-cyan)' : '1px solid rgba(255,255,255,0.2)',
           color: '#fff',
-          borderRadius: '0.75rem', padding: '0.85rem 1.25rem',
-          boxShadow: '0 12px 35px rgba(0,0,0,0.5)',
-          maxWidth: '420px', fontSize: '0.85rem', fontWeight: 600,
+          borderRadius: '0.75rem', padding: '0.9rem 1.25rem',
+          boxShadow: '0 12px 35px rgba(0,0,0,0.55)',
+          maxWidth: '440px', width: 'calc(100vw - 2.5rem)', fontSize: '0.85rem', fontWeight: 600,
           display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
           backdropFilter: 'blur(8px)'
         }}>
-          <span style={{ fontSize: '1.2rem', flexShrink: 0, marginTop: '0.1rem' }}>
-            {translationError.message.includes('Auto-switched') ? '⚡' : '⚠️'}
+          <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: '0.1rem' }}>
+            {translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? '⚡' : '⚠️'}
           </span>
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: '0.2rem', color: translationError.message.includes('Auto-switched') ? 'var(--primary-cyan)' : '#fff' }}>
-              {translationError.provider} Notice
+          <div style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+            <div style={{
+              fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.25rem',
+              color: translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? 'var(--primary-cyan)' : '#fff'
+            }}>
+              {translationError.provider.endsWith('Notice') || translationError.provider.endsWith('Error') || translationError.provider.endsWith('Guard') ? translationError.provider : `${translationError.provider} Notice`}
             </div>
-            <div style={{ fontWeight: 400, opacity: 0.95, fontSize: '0.8rem', lineHeight: '1.45' }}>
+            <div style={{ fontWeight: 400, opacity: 0.95, fontSize: '0.8rem', lineHeight: '1.45', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
               {translationError.message}
             </div>
           </div>
-          <button onClick={() => setTranslationError(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.1rem', marginLeft: 'auto', flexShrink: 0, opacity: 0.8 }}>✕</button>
+          <button onClick={() => setTranslationError(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.1rem', marginLeft: '0.25rem', flexShrink: 0, opacity: 0.85 }}>✕</button>
         </div>
       )}
 
