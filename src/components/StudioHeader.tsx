@@ -55,10 +55,10 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             {currentNovel.genre}
           </span>
 
-          {/* DeepSeek API Token Tracker Bar */}
+          {/* AI Token Tracker Bar */}
           <button
             onClick={onOpenAISettings}
-            title={`DeepSeek API Token Tracker: ${tokenStats.totalTokens.toLocaleString()} Total Tokens (${tokenStats.promptTokens.toLocaleString()} Prompt + ${tokenStats.completionTokens.toLocaleString()} Completion). Estimated Cost: $${tokenStats.totalCostUsd.toFixed(6)} USD.`}
+            title={`AI Token Tracker: ${tokenStats.totalTokens.toLocaleString()} Total Tokens (${tokenStats.promptTokens.toLocaleString()} Prompt + ${tokenStats.completionTokens.toLocaleString()} Completion). Estimated Cost: $${tokenStats.totalCostUsd.toFixed(6)} USD.`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -75,7 +75,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             }}
           >
             <Cpu size={12} style={{ color: '#60a5fa' }} />
-            <span>DeepSeek: {formattedTokens} Tokens ({formattedCost})</span>
+            <span>⚡ {formattedTokens} Tokens ({formattedCost})</span>
           </button>
         </div>
 

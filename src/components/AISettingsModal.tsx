@@ -24,7 +24,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
   };
 
   const handleResetTokens = () => {
-    if (confirm('Are you sure you want to reset your DeepSeek token usage counter?')) {
+    if (confirm('Are you sure you want to reset your AI token usage counter?')) {
       const reset = StorageService.resetTokenUsage();
       setTokenStats(reset);
     }
@@ -181,7 +181,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <Zap size={16} style={{ color: '#60a5fa' }} />
-                  <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>DeepSeek AI Token Usage Analytics</strong>
+                  <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>AI Translation Token Usage</strong>
                 </div>
                 <button
                   type="button"
@@ -194,6 +194,9 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
                   <span>Reset</span>
                 </button>
               </div>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '0.5rem', margin: 0 }}>
+                Combined usage across DeepSeek, Gemini, and Groq.
+              </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.5rem', textAlign: 'center' }}>
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
@@ -226,7 +229,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ onClose }) => 
               </div>
 
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem', margin: 0 }}>
-                Calculated at DeepSeek-V3 official rates: <strong>$0.14 / 1M prompt tokens</strong> and <strong>$0.28 / 1M completion tokens</strong>.
+                Cost estimated at DeepSeek-V3 rates. Gemini and Groq are <strong>free</strong> (cost shown is approximate equivalent).
               </p>
             </div>
           </div>
