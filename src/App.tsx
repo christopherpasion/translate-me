@@ -56,7 +56,7 @@ export const App: React.FC = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isNewChapterOpen, setIsNewChapterOpen] = useState(false);
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
-  const [translationError, setTranslationError] = useState<string | null>(null);
+  const [translationError, setTranslationError] = useState<{ provider: string; message: string } | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationProgress, setTranslationProgress] = useState(0);
   const [translationStep, setTranslationStep] = useState('Initializing AI Translation...');
@@ -111,12 +111,15 @@ export const App: React.FC = () => {
   const [customRules, setCustomRules] = useState<string[]>(getCustomNoiseRules());
   const [newRuleInput, setNewRuleInput] = useState('');
 
-  // Translation error event listener
+  // Translation error & notification event listener
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ message: string }>).detail;
-      setTranslationError(detail.message);
-      setTimeout(() => setTranslationError(null), 8000);
+      const detail = (e as CustomEvent<{ message: string; provider?: string }>).detail;
+      setTranslationError({
+        provider: detail.provider || 'AI Engine',
+        message: detail.message
+      });
+      setTimeout(() => setTranslationError(null), 9000);
     };
     window.addEventListener('translation-error', handler);
     return () => window.removeEventListener('translation-error', handler);
@@ -538,22 +541,31 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Translation Error Toast */}
+      {/* Translation Notification / Error Toast */}
       {translationError && (
         <div style={{
-          position: 'fixed', top: '1rem', right: '1rem', zIndex: 99998,
-          background: '#dc2626', color: '#fff',
-          borderRadius: '0.6rem', padding: '0.75rem 1.25rem',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-          maxWidth: '380px', fontSize: '0.85rem', fontWeight: 600,
-          display: 'flex', alignItems: 'flex-start', gap: '0.5rem'
+          position: 'fixed', top: '1.25rem', right: '1.25rem', zIndex: 99998,
+          background: translationError.message.includes('Auto-switched') ? 'rgba(15, 23, 42, 0.95)' : '#dc2626',
+          border: translationError.message.includes('Auto-switched') ? '1px solid var(--primary-cyan)' : 'none',
+          color: '#fff',
+          borderRadius: '0.75rem', padding: '0.85rem 1.25rem',
+          boxShadow: '0 12px 35px rgba(0,0,0,0.5)',
+          maxWidth: '420px', fontSize: '0.85rem', fontWeight: 600,
+          display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
+          backdropFilter: 'blur(8px)'
         }}>
-          <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>⚠️</span>
+          <span style={{ fontSize: '1.2rem', flexShrink: 0, marginTop: '0.1rem' }}>
+            {translationError.message.includes('Auto-switched') ? '⚡' : '⚠️'}
+          </span>
           <div>
-            <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>Gemini API Error</div>
-            <div style={{ fontWeight: 400, opacity: 0.9, fontSize: '0.8rem' }}>{translationError}</div>
+            <div style={{ fontWeight: 700, marginBottom: '0.2rem', color: translationError.message.includes('Auto-switched') ? 'var(--primary-cyan)' : '#fff' }}>
+              {translationError.provider} Notice
+            </div>
+            <div style={{ fontWeight: 400, opacity: 0.95, fontSize: '0.8rem', lineHeight: '1.45' }}>
+              {translationError.message}
+            </div>
           </div>
-          <button onClick={() => setTranslationError(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1rem', marginLeft: 'auto', flexShrink: 0 }}>✕</button>
+          <button onClick={() => setTranslationError(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.1rem', marginLeft: 'auto', flexShrink: 0, opacity: 0.8 }}>✕</button>
         </div>
       )}
 

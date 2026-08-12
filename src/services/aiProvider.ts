@@ -58,7 +58,13 @@ export async function translateChapterWithAI(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[TranslateMe] DeepSeek API failed:', message);
-      const event = new CustomEvent('translation-error', { detail: { message: `DeepSeek API: ${message}` } });
+      const isBalanceError = message.includes('402') || message.includes('Insufficient Balance');
+      const friendlyMsg = isBalanceError
+        ? 'DeepSeek account balance is empty ($0). Auto-switched to Built-In Local Engine.'
+        : `DeepSeek API Error: ${message}`;
+      const event = new CustomEvent('translation-error', {
+        detail: { message: friendlyMsg, provider: 'DeepSeek API' }
+      });
       window.dispatchEvent(event);
     }
   } else if (settings.provider === 'gemini' || geminiKey) {
@@ -67,12 +73,18 @@ export async function translateChapterWithAI(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[TranslateMe] Gemini API failed:', message);
-      const event = new CustomEvent('translation-error', { detail: { message: `Gemini API: ${message}` } });
+      const isKeyError = message.includes('400') || message.includes('API key not valid');
+      const friendlyMsg = isKeyError
+        ? 'Gemini API Key is invalid or expired. Auto-switched to Built-In Local Engine.'
+        : `Gemini API Error: ${message}`;
+      const event = new CustomEvent('translation-error', {
+        detail: { message: friendlyMsg, provider: 'Gemini API' }
+      });
       window.dispatchEvent(event);
     }
   }
 
-  // Fallback to built-in engine if API call fails
+  // Fallback to built-in Xianxia engine if API call fails
   return translateChapterWithSelfHealing(chapterId, rawChinese, glossary);
 }
 
