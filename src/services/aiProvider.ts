@@ -10,20 +10,27 @@ export interface AISettings {
 }
 
 const SETTINGS_KEY = 'trans_me_ai_settings_v2';
-const DEFAULT_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const DEFAULT_DEEPSEEK_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || 'sk-5e12625473254c3194517df12b11edd1';
+const DEFAULT_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 export function getAISettings(): AISettings {
   const data = localStorage.getItem(SETTINGS_KEY);
   if (!data) {
     const defaultSettings: AISettings = {
-      provider: 'gemini',
-      apiKey: DEFAULT_KEY,
-      modelName: 'gemini-flash-latest'
+      provider: 'deepseek',
+      apiKey: DEFAULT_DEEPSEEK_KEY,
+      modelName: 'deepseek-chat'
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(defaultSettings));
     return defaultSettings;
   }
-  return JSON.parse(data);
+  const parsed = JSON.parse(data);
+  // Ensure default to deepseek if provider not set
+  if (!parsed.provider || parsed.provider === 'built-in') {
+    parsed.provider = 'deepseek';
+    parsed.apiKey = parsed.apiKey || DEFAULT_DEEPSEEK_KEY;
+  }
+  return parsed;
 }
 
 export function saveAISettings(settings: AISettings): void {
@@ -32,7 +39,7 @@ export function saveAISettings(settings: AISettings): void {
 
 /**
  * High-level translation router
- * Dispatches to Gemini API if configured with API key, otherwise uses built-in engine
+ * Dispatches to DeepSeek or Gemini API if configured with API key, otherwise uses built-in engine
  */
 export async function translateChapterWithAI(
   chapterId: string,
@@ -40,27 +47,101 @@ export async function translateChapterWithAI(
   glossary: GlossaryEntry[]
 ): Promise<TranslationResult> {
   const settings = getAISettings();
-  // Always prefer the .env key if available, fallback to localStorage
-  const apiKey = DEFAULT_KEY || settings.apiKey || '';
+  const deepseekKey = settings.provider === 'deepseek' ? (settings.apiKey || DEFAULT_DEEPSEEK_KEY) : DEFAULT_DEEPSEEK_KEY;
+  const geminiKey = settings.provider === 'gemini' ? (settings.apiKey || DEFAULT_GEMINI_KEY) : DEFAULT_GEMINI_KEY;
 
-  if (apiKey) {
+  // Try DeepSeek API first if selected or available
+  if (settings.provider === 'deepseek' || (deepseekKey && !geminiKey)) {
     try {
-      return await translateWithGeminiAPI(chapterId, rawChinese, glossary, apiKey);
+      return await translateWithDeepSeekAPI(chapterId, rawChinese, glossary, deepseekKey);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[TranslateMe] DeepSeek API failed:', message);
+      const event = new CustomEvent('translation-error', { detail: { message: `DeepSeek API: ${message}` } });
+      window.dispatchEvent(event);
+    }
+  } else if (settings.provider === 'gemini' || geminiKey) {
+    try {
+      return await translateWithGeminiAPI(chapterId, rawChinese, glossary, geminiKey);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[TranslateMe] Gemini API failed:', message);
-      // Show visible error notification so user knows what happened
-      const event = new CustomEvent('translation-error', { detail: { message } });
+      const event = new CustomEvent('translation-error', { detail: { message: `Gemini API: ${message}` } });
       window.dispatchEvent(event);
     }
-  } else {
-    console.warn('[TranslateMe] No Gemini API key configured. Add VITE_GEMINI_API_KEY to .env');
-    const event = new CustomEvent('translation-error', { detail: { message: 'No API key configured. Add your Gemini API key in Settings.' } });
-    window.dispatchEvent(event);
   }
 
-  // Fallback to built-in engine only if API key missing or call failed
+  // Fallback to built-in engine if API call fails
   return translateChapterWithSelfHealing(chapterId, rawChinese, glossary);
+}
+
+/**
+ * DeepSeek-V3 Chat Completions Translation Engine
+ */
+async function translateWithDeepSeekAPI(
+  _chapterId: string,
+  rawChinese: string,
+  glossary: GlossaryEntry[],
+  apiKey: string
+): Promise<TranslationResult> {
+  const activeTerms = glossary
+    .filter(g => rawChinese.includes(g.originalZh))
+    .map(g => `- ${g.originalZh} -> ${g.translatedEn} (${g.category}${g.gender ? ', ' + g.gender : ''})`)
+    .join('\n');
+
+  const systemPrompt = `You are an elite, award-winning Chinese web novel translator and literary editor specializing in Xianxia, Wuxia, Xuanhuan, and Sci-Fi.
+Translate the raw Chinese text into clean, high-rhythm, natural, fluent English prose.
+
+STRICT GLOSSARY MAPPING RULES:
+You MUST strictly use the following active glossary translations for names, places, and terms:
+${activeTerms || '(No specific glossary terms required)'}
+
+LITERARY PROSE & STYLE GUIDELINES:
+1. NATURAL NARRATIVE LOWERCASE: Use natural English lowercasing in descriptive prose (e.g. "middle-aged Chinese man", "golden slit pupils", "pitch-black water") rather than robotic, capitalized machine terms.
+2. HIGH-RHYTHM PREPOSITIONAL CADENCE: Avoid literal, stiff translations. Translate speech tags and actions naturally.
+3. IDIOMATIC NOVEL PHRASING:
+   - 科技造物 -> "artificially engineered life-form"
+   - 车脊 -> "roofs of the cars"
+   - 回收遗体 -> "recovered her body"
+   - 入土为安 -> "proper burial"
+   - 血肉横飞 -> "one of the bloody casualties"
+4. ZERO CONVERSATIONAL NOISE: Output ONLY the clean, translated English prose matching paragraph by paragraph. Do not add intro, markdown commentary, or outro notes.`;
+
+  const url = 'https://api.deepseek.com/chat/completions';
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: rawChinese }
+      ],
+      temperature: 0.3
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const translatedEn = data?.choices?.[0]?.message?.content || '';
+
+  if (!translatedEn) {
+    throw new Error('DeepSeek returned an empty response.');
+  }
+
+  return {
+    translatedEn,
+    selfHealedRecords: [],
+    activeGlossaryCount: glossary.length
+  };
 }
 
 async function translateWithGeminiAPI(
@@ -83,7 +164,7 @@ ${activeTerms || '(No specific glossary terms required)'}
 
 LITERARY PROSE & STYLE GUIDELINES:
 1. NATURAL NARRATIVE LOWERCASE: Use natural English lowercasing in descriptive prose (e.g. "middle-aged Chinese man", "golden slit pupils", "pitch-black water") rather than robotic, capitalized machine terms like "Chinese Man".
-2. HIGH-RHYTHM PREPOSITIONAL CADENCE: Avoid literal, stiff translations. Translate speech tags and actions naturally (e.g., "The Chinese man sighed before explaining..." instead of "The Chinese Man sighed and explained...").
+2. HIGH-RHYTHM PREPOSITIONAL CADENCE: Avoid literal, stiff translations. Translate speech tags and actions naturally.
 3. IDIOMATIC NOVEL PHRASING:
    - 科技造物 -> "artificially engineered life-form"
    - 车脊 -> "roofs of the cars"
@@ -94,7 +175,6 @@ LITERARY PROSE & STYLE GUIDELINES:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
 
-  // Retry up to 2 times on 429 rate limit with backoff
   for (let attempt = 1; attempt <= 3; attempt++) {
     const response = await fetch(url, {
       method: 'POST',
@@ -115,7 +195,6 @@ LITERARY PROSE & STYLE GUIDELINES:
 
     if (response.status === 429) {
       if (attempt < 3) {
-        // Exponential backoff: wait 2s, 4s
         await new Promise(r => setTimeout(r, attempt * 2000));
         continue;
       }
