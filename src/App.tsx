@@ -325,6 +325,17 @@ export const App: React.FC = () => {
     setChapters(StorageService.getChapters(selectedNovelId));
   };
 
+  // Delete chapter permanently and auto-select next available chapter
+  const handleDeleteChapter = (chapterId: string) => {
+    StorageService.deleteChapter(chapterId);
+    const updatedChaps = StorageService.getChapters(selectedNovelId);
+    setChapters(updatedChaps);
+    setNovels(StorageService.getNovels());
+    if (selectedChapterId === chapterId) {
+      setSelectedChapterId(updatedChaps[0]?.id || '');
+    }
+  };
+
   // Create New Chapter from pasted raw web text (Smart Clean + Entity Auto Scan + AI Translation)
   const handleCreateNewChapter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -450,16 +461,6 @@ export const App: React.FC = () => {
     } finally {
       setIsTranslating(false);
       setTranslationProgress(0);
-    }
-  };
-
-  const handleDeleteChapter = (chapterId: string) => {
-    const updated = StorageService.deleteChapter(chapterId);
-    setChapters(updated);
-    if (updated.length > 0) {
-      setSelectedChapterId(updated[0].id);
-    } else {
-      setSelectedChapterId('');
     }
   };
 

@@ -432,6 +432,8 @@ const INITIAL_SUGGESTIONS: ReaderSuggestion[] = [
   }
 ];
 
+const DELETED_CHAPTERS_KEY = 'trans_me_deleted_chapters_v2';
+
 export const StorageService = {
   getNovels(): Novel[] {
     const data = localStorage.getItem(NOVELS_KEY);
@@ -463,11 +465,15 @@ export const StorageService = {
   getChapters(novelId: string): Chapter[] {
     const data = localStorage.getItem(CHAPTERS_KEY);
     let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
+    const deletedData = localStorage.getItem(DELETED_CHAPTERS_KEY);
+    const deletedIds: string[] = deletedData ? JSON.parse(deletedData) : [];
+
     if (!data) {
       localStorage.setItem(CHAPTERS_KEY, JSON.stringify(INITIAL_CHAPTERS));
     } else {
       let changed = false;
       for (const initCh of INITIAL_CHAPTERS) {
+        if (deletedIds.includes(initCh.id)) continue;
         const idx = all.findIndex(c => c.id === initCh.id);
         if (idx === -1) {
           all.push(initCh);
@@ -525,6 +531,14 @@ export const StorageService = {
     const target = all.find(c => c.id === chapterId);
     all = all.filter(c => c.id !== chapterId);
     localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
+
+    // Track deleted ID so it is never re-inserted
+    const deletedData = localStorage.getItem(DELETED_CHAPTERS_KEY);
+    const deletedIds: string[] = deletedData ? JSON.parse(deletedData) : [];
+    if (!deletedIds.includes(chapterId)) {
+      deletedIds.push(chapterId);
+      localStorage.setItem(DELETED_CHAPTERS_KEY, JSON.stringify(deletedIds));
+    }
 
     if (target) {
       const novels = this.getNovels();
