@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, ShieldCheck, Download, Database, Cpu, Sun, Moon, Menu, X } from 'lucide-react';
+import { BookOpen, ShieldCheck, Download, Database, Cpu, Sun, Moon, Menu, X, Layers } from 'lucide-react';
 import type { Novel } from '../types';
 
 interface NavbarProps {
@@ -38,10 +38,50 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="navbar">
-      <div className="navbar-brand" onClick={onOpenLibrary} style={{ flexShrink: 0, cursor: 'pointer' }}>
-        <BookOpen size={24} style={{ color: 'var(--primary-cyan)', flexShrink: 0 }} />
-        <span className="brand-title">TranslateMe.AI</span>
-        {viewMode === 'admin' && <span className="brand-badge">SELF-HEALING 2.0</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+        <div className="navbar-brand" onClick={onOpenLibrary} style={{ flexShrink: 0, cursor: 'pointer' }}>
+          <BookOpen size={24} style={{ color: 'var(--primary-cyan)', flexShrink: 0 }} />
+          <span className="brand-title">TranslateMe.AI</span>
+          {viewMode === 'admin' && <span className="brand-badge">SELF-HEALING 2.0</span>}
+        </div>
+
+        {/* Desktop Quick Novel Selector & Library Shortcut */}
+        <div className="desktop-novel-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <select
+            value={selectedNovelId}
+            onChange={(e) => onSelectNovel(e.target.value)}
+            title="Change active novel"
+            style={{
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-main)',
+              border: '1px solid var(--border-color)',
+              padding: '0.35rem 0.6rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              outline: 'none',
+              maxWidth: '220px',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            {novels.map(novel => (
+              <option key={novel.id} value={novel.id} style={{ background: '#111827', color: '#fff' }}>
+                📚 {novel.titleEn || novel.titleZh}
+              </option>
+            ))}
+          </select>
+
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenLibrary}
+            title="Browse all novel projects & library"
+            style={{ padding: '0.35rem 0.55rem', fontSize: '0.78rem', whiteSpace: 'nowrap', gap: '0.3rem' }}
+          >
+            <Layers size={13} style={{ color: 'var(--primary-cyan)' }} />
+            <span>Library</span>
+          </button>
+        </div>
       </div>
 
       <div className="navbar-actions">
@@ -56,11 +96,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="desktop-theme-text">{appTheme === 'dark' ? 'White' : 'Dark'}</span>
         </button>
 
-        {/* Role Switcher (Admin Studio vs Public Reader View) */}
+        {/* Role Switcher (Translator Mode vs Public Reader View) */}
         <button
           className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'} desktop-role-btn`}
           onClick={onToggleViewMode}
-          title={viewMode === 'admin' ? 'Switch to Reader Mode' : 'Switch to Admin Translation Studio'}
+          title={viewMode === 'admin' ? 'Switch to Reader Mode' : 'Switch to Translator Mode'}
           style={{
             border: viewMode === 'admin' ? '1px solid var(--primary-cyan)' : '1px solid var(--accent-amber)',
             color: viewMode === 'admin' ? '#fff' : 'var(--accent-amber)',
@@ -68,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             whiteSpace: 'nowrap'
           }}
         >
-          {viewMode === 'admin' ? '👑 Admin' : '📖 Reader'}
+          {viewMode === 'admin' ? '👑 Translator' : '📖 Reader'}
         </button>
 
         {/* Mobile Hamburger Toggle Button (< 768px) */}
@@ -80,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
-        {/* Translation Studio Tools (Shown ONLY in Admin Mode Desktop) */}
+        {/* Translation Tools (Shown ONLY in Translator Mode Desktop) */}
         {viewMode === 'admin' && (
           <div className="desktop-admin-tools" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button className="btn btn-secondary" onClick={onOpenAISettings} title="AI Model & API Provider Settings">
@@ -183,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setIsMobileMenuOpen(false);
                   }}
                 >
-                  {viewMode === 'admin' ? '👑 Admin Studio Active' : '📖 Reader View Active'}
+                  {viewMode === 'admin' ? '👑 Translator Mode Active' : '📖 Reader View Active'}
                 </button>
               </div>
 

@@ -79,7 +79,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
           <h3>Chapter Translation Pending</h3>
           <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>The owner is currently translating this chapter. Please check back soon!</p>
           <button className="btn btn-secondary" onClick={onOpenAdminMode} style={{ marginTop: '1.5rem' }}>
-            Switch to Admin Studio Mode
+            Switch to Translator Mode
           </button>
         </div>
       );

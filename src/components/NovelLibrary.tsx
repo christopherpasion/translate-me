@@ -175,7 +175,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                   <strong style={{ color: 'var(--text-main)' }}>{novel.translatedCount}</strong> / {novel.chaptersCount} chapters
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary-cyan)', fontSize: '0.85rem', fontWeight: 600 }}>
-                  <span>Open Studio</span>
+                  <span>Open Novel</span>
                   <ArrowRight size={14} />
                 </div>
               </div>

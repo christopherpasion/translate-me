@@ -893,6 +893,10 @@ body.light-mode .search-input {
     display: none !important;
   }
 
+  .desktop-novel-selector {
+    display: none !important;
+  }
+
   .desktop-role-btn {
     display: none !important;
   }
