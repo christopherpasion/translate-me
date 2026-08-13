@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import type { GlossaryEntry, EntityCategory, TermScope } from '../types';
+import { getPinyinForText } from '../services/pinyinService';
+import { convertToTraditional } from '../services/scriptConverter';
 import { Search, Plus, Trash2, Globe, Bookmark, Edit2, X } from 'lucide-react';
 
 interface GlossarySidebarProps {
@@ -24,7 +26,8 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
 
   const filtered = glossary.filter(entry => {
     const matchesSearch = entry.originalZh.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          entry.translatedEn.toLowerCase().includes(searchQuery.toLowerCase());
+                          entry.translatedEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (entry.pinyin && entry.pinyin.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = selectedCategory === 'all' || entry.category === selectedCategory;
     const matchesScope = selectedScope === 'all' || entry.scope === selectedScope;
     return matchesSearch && matchesCategory && matchesScope;
@@ -34,6 +37,9 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
     e.preventDefault();
     if (!editingEntry?.originalZh || !editingEntry?.translatedEn) return;
 
+    const pinyinText = editingEntry.pinyin || getPinyinForText(editingEntry.originalZh);
+    const tradZh = editingEntry.traditionalZh || convertToTraditional(editingEntry.originalZh);
+
     const newEntry: GlossaryEntry = {
       id: editingEntry.id || `g-${novelId}-${Date.now()}`,
       originalZh: editingEntry.originalZh,
@@ -41,6 +47,8 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
       category: (editingEntry.category as EntityCategory) || 'character',
       scope: (editingEntry.scope as TermScope) || 'local',
       gender: editingEntry.gender,
+      pinyin: pinyinText,
+      traditionalZh: tradZh,
       notes: editingEntry.notes || '',
       occurrences: editingEntry.occurrences || 1,
       updatedAt: new Date().toISOString()
@@ -77,7 +85,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
           <input
             type="text"
-            placeholder="Search terms (ZH / EN)..."
+            placeholder="Search terms (ZH / Pinyin / EN)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -98,99 +106,119 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
           {['all', 'character', 'faction', 'realm', 'location', 'item', 'idiom'].map(cat => (
             <button
               key={cat}
+              className={`pill-toggle ${selectedCategory === cat ? 'active' : ''}`}
               onClick={() => setSelectedCategory(cat)}
-              className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', textTransform: 'capitalize', whiteSpace: 'nowrap' }}
+              style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
             >
               {cat}
             </button>
           ))}
         </div>
 
-        {/* 2-Tier Scope Filter */}
+        {/* Scope Filters */}
         <div style={{ display: 'flex', gap: '0.35rem' }}>
           <button
+            className={`pill-toggle ${selectedScope === 'all' ? 'active' : ''}`}
             onClick={() => setSelectedScope('all')}
-            className={`btn ${selectedScope === 'all' ? 'btn-secondary' : 'btn-secondary'}`}
-            style={{ flex: 1, padding: '0.2rem', fontSize: '0.72rem', opacity: selectedScope === 'all' ? 1 : 0.6 }}
+            style={{ flex: 1, fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
           >
-            All Scope
+            All Scopes
           </button>
           <button
+            className={`pill-toggle ${selectedScope === 'local' ? 'active' : ''}`}
             onClick={() => setSelectedScope('local')}
-            className={`btn ${selectedScope === 'local' ? 'btn-secondary' : 'btn-secondary'}`}
-            style={{ flex: 1, padding: '0.2rem', fontSize: '0.72rem', color: 'var(--primary-cyan)', opacity: selectedScope === 'local' ? 1 : 0.6 }}
+            style={{ flex: 1, fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
           >
-            <Bookmark size={10} /> Local
+            Local Novel
           </button>
           <button
+            className={`pill-toggle ${selectedScope === 'global' ? 'active' : ''}`}
             onClick={() => setSelectedScope('global')}
-            className={`btn ${selectedScope === 'global' ? 'btn-secondary' : 'btn-secondary'}`}
-            style={{ flex: 1, padding: '0.2rem', fontSize: '0.72rem', color: 'var(--accent-purple)', opacity: selectedScope === 'global' ? 1 : 0.6 }}
+            style={{ flex: 1, fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
           >
-            <Globe size={10} /> Global
+            Global Master
           </button>
         </div>
       </div>
 
-      {/* Glossary Item List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-        {filtered.map(entry => (
-          <div
-            key={entry.id}
-            className="glass-panel"
-            style={{
-              padding: '0.75rem',
-              borderLeft: entry.scope === 'global' ? '3px solid var(--accent-purple)' : '3px solid var(--primary-cyan)',
-              position: 'relative'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-zh)' }}>
-                  {entry.originalZh}
-                </span>
-                <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
-                  {entry.category}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.2rem' }}>
-                <button
-                  className="btn btn-secondary btn-icon"
-                  style={{ padding: '0.2rem' }}
-                  onClick={() => setEditingEntry(entry)}
-                >
-                  <Edit2 size={12} />
-                </button>
-                <button
-                  className="btn btn-secondary btn-icon"
-                  style={{ padding: '0.2rem', color: 'var(--accent-pink)' }}
-                  onClick={() => onDeleteEntry(entry.id)}
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
-
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-cyan)' }}>
-              {entry.translatedEn}
-            </div>
-
-            {entry.notes && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.3rem' }}>
-                {entry.notes}
-              </p>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                {entry.scope === 'global' ? <Globe size={10} style={{ color: 'var(--accent-purple)' }} /> : <Bookmark size={10} style={{ color: 'var(--primary-cyan)' }} />}
-                {entry.scope === 'global' ? 'Global Master' : 'Local Novel'}
-              </span>
-              <span>{entry.occurrences} matches</span>
-            </div>
+      {/* Glossary List */}
+      <div className="sidebar-content scrollable" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            No glossary terms found.
           </div>
-        ))}
+        ) : (
+          filtered.map(entry => {
+            const pinyinText = entry.pinyin || getPinyinForText(entry.originalZh);
+            const tradZh = entry.traditionalZh || convertToTraditional(entry.originalZh);
+
+            return (
+              <div
+                key={entry.id}
+                className="glass-panel"
+                style={{
+                  padding: '0.75rem',
+                  borderLeft: entry.scope === 'global' ? '3px solid var(--accent-purple)' : '3px solid var(--primary-cyan)',
+                  position: 'relative'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-zh)' }}>
+                      {entry.originalZh}
+                    </span>
+                    {tradZh && tradZh !== entry.originalZh && (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', opacity: 0.8 }}>
+                        ({tradZh})
+                      </span>
+                    )}
+                    <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
+                      {entry.category}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.2rem' }}>
+                    <button
+                      className="btn btn-secondary btn-icon"
+                      style={{ padding: '0.2rem' }}
+                      onClick={() => setEditingEntry(entry)}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-icon"
+                      style={{ padding: '0.2rem', color: 'var(--accent-pink)' }}
+                      onClick={() => onDeleteEntry(entry.id)}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.78rem', color: '#ec4899', fontWeight: 600, marginBottom: '0.2rem' }}>
+                  [{pinyinText}]
+                </div>
+
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-cyan)' }}>
+                  {entry.translatedEn}
+                </div>
+
+                {entry.notes && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.3rem' }}>
+                    {entry.notes}
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    {entry.scope === 'global' ? <Globe size={10} style={{ color: 'var(--accent-purple)' }} /> : <Bookmark size={10} style={{ color: 'var(--primary-cyan)' }} />}
+                    {entry.scope === 'global' ? 'Global Master' : 'Local Novel'}
+                  </span>
+                  <span>{entry.occurrences} matches</span>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Add / Edit Entry Modal */}
@@ -222,6 +250,16 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                     required
                     value={editingEntry.translatedEn || ''}
                     onChange={(e) => setEditingEntry({ ...editingEntry, translatedEn: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Pinyin (Optional)</label>
+                  <input
+                    type="text"
+                    value={editingEntry.pinyin || ''}
+                    onChange={(e) => setEditingEntry({ ...editingEntry, pinyin: e.target.value })}
+                    placeholder="e.g. Xiāo Yán"
                     style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
                   />
                 </div>

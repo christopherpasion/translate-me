@@ -1,10 +1,21 @@
-export type Genre = 'xianxia' | 'wuxia' | 'xuanhuan' | 'scifi' | 'urban' | 'romance';
+export type Genre = 
+  | 'xianxia' 
+  | 'wuxia' 
+  | 'xuanhuan' 
+  | 'historical' 
+  | 'scifi' 
+  | 'urban' 
+  | 'romance' 
+  | 'gaming' 
+  | 'classical';
 
 export type EntityCategory = 'character' | 'faction' | 'realm' | 'location' | 'item' | 'idiom';
 
 export type Gender = 'male' | 'female' | 'non-binary' | 'unknown';
 
 export type TermScope = 'local' | 'global';
+
+export type ChineseScript = 'simplified' | 'traditional';
 
 export interface GlossaryEntry {
   id: string;
@@ -15,8 +26,24 @@ export interface GlossaryEntry {
   gender?: Gender;
   notes?: string;
   aliases?: string[]; // e.g. ["小炎子", "炎儿"]
+  pinyin?: string; // e.g. "Xiāo Yán"
+  traditionalZh?: string; // e.g. "蕭炎"
+  etymology?: string;
   occurrences: number;
   updatedAt: string;
+}
+
+export interface DictionaryEntry {
+  id: string;
+  simplifiedZh: string;
+  traditionalZh: string;
+  pinyin: string;
+  englishDefinition: string;
+  category: EntityCategory;
+  genreContext?: Genre;
+  sampleZh?: string;
+  sampleEn?: string;
+  literalBreakdown?: string;
 }
 
 export interface SelfHealingRecord {

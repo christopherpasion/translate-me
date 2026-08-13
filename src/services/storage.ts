@@ -1,4 +1,5 @@
 import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion, TokenUsage } from '../types';
+import { getPinyinForText } from './pinyinService';
 
 const NOVELS_KEY = 'trans_me_novels_v2';
 const CHAPTERS_KEY = 'trans_me_chapters_v2';
@@ -550,6 +551,21 @@ export const StorageService = {
       all = JSON.parse(data);
     }
 
+    // Auto-clean any glossary entry where translatedEn mistakenly contains Chinese characters
+    let cleaned = false;
+    for (const g of all) {
+      if (g.translatedEn && /[\u4e00-\u9fa5]/.test(g.translatedEn)) {
+        g.translatedEn = g.translatedEn.replace(/[\u4e00-\u9fa5]+/g, (m) => {
+          const py = getPinyinForText(m).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u4e00-\u9fa5]+/g, '').trim();
+          return py ? ` ${py} ` : '';
+        }).replace(/\s+/g, ' ').trim();
+        cleaned = true;
+      }
+    }
+    if (cleaned) {
+      localStorage.setItem(GLOSSARY_KEY, JSON.stringify(all));
+    }
+
     if (!novelId) {
       return all; // Return all entries (Global + all Locals)
     }
@@ -562,11 +578,21 @@ export const StorageService = {
     const data = localStorage.getItem(GLOSSARY_KEY);
     let all: GlossaryEntry[] = data ? JSON.parse(data) : [...INITIAL_GLOBAL_GLOSSARY, ...INITIAL_LOCAL_GLOSSARY];
     
-    const idx = all.findIndex(g => g.id === entry.id || g.originalZh === entry.originalZh);
+    // Sanitize translatedEn to ensure zero raw Chinese characters
+    let cleanEn = entry.translatedEn;
+    if (cleanEn && /[\u4e00-\u9fa5]/.test(cleanEn)) {
+      cleanEn = cleanEn.replace(/[\u4e00-\u9fa5]+/g, (m) => {
+        const py = getPinyinForText(m).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u4e00-\u9fa5]+/g, '').trim();
+        return py ? ` ${py} ` : '';
+      }).replace(/\s+/g, ' ').trim();
+    }
+    const sanitizedEntry = { ...entry, translatedEn: cleanEn || 'Term' };
+
+    const idx = all.findIndex(g => g.id === sanitizedEntry.id || g.originalZh === sanitizedEntry.originalZh);
     if (idx >= 0) {
-      all[idx] = { ...all[idx], ...entry, updatedAt: new Date().toISOString() };
+      all[idx] = { ...all[idx], ...sanitizedEntry, updatedAt: new Date().toISOString() };
     } else {
-      all.unshift({ ...entry, updatedAt: new Date().toISOString() });
+      all.unshift({ ...sanitizedEntry, updatedAt: new Date().toISOString() });
     }
 
     localStorage.setItem(GLOSSARY_KEY, JSON.stringify(all));

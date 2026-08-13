@@ -1,4 +1,5 @@
 import type { EntityCategory, Gender, GlossaryEntry } from '../types';
+import { getPinyinForText } from './pinyinService';
 
 export interface ExtractedEntity {
   originalZh: string;
@@ -192,19 +193,15 @@ function getSampleSentence(text: string, index: number): string {
 function pinyinOrPlausibleName(zh: string): string {
   if (KNOWN_TERM_MAP[zh]) return KNOWN_TERM_MAP[zh];
 
-  // Character pinyin transliterator mapping
-  const charMap: Record<string, string> = {
-    '萧': 'Xiao ', '炎': 'Yan', '薰': 'Xun', '儿': ' Er', '药': 'Yao ', '老': 'Lao',
-    '纳': 'Na', '兰': 'lan ', '嫣': 'Yan', '然': 'ran', '古': 'Gu ', '河': 'He',
-    '叶': 'Ye ', '凡': 'Fan', '林': 'Lin ', '动': 'Dong', '克': 'Kle', '莱': 'in',
-    '华': 'Hua ', '裔': 'Yi ', '男': 'Nan ', '子': 'Zi'
-  };
+  const pinyin = getPinyinForText(zh);
+  // Strip tone marks for clean English entity names if needed, and eliminate raw Chinese glyphs
+  const cleanPinyin = pinyin
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u4e00-\u9fa5]+/g, '')
+    .trim();
 
-  let result = '';
-  for (const ch of zh) {
-    result += charMap[ch] || ch + ' ';
-  }
-  return capitalizeWords(result.trim());
+  return capitalizeWords(cleanPinyin || 'Unknown Term');
 }
 
 function capitalizeWords(str: string): string {

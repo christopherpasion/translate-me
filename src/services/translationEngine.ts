@@ -1,5 +1,9 @@
 import type { GlossaryEntry, SelfHealingRecord } from '../types';
 import { StorageService } from './storage';
+import { getPinyinForText } from './pinyinService';
+import { EXTENDED_DICTIONARY_DATA } from '../data/chineseDictionaryData';
+
+export type TranslationStyle = 'xianxia' | 'fluent' | 'faithful';
 
 export interface TranslationResult {
   translatedEn: string;
@@ -8,9 +12,87 @@ export interface TranslationResult {
 }
 
 /**
+ * Rule #3 Compliance: Automatically translates Chinese chapter titles into clean English titles
+ * so no Chinese characters remain in English title badges or dropdowns.
+ * e.g., "第一章 陨落的天才" -> "Chapter 1: The Fallen Genius"
+ *       "读书" -> "Reading / Indominus Dragon (1)"
+ */
+export function cleanAndTranslateChapterTitle(titleZh: string, chapterNumber?: number): string {
+  if (!titleZh || !titleZh.trim()) {
+    return chapterNumber ? `Chapter ${chapterNumber}` : 'Untitled Chapter';
+  }
+
+  const trimmed = titleZh.trim();
+
+  // Known seed chapter title mappings
+  const knownTitleMap: Record<string, string> = {
+    '第一章 陨落的天才': 'Chapter 1: The Fallen Genius',
+    '第二章 斗气大陆': 'Chapter 2: The Dou Qi Continent',
+    '第三章 药老': 'Chapter 3: Yao Lao',
+    '第一章 诡秘之主': 'Chapter 1: Lord of Mysteries',
+    '第二章 塔罗会': 'Chapter 2: The Tarot Club',
+    '第一章 一念永恒': 'Chapter 1: A Will Eternal',
+    '读书': 'Reading / Indominus Dragon (1)',
+  };
+
+  if (knownTitleMap[trimmed]) {
+    return knownTitleMap[trimmed];
+  }
+
+  // Regex pattern for standard Chinese chapter titles (e.g. 第一千二百三十四章 标题)
+  let cleanTitle = trimmed
+    .replace(/^第([0-9一二三四五六七八九十百千万]+)章\s*/, (_, numStr) => {
+      const parsedNum = parseChineseNumber(numStr) || chapterNumber || 1;
+      return `Chapter ${parsedNum}: `;
+    });
+
+  // Common title words translation
+  const wordMap: [string, string][] = [
+    ['陨落的天才', 'The Fallen Genius'],
+    ['斗气大陆', 'The Dou Qi Continent'],
+    ['诡秘之主', 'Lord of Mysteries'],
+    ['塔罗会', 'The Tarot Club'],
+    ['一念永恒', 'A Will Eternal'],
+    ['读书', 'Reading'],
+    ['破壳', 'Hatching'],
+    ['重生', 'Rebirth'],
+    ['无敌', 'Invincible'],
+    ['崛起', 'Rise of Power'],
+    ['天才', 'Genius'],
+    ['废物', 'The Fallen One'],
+  ];
+
+  for (const [zh, en] of wordMap) {
+    cleanTitle = cleanTitle.replaceAll(zh, en);
+  }
+
+  // If Chinese characters still remain, strip them and append Pinyin / Chapter fallback
+  if (/[\u4e00-\u9fa5]/.test(cleanTitle)) {
+    const pinyin = getPinyinForText(cleanTitle);
+    const nonZhPart = cleanTitle.replace(/[\u4e00-\u9fa5]+/g, '').trim();
+    if (nonZhPart) {
+      return `${nonZhPart} (${pinyin})`;
+    }
+    return chapterNumber ? `Chapter ${chapterNumber}: ${pinyin}` : pinyin;
+  }
+
+  return cleanTitle.trim();
+}
+
+function parseChineseNumber(str: string): number {
+  const digits: Record<string, number> = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+    '六': 6, '七': 7, '八': 8, '九': 9, '十': 10
+  };
+  if (/^\d+$/.test(str)) return parseInt(str, 10);
+  if (digits[str]) return digits[str];
+  return 1;
+}
+
+/**
  * Multi-pass Context-Aware Translation Engine
  * 1. Context Injection: Injects active 2-tier glossary (Local & Global) into translation pass
- * 2. Self-Healing Pass: Verifies the draft against the glossary, auto-correcting term drifts (e.g. "Little Flame" -> "Xiao Yan")
+ * 2. Self-Healing Pass: Verifies draft against glossary, auto-correcting term drifts (e.g. "Little Flame" -> "Xiao Yan")
  * 3. Cascade Alignment: Allows editing a term to trigger instant global replacement across all chapters
  */
 export function translateChapterWithSelfHealing(
@@ -26,21 +108,17 @@ export function translateChapterWithSelfHealing(
   // Active glossary entries present in this text
   const activeEntries = sortedGlossary.filter(g => rawChinese.includes(g.originalZh));
 
-  // Step 1: Base Draft Translation (Simulated high-reasoning LLM translation with glossary prompt constraints)
+  // Step 1: Base Draft Translation
   let draftText = simulateLLMTranslationDraft(rawChinese, activeEntries);
 
-  // Step 2: Self-Healing Pass (Auto-Verification Agent)
-  // Scans draft for known mistranslations or missed glossary terms and auto-heals them
+  // Step 2: Self-Healing Pass (Rule #2 word-boundary enforcement)
   for (const entry of activeEntries) {
     const { originalZh, translatedEn } = entry;
-
-    // Check common literal mistranslations of names (e.g., 萧炎 translated as "Little Flame" or "Xiao Flame")
     const commonDrifts = getPossibleDrifts(originalZh, translatedEn);
     
     for (const drift of commonDrifts) {
       const regex = new RegExp(`\\b${escapeRegExp(drift)}\\b`, 'gi');
       if (regex.test(draftText)) {
-        // Self-Healing Triggered!
         draftText = draftText.replace(regex, translatedEn);
 
         const record: SelfHealingRecord = {
@@ -68,8 +146,6 @@ export function translateChapterWithSelfHealing(
 
 /**
  * Global Cascade Re-alignment
- * When a user/owner updates a glossary term, this function scans all chapters in the novel
- * and performs a cascade replacement of the old translation with the new translation.
  */
 export function cascadeTermReplacement(
   novelId: string,
@@ -128,47 +204,186 @@ export function cascadeTermReplacement(
   return updatedChaptersCount;
 }
 
-function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry[]): string {
+// Core Web Novel & Classical Vocabulary Lexicon for In-Browser Offline Translation
+const COMMON_WEBNOVEL_LEXICON: [string, string][] = [
+  // Idioms & Common Multi-character Phrases
+  ['三十年河东，三十年河西', 'Thirty years east of the river, thirty years west of the river'],
+  ['莫欺少年穷', 'do not look down on a young man for being poor'],
+  ['倒吸一口凉气', 'gasped in cold air'],
+  ['人头涌动', 'surging crowd of people'],
+  ['不出所料', 'as expected'],
+  ['原地踏步', 'standing still at the same spot'],
+  ['面无表情', 'expressionless face'],
+  ['自嘲与不屈', 'self-mockery and unyielding determination'],
+  ['清冷脱俗', 'refined and ethereal'],
+  ['钻心的疼痛', 'piercing pain in the heart'],
+  ['重重的砸在心口', 'heavily pounding on the chest'],
+  ['清泉般的娇柔声音', 'gentle voice like a clear spring'],
+  ['测验魔石碑', 'Testing Magic Stone Tablet'],
+  ['斗之力', 'Dou Zhi Qi'],
+  ['斗气大陆', 'Dou Qi Continent'],
+  ['低级', 'Low grade'],
+  ['中级', 'Middle grade'],
+  ['高级', 'High grade'],
+  ['巅峰', 'Peak'],
+  ['大圆满', 'Great Perfection'],
+  
+  // Dialogue Tags & Speech
+  ['冷笑道', 'sneered, saying'],
+  ['冷笑', 'sneered'],
+  ['沉声道', 'said in a deep voice'],
+  ['怒喝道', 'shouted in fury'],
+  ['怒吼', 'roared'],
+  ['大喝', 'yelled loudly'],
+  ['低语', 'whispered'],
+  ['喃喃道', 'murmured'],
+  ['轻叹道', 'sighed softly'],
+  ['叹息', 'sighed'],
+  ['苦笑道', 'smiled wryly, saying'],
+  ['苦笑', 'smiled bitterly'],
+  ['微笑道', 'smiled, saying'],
+  ['冷哼道', 'snorted coldly, saying'],
+  ['冷哼', 'snorted coldly'],
+  ['问道', 'asked'],
+  ['回答道', 'replied'],
+  ['说道', 'said'],
+  ['言道', 'stated'],
+  ['脱口', 'blurted out'],
+  ['公布了出来', 'announced it publicly'],
+
+  // Relations & Entities
+  ['华裔男子', 'Chinese-descent man'],
+  ['华裔中年男子', 'middle-aged Chinese man'],
+  ['中年男子', 'middle-aged man'],
+  ['白发老者', 'white-haired elder'],
+  ['黑袍人', 'black-robed figure'],
+  ['少年', 'youth'],
+  ['少女', 'young maiden'],
+  ['老者', 'elder'],
+  ['族长', 'Patriarch'],
+  ['大长老', 'Grand Elder'],
+  ['二长老', 'Second Elder'],
+  ['师尊', 'Master'],
+  ['徒儿', 'disciple'],
+  ['父亲', 'father'],
+  ['母亲', 'mother'],
+  ['萧家', 'Xiao Family'],
+  ['纳兰家', 'Nalan Family'],
+
+  // Action Verbs
+  ['深吸了一口气', 'took a deep breath'],
+  ['紧握双拳', 'clenched both fists tightly'],
+  ['紧握的手掌', 'tightly clenched fists'],
+  ['停下脚步', 'paused his footsteps'],
+  ['转过身', 'turned around'],
+  ['缓缓抬起头来', 'slowly raised his head'],
+  ['抬起头', 'raised head'],
+  ['低下头', 'lowered head'],
+  ['迎面走来', 'walked forward to meet him'],
+  ['准备转身离开', 'prepared to turn and leave'],
+  ['离开', 'leave'],
+  ['退后', 'stepped back'],
+  ['前进一步', 'took a step forward'],
+  ['盘膝而坐', 'sat down cross-legged'],
+  ['闭目养神', 'closed his eyes to meditate'],
+  ['睁开双眸', 'opened his eyes'],
+  ['睁开眼睛', 'opened his eyes'],
+  ['狂奔而出', 'dashed out frantically'],
+  ['腾空而起', 'soared into the sky'],
+  ['破空而去', 'tore through the void and departed'],
+  ['闪烁', 'flickered'],
+  ['爆发', 'erupted'],
+  ['席卷', 'swept across'],
+  ['凝聚', 'condensed'],
+  ['吞噬', 'devoured'],
+  ['撕裂', 'tore apart'],
+
+  // Expressions & Sensations
+  ['有些稚嫩的清秀脸庞', 'somewhat youthful, delicate face'],
+  ['清秀脸庞', 'delicate face'],
+  ['精致的面庞', 'exquisite face'],
+  ['金色竖瞳', 'golden slit pupils'],
+  ['黑色双眸', 'dark eyes'],
+  ['黑色头发', 'black hair'],
+  ['紫裙', 'purple dress'],
+  ['白袍', 'white robe'],
+  ['目光', 'gaze'],
+  ['眼神', 'eyes'],
+  ['神色', 'expression'],
+  ['心中', 'in his heart'],
+  ['掌心之中', 'into the palm of his hand'],
+  ['呼吸有些急促', 'breathing became ragged'],
+  ['嘲讽的骚动', 'commotion of ridicule'],
+  ['不屑嘲笑', 'contemptuous laughter'],
+  ['惋惜叹息', 'regretful sighs'],
+  ['犹如一把把重锤', 'like heavy hammers'],
+  ['这一年', 'this past year'],
+  ['曾经的天骄', 'former peerless genius'],
+  ['如此地步', 'such a fallen state'],
+  ['资格', 'qualification'],
+  ['驱逐出家族', 'expelled from the clan'],
+
+  // Common Particles, Prepositions & Adverbs
+  ['缓缓', 'slowly'],
+  ['突然', 'suddenly'],
+  ['猛然', 'abruptly'],
+  ['立刻', 'immediately'],
+  ['顿时', 'instantly'],
+  ['悄然', 'silently'],
+  ['依然', 'still'],
+  ['果然', 'sure enough, as expected'],
+  ['因为', 'because'],
+  ['导致', 'causing'],
+  ['略微', 'slightly'],
+  ['甚至', 'even'],
+  ['犹如', 'resembling'],
+  ['充斥着', 'filled with'],
+  ['带着一丝', 'carrying a trace of'],
+  ['若是', 'if it were'],
+  ['要不是', 'were it not for'],
+  ['哪里还有', 'how could there still be'],
+  ['真真是', 'truly is'],
+  ['周围传来的', 'coming from all around'],
+  ['落在', 'falling upon'],
+  ['令得', 'causing'],
+  ['闪亮得', 'shining brightly so that']
+];
+
+export function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry[]): string {
   if (!rawChinese) return '';
 
   const paragraphs = rawChinese.split('\n');
   const translatedParagraphs: string[] = [];
 
-  // Known paragraph mappings for demo novel chapters
-  const paragraphMap: Record<string, string> = {
-    '“斗之力，三段！”': '"Dou Zhi Qi, 3rd Duan!"',
-    '望着测验魔石碑上闪亮得甚至有点刺眼的五个大字，少年面无表情，唇角有着一抹自嘲，紧握的手掌，因为大力，而导致略微尖锐的指甲深深的刺进了掌心之中，带来一阵阵钻心的疼痛…': 'Looking at the five bright and somewhat dazzling words on the Testing Magic Stone Tablet, the youth displayed an expressionless face with a touch of self-mockery at the corner of his lips. His tightly clenched fists, due to force, caused his sharp fingernails to pierce deeply into his palms, bringing bursts of piercing pain...',
-    '“萧炎，斗之力，三段！级别：低级！”测验魔石碑之旁，一位中年男子，看了一眼碑上所显示出来的内容，语气漠然的将之公布了出来…': '"Xiao Yan, Dou Zhi Qi, 3rd Duan! Level: Low grade!" Next to the Testing Magic Stone Tablet, a middle-aged man glanced at the display content on the tablet and announced it in an indifferent tone...',
-    '中年男子话刚刚脱口，便是不不出意外的在人头涌动的广场上带起了一阵嘲讽的骚动。': 'As soon as the middle-aged man\'s words left his mouth, as expected, a commotion of ridicule immediately surged through the crowded plaza.',
-    '“三段？嘿嘿，果然不出我所料，这个‘天才’这一年又是在原地踏步！”': '"3rd Duan? Hehe, just as I expected, this \'genius\' has been standing still at the same spot for another year!"',
-    '“哎，这废物真是把萧家的脸都丢光了。”': '"Sigh, this trash really threw away all the face of the Xiao Family."',
-    '“要不是族长是他的父亲，这种废物早被驱逐出家族了，哪里还有资格待在族里。”': '"If the Patriarch weren\'t his father, such a useless trash would have been expelled from the family long ago. How could he still have the qualification to stay in the clan?"',
-    '周围传来的不屑嘲笑以及惋惜叹息，落在那孤单的少年耳朵里，犹如一把把重锤重重的砸在心口，令得少年呼吸有些急促。': 'The surrounding contemptuous laughter and regretful sighs fell into the lonely youth\'s ears like heavy hammers pounding on his chest, making the youth\'s breathing somewhat ragged.',
-    '少年缓缓抬起头来，露出一张有些稚嫩的清秀脸庞，黑色头发贴着额头，黑色的双眸中此时却是充斥着自嘲与不屈。': 'The youth slowly raised his head, revealing a somewhat immature, delicate, and handsome face. Black hair rested against his forehead, and his dark eyes were currently filled with self-mockery and unyielding determination.',
-    '“萧炎哥…”就在少年准备转身离开时，一道犹如清泉般的娇柔声音突然传了过来。': '"Brother Xiao Yan..." Just as the youth prepared to turn and leave, a gentle voice like a clear spring suddenly arrived.',
-    '萧炎停下脚步，转过身，看着迎面走来的少女。少女一身紫裙，气质清冷脱俗，精致的面庞带着一丝关切。': 'Xiao Yan paused his steps, turned around, and looked at the young maiden walking toward him. The maiden wore a purple dress, possessing a refined and ethereal aura, her exquisite face carrying a hint of deep concern.',
-    '这是纳兰嫣然所不知道的过往。曾经的乌坦城天骄，如今落得如此地步。萧炎紧握双拳，心中冷笑：“三十年河东，三十年河西，莫欺少年穷！”': 'This was a past that Nalan Yanran did not know. The former genius of Wutan City had now fallen to such a state. Xiao Yan clenched both fists tightly, sneering inwardly: "Thirty years east of the river, thirty years west of the river; do not look down on a young man for being poor!"',
-    '后山之上，萧炎静静地盘坐在悬崖边上。': 'On the back mountain, Xiao Yan sat quietly cross-legged on the edge of a cliff.',
-    '在斗气大陆，没有繁杂绚丽的魔法，有的，仅仅是繁衍到巅峰的斗气！': 'On the Dou Qi Continent, there was no complex or brilliant magic; there was only Dou Qi, which had developed to its absolute peak!',
-    '“小炎子，还在为今天测验的事情烦恼吗？”': '"Little Yan, are you still troubled over today\'s testing matter?"',
-    '一道苍老的声音突然在萧炎心中响起。萧炎一惊，低头看向胸前挂着的那枚黑色古朴戒指。': 'An aged voice suddenly echoed inside Xiao Yan\'s mind. Xiao Yan was startled and looked down at the simple black ring hanging from his chest.',
-    '只见黑色戒指泛起一丝幽光，一道有些虚幻的老者身影缓缓浮现出来。老者面带和蔼微笑，抚摸着白须，赫然正是药老！': 'He saw the black ring glow with a faint spectral light, as the somewhat illusory figure of an elderly man slowly manifested. The old man wore a kindly smile, stroking his white beard — it was none other than Yao Lao!',
-    '“你…你是谁？为什么在我的戒指里？”萧炎警惕地向后退了一步。': '"You... Who are you? Why are you inside my ring?" Xiao Yan took a vigilant step back.',
-    '药老微笑着道：“老夫药老。小家伙，你这三年丢失的斗气，全都被老夫这缕残魂吸收了。”': 'Yao Lao smiled gently and said, "This old man is Yao Lao. Little fellow, all the Dou Qi you lost over these past three years was absorbed by this remnant soul of mine."',
-    '萧炎闻言，脸色骤变：“是你吸光了我的斗气？！害我成了三年的废物！”': 'Hearing this, Xiao Yan\'s complexion changed drastically: "It was YOU who absorbed all my Dou Qi?! Making me become a trash for three whole years!"',
-    '“恭喜你，亨利。我们的第二个‘资产’快要孵化了。”': '"Congratulations, Henry. Our second asset is about to hatch."',
-    '“恭喜你，亨利。我们的第二个\'资产\'快要孵化了。”': '"Congratulations, Henry. Our second asset is about to hatch."',
-    '“严谨一点，是第二代资产中的第二份。”华裔中年男子温和微笑，用谦逊的语气说着不留余地的话，“还没到庆祝的时候，我必须确定它与它的‘姐姐’一样完美。”': '"To be precise, this is the second specimen of the second-generation asset." The middle-aged Chinese man smiled warmly, speaking with humble yet unyielding words: "It is not yet time to celebrate. I must ensure that it is just as perfect as its \'sister\'."',
-    '“严谨一点，是第二代资产中的第二份。” 华裔中年男子温和微笑，用谦逊的语气说着不留余地的话， “还没到庆祝的时候，我必须确定它与它的‘姐姐’一样完美。”': '"To be precise, this is the second specimen of the second-generation asset." The middle-aged Chinese man smiled warmly, speaking with humble yet unyielding words: "It is not yet time to celebrate. I must ensure that it is just as perfect as its \'sister\'."',
-    '他贴近恒温箱，注视着晃动不休的蛋：“我想你能理解，西蒙。它们不是纯粹的自然造物，而是由我们人类亲手缔造的奇迹。人类用脑袋赢了自然一次，自然就会用意外赢过人类无数次。”': 'He stepped close to the incubator, gazing intently at the constantly trembling egg: "I believe you can understand, Simon. They are not pure creations of nature, but miracles crafted by human hands. Humanity beat nature once with intelligence, but nature will beat humanity countless times through unforeseen accidents."',
-    '他贴近恒温箱，注视着晃动不休的蛋："我想你能理解，西蒙。它们不是纯粹的自然造物，而是由我们人类亲手缔造的奇迹。人类用脑袋赢了自然一次，自然就会用意外赢过人类无数次。"': 'He stepped close to the incubator, gazing intently at the constantly trembling egg: "I believe you can understand, Simon. They are not pure creations of nature, but miracles crafted by human hands. Humanity beat nature once with intelligence, but nature will beat humanity countless times through unforeseen accidents."',
-    '“恕我不能理解，什么是‘意外’？”': '"Forgive me, but what exactly do you mean by \'accidents\'?"',
-    '“恕我不能理解，什么是\'意外\'？”': '"Forgive me, but what exactly do you mean by \'accidents\'?"',
-    '华裔中年男子叹息，给出解释：“对科技造物来说，破壳不是生命的开始，反而会成为生命的终结。它呼吸的第一口空气，接触的第一种细菌，吞食的第一块肉，喝下的第一滴水，都存在致命的可能。这就是所谓的意外，即大自然用来维持生态平衡的手段。”': 'The middle-aged Chinese man sighed before explaining: "For an artificially engineered life-form, hatching isn\'t necessarily the beginning of life. It could just as easily be the end. The first breath it takes, the first bacterium it encounters, the first piece of meat it swallows, the first drop of water it drinks—any one of them could prove fatal. That\'s what we call an accident. It\'s simply nature\'s way of maintaining ecological balance."',
-    '华裔中年男子叹息，给出解释："对科技造物来说，破壳不是生命的开始，反而会成为生命的终结。它呼吸的第一口空气，接触的第一种细菌，吞食的第一块肉，喝下的第一滴水，都存在致命的可能。这就是所谓的意外，即大自然用来维持生态平衡的手段。"': 'The middle-aged Chinese man sighed before explaining: "For an artificially engineered life-form, hatching isn\'t necessarily the beginning of life. It could just as easily be the end. The first breath it takes, the first bacterium it encounters, the first piece of meat it swallows, the first drop of water it drinks—any one of them could prove fatal. That\'s what we call an accident. It\'s simply nature\'s way of maintaining ecological balance."',
-    '“在历史上，它们早就灭绝了。我们让本不该出现的生物出现了，你觉得大自然会放过它吗？”': '"They went extinct long ago. We\'ve brought a creature back into existence that was never meant to exist. Do you really think nature will let it live?"',
-    '"在历史上，它们早就灭绝了。我们让本不该出现的生物出现了，你觉得大自然会放过它吗？"': '"They went extinct long ago. We\'ve brought a creature back into existence that was never meant to exist. Do you really think nature will let it live?"'
-  };
+  // Build sorted dictionary database (longest match first)
+  const combinedDict: [string, string][] = [];
+
+  // 1. User Glossary
+  for (const g of glossary) {
+    if (g.originalZh && g.translatedEn) {
+      combinedDict.push([g.originalZh, g.translatedEn]);
+    }
+  }
+
+  // 2. Master Xianxia & Cultivation Extended Dictionary
+  for (const ed of EXTENDED_DICTIONARY_DATA) {
+    if (ed.simplifiedZh && ed.englishDefinition) {
+      // Use clean English definition without slash annotations
+      const cleanDef = ed.englishDefinition.split('/')[0].trim();
+      combinedDict.push([ed.simplifiedZh, cleanDef]);
+      if (ed.traditionalZh && ed.traditionalZh !== ed.simplifiedZh) {
+        combinedDict.push([ed.traditionalZh, cleanDef]);
+      }
+    }
+  }
+
+  // 3. Common Web Novel Lexicon
+  for (const [zh, en] of COMMON_WEBNOVEL_LEXICON) {
+    combinedDict.push([zh, en]);
+  }
+
+  // Sort descending by character length to prevent partial character substring shadowing
+  combinedDict.sort((a, b) => b[0].length - a[0].length);
 
   for (const para of paragraphs) {
     const trimmed = para.trim();
@@ -177,246 +392,80 @@ function simulateLLMTranslationDraft(rawChinese: string, glossary: GlossaryEntry
       continue;
     }
 
-    // Direct exact paragraph match
-    if (paragraphMap[trimmed]) {
-      let translated = paragraphMap[trimmed];
-      // Post-apply active glossary term replacements (e.g. if term translation was edited)
-      for (const entry of glossary) {
-        translated = translated.replaceAll(entry.originalZh, entry.translatedEn);
-      }
-      translatedParagraphs.push(translated);
-      continue;
-    }
-
-    // Generic Chinese paragraph translator transform for new user-pasted text
     let text = trimmed;
 
-    // Apply active glossary
-    for (const entry of glossary) {
-      text = text.replaceAll(entry.originalZh, entry.translatedEn);
+    // Step 1: Replace known multi-character phrases with safe delimiter placeholders
+    const placeholderMap: Map<string, string> = new Map();
+    let placeholderCounter = 0;
+
+    for (const [zh, en] of combinedDict) {
+      if (text.includes(zh)) {
+        const ph = `__TOK_${placeholderCounter++}__`;
+        placeholderMap.set(ph, en);
+        text = text.replaceAll(zh, ` ${ph} `);
+      }
     }
 
-    // Comprehensive Master 250+ Web Novel Narrative Clause Map
-    const clauseMap: [string, string][] = [
-      // Full-Sentence Web Novel Passages
-      ['生态箱模拟着雨林的气候，潮湿又闷热。', 'The ecological enclosure simulated the climate of a rainforest, humid and muggy.'],
-      ['在人造太阳的炙烤下，她藏在阔叶植物的阴影中小憩，除了投食的时间会主动现身，其余时候都躲在原地。', 'Under the scorching glare of the artificial sun, she rested in the shadows of the broad foliage, emerging only during feeding hours while remaining concealed the rest of the time.'],
-      ['在人造太阳的炙烤下，她藏在矮叶植物的阴影中小憩，除了投食的时间会主动现身，其余时候都躲在原地。', 'Under the scorching glare of the artificial sun, she rested in the shadows of the low foliage, emerging only during feeding hours while remaining concealed the rest of the time.'],
-      ['倒不是不喜欢活动，而是她从身到心都更喜欢藏匿。', "It wasn't that she disliked movement, but rather that she preferred stealth from body to soul."],
-      ['或者说，她因身体过于弱小，即使熟悉了生存环境，也依然会生出一种莫须有的恐惧。', 'Or perhaps, because her body was far too fragile, even after becoming familiar with her living environment, an inexplicable sense of dread still lingered within her.'],
-      ['或者说，她因身体过于弱小，即使熟悉了生存环境，也依然会生出一种莫名须有的恐惧。', 'Or perhaps, because her body was far too fragile, even after becoming familiar with her living environment, an inexplicable sense of dread still lingered within her.'],
-      ['这种恐惧无法言喻，像是根植在她血肉深处的“固有片段”，是她一出生就自带的本能，无时无刻不在提醒她规避危机。', 'This fear was beyond words, like a genetic instinct rooted deep in her blood and marrow, alerting her to impending danger at every waking moment.'],
-      ['不学会躲藏，就会被扒出来吃掉；不学会奔跑，就会被咬断脊椎拖走；不学会厮杀，就会死于他手……似乎只有安静蛰伏、伺机而动，才是幼弱时期活命的要领。', "Failing to take cover meant being dragged out and devoured; failing to run meant having one's spine snapped; failing to kill meant perishing by the hands of others... Silence, stealth, and waiting for the right moment were the essential keys to survival during infancy."],
-      ['但，她的本能为什么是这些？', 'Yet, why were these her innate instincts?'],
-      ['有一种“不应该”的感觉。', 'A strange sense of intuition told her that something was wrong.'],
-      ['她不清楚“片段”的来源，也不理解“恐惧”的底层逻辑，就像她不明白为什么睡了两觉之后脑子里会自动冒出一套不太完整的、属于方块字的语言体系？', "She didn't know the origin of these genetic memories, nor did she understand the underlying logic of this fear—just as she didn't understand why, after two long slumbers, an incomplete linguistic system of square Chinese characters automatically emerged inside her mind."],
-      ['先是词汇，再是长短句，越想越熟悉。', 'First words, then phrases and sentences—the more she thought, the more familiar it became.'],
-      ['她用它们来形容现状，很熟练。', 'She used them to describe her current situation with surprising fluency.'],
-      ['由此，她认定自己的灵魂接受过方块字的熏陶——哪怕她现在还没想明白“灵魂”和“熏陶”的意思。', 'From this, she was certain that her soul had been shaped by these square characters—even if she had not yet figured out the exact meanings of "soul" and "shaped."'],
-      ['时间渐逝，生态箱内的湿热达到了阈值，模拟器红光微闪，环境便下起了雨。', 'As time passed, the humidity inside the enclosure reached its peak. The simulator flashed a dim red light, and rain began to fall upon the simulated rainforest.'],
-      ['她注视着雨幕，脑中忽然窜出一个画面。', 'Gazing at the curtain of rain, an image suddenly flashed through her mind.'],
-      ['白雾氤氲的房间，圆形的金属把头，有“雨水”从内喷出，淋在一只举起的手上。', 'A room shrouded in white mist, a round metallic showerhead, water spraying down onto an uplifted hand.'],
-      ['手？', 'A hand?'],
-      ['垂眸，入目是一双金属灰的爪子，锋利又可怖。', 'Lowering her eyes, she saw a pair of metallic-gray claws—razor-sharp and terrifying.'],
-      ['她看得烦躁，下意识地攥紧拳头，不料爪子立刻勾起，在硬土上十分轻易地留下了抓痕。', 'Annoyed by the sight, she unconsciously clenched her fists, only for the claws to curve inward, leaving deep gashes in the hard soil with effortless ease.'],
-      ['有点深……', 'Quite deep...'],
-      ['她不敢再动。', 'She dared not move again.'],
-      ['这时，外界突然传来了一阵惨叫，凄厉到哀鸣。', 'Just then, a sharp, blood-curdling scream echoed from the outside world, rising into a mournful wail.'],
-      ['闻声，她的竖瞳飞速转动，视线穿透林叶的缝隙，精准地锁定发声的方位。', 'At the sound, her vertical pupils spun rapidly, her gaze piercing through the gaps in the foliage to pinpoint the precise location of the noise.'],
-      ['接着，她放轻呼吸，紧绷肌肉缩进阴暗处，后肢微微垫起，进入了随时狂奔的状态。', 'Slowing her breathing, she tensed her muscles and retreated deeper into the shadows, her hind legs slightly bent, ready to sprint at a moment\'s notice.'],
-      ['而原本趴在一堆方块盒子前的白大褂们，足足比她迟钝了“吃两块肉”的时间才反应过来。', 'Meanwhile, the lab coats hunched over rows of square console monitors reacted sluggishly, taking twice as long to respond as she had.'],
-      ['他们几乎是“慢吞吞”地起身，“缓慢”地跑动，一批向她靠近，一批赶赴外界。', 'They rose almost sluggishly and moved with excruciating slowness—one group approaching her enclosure while another rushed outside.'],
-      ['“出了什么事？”', '“What happened?”'],
-      ['“二代的1号资产咬伤了饲养员。”', '“Asset No. 1 of the second generation bit the keeper.”'],
-      ['“它尝到了人血的味道？这可是恐龙……我的上帝！”', '“It tasted human blood? But this is a dinosaur... My God!”'],
-      ['“激活它的野性，我要的是杀器，不是宠物。”', '“Activate its wild nature. I want a killing machine, not a pet.”'],
-      ['“阿萨思”', '“Asas”'],
-
-      // 1. Sci-Fi & User Specific Terms
-      ['华裔中年男子', 'middle-aged Chinese man'],
-      ['华裔男子', 'Chinese man'],
-      ['科技造物', 'artificially engineered life-form'],
-      ['金色竖瞳', 'golden slit pupils'],
-      ['黑咕隆咚', 'pitch-black'],
-      ['回收遗体', 'recovered her body'],
-      ['入土为安', 'proper burial'],
-      ['血肉横飞', 'one of the bloody casualties'],
-      ['车脊', 'roofs of the cars'],
-      ['生态箱', 'ecological enclosure'],
-      ['模棱看', 'vaguely observed'],
-      ['腐林', 'decayed forest'],
-      ['潮湿又阴', 'humid and dark'],
-      ['炙烤下', 'under the scorching sun'],
-      ['阴影中休息', 'resting in the shadow'],
-      ['矮叶植物', 'low foliage'],
-      ['从身到心', 'from body to soul'],
-      ['更喜欢寂静', 'preferred the quiet silence'],
-      ['身体过于弱小', 'body was far too fragile'],
-      ['生存环境', 'living environment'],
-      ['莫名须有的恐惧', 'an inexplicable sense of dread'],
-      ['血肉深处', 'deep within its blood and marrow'],
-      ['基因片段', 'genetic fragment'],
-      ['一出生就带有', 'born with an innate instinct'],
-      ['提醒它', 'alerting it to danger'],
-      ['学会躲避', 'learn to take cover'],
-      ['就会被抓出', 'would be dragged out'],
-      ['吃掉', 'and devoured'],
-      ['被咬断', 'have its spine snapped'],
-      ['学会杀戮', 'learn to kill'],
-      ['就会死于', 'or perish at the hands of others'],
-      ['本能', 'instinct'],
-      ['强者', 'The strong'],
-      ['怎样炼成的', 'how they are forged'],
-
-      // 2. Chengyu & Idioms (成语 & 俗语)
-      ['弱肉强食', 'the law of the jungle'],
-      ['井底之蛙', 'a frog at the bottom of a well'],
-      ['有眼不识泰山', 'fail to recognize Mount Tai'],
-      ['扮猪吃老虎', 'playing the fool to catch the tiger'],
-      ['人外有人，天外有天', 'there are always talents beyond talents'],
-      ['人外有人天外有天', 'there are always talents beyond talents'],
-      ['螳螂捕蝉，黄雀在后', 'the mantis stalks the cicada, unaware of the oriole behind'],
-      ['螳螂捕蝉黄雀在后', 'the mantis stalks the cicada, unaware of the oriole behind'],
-      ['哭笑不得', "didn't know whether to laugh or cry"],
-      ['打脸', 'face-slapping'],
-      ['三十年河东，三十年河西', 'Thirty years east of the river, thirty years west of the river'],
-      ['莫欺少年穷', 'do not look down on a young man for being poor'],
-
-      // 3. Poetic Time Measurements (时间)
-      ['一炷香的时间', 'the time it takes an incense stick to burn'],
-      ['一炷香', 'the time it takes an incense stick to burn'],
-      ['一盏茶的时间', 'the time it takes to drink a cup of tea'],
-      ['一盏茶', 'the time it takes to drink a cup of tea'],
-      ['一息之间', 'in the span of a single breath'],
-      ['一息', 'a breath of time'],
-      ['弹指之间', 'in the flick of a finger'],
-
-      // 4. Alchemy & Elixirs (丹道 & 丹药)
-      ['炼丹师', 'Alchemist'],
-      ['丹师', 'Alchemist'],
-      ['炼丹炉', 'Pill Furnace'],
-      ['丹炉', 'Pill Furnace'],
-      ['炼丹', 'refining pills'],
-      ['丹药', 'Medicinal Pill'],
-      ['灵草', 'Spirit Herb'],
-      ['灵药', 'Spiritual Medicine'],
-      ['洗髓丹', 'Marrow Cleansing Pill'],
-      ['筑基丹', 'Foundation Establishment Pill'],
-      ['聚气丹', 'Qi Gathering Pill'],
-      ['解毒丹', 'Detoxification Pill'],
-
-      // 5. Formations & Arrays (阵法)
-      ['护山大阵', 'Mountain-Protecting Array'],
-      ['五行阵', 'Five Elements Formation'],
-      ['阵法', 'Formation Array'],
-      ['阵眼', 'Eye of the Formation'],
-      ['封印', 'Seal'],
-      ['禁制', 'Restriction Barrier'],
-
-      // 6. Spirit Beasts & Demonic Cores (灵兽 & 妖兽)
-      ['魔兽', 'Magical Beast'],
-      ['灵兽', 'Spirit Beast'],
-      ['妖兽', 'Demonic Beast'],
-      ['兽核', 'Beast Core'],
-      ['妖丹', 'Demon Core'],
-      ['化形', 'humanoid metamorphosis'],
-
-      // 7. Magic Artifacts & Gear (法宝 & 装备)
-      ['本命法宝', 'Life-Bound Artifact'],
-      ['空间戒指', 'Interspatial Ring'],
-      ['储物戒', 'Storage Ring'],
-      ['法宝', 'Magic Treasure'],
-      ['飞剑', 'Flying Sword'],
-      ['灵宝', 'Spiritual Treasure'],
-      ['符箓', 'Talisman'],
-
-      // 8. Martial Arts Movements & Combat Verbs (武功 & 步法)
-      ['轻功', 'Qinggong (Lightness Skill)'],
-      ['步法', 'Footwork'],
-      ['套路', 'Martial Form'],
-      ['内功', 'Internal Skill'],
-      ['外功', 'External Skill'],
-      ['崩拳', 'Crushing Fist'],
-      ['劈掌', 'Cleaving Palm'],
-      ['掌法', 'Palm Technique'],
-      ['剑法', 'Sword Technique'],
-      ['刀法', 'Saber Technique'],
-      ['闪避', 'evasion'],
-      ['招式', 'martial move'],
-
-      // 9. Cultivation Realms & Energy (修炼 & 境界)
-      ['斗气大陆', 'Dou Qi Continent'],
-      ['乌坦城', 'Wutan City'],
-      ['云岚宗', 'Misty Cloud Sect'],
-      ['退婚', 'annulment of the marriage contract'],
-      ['斗气', 'Dou Qi'],
-      ['丹田', 'Dantian'],
-      ['经脉', 'Meridians'],
-      ['金丹', 'Golden Core'],
-      ['元婴', 'Nascent Soul'],
-      ['天劫', 'Heavenly Tribulation'],
-      ['大怒', 'furious'],
-      ['震惊', 'shocked'],
-      ['突破', 'breakthrough'],
-      ['修炼', 'cultivate'],
-      ['渡劫', 'undergo tribulation'],
-
-      // 10. Social Honorifics & Titles (称谓 & 身份)
-      ['师父', 'Shifu'],
-      ['师兄', 'Senior Brother'],
-      ['师弟', 'Junior Brother'],
-      ['师姐', 'Senior Sister'],
-      ['师妹', 'Junior Sister'],
-      ['前辈', 'Senior'],
-      ['晚辈', 'Junior'],
-      ['宗主', 'Sect Master'],
-      ['门主', 'Faction Leader'],
-      ['阁主', 'Pavilion Master'],
-      ['长老', 'Elder'],
-      ['族长', 'Patriarch'],
-      ['少主', 'Young Master'],
-      ['老夫', 'this old man'],
-      ['老朽', 'this old man'],
-      ['晚生', 'this junior'],
-      ['说道', 'said'],
-      ['冷笑', 'sneered'],
-      ['怒道', 'roared'],
-      ['叫道', 'shouted'],
-      ['笑到', 'smiled'],
-      ['问道', 'asked'],
-      ['叹道', 'sighed']
-    ];
-
-    for (const [zh, en] of clauseMap) {
-      text = text.replaceAll(zh, en);
-    }
-
-    // Clean Chinese quotes and punctuation
+    // Step 2: Convert Chinese punctuation to English
     text = text
-      .replaceAll('“', '"')
-      .replaceAll('”', '"')
-      .replaceAll('！', '! ')
-      .replaceAll('？', '? ')
-      .replaceAll('；', '; ')
-      .replaceAll('：', ': ')
-      .replaceAll('，', ', ')
-      .replaceAll('。', '. ');
+      .replaceAll('\u201c', '"').replaceAll('\u201d', '"')
+      .replaceAll('“', '"').replaceAll('”', '"')
+      .replaceAll('‘', "'").replaceAll('’', "'")
+      .replaceAll('\uff01', '! ').replaceAll('！', '! ')
+      .replaceAll('\uff1f', '? ').replaceAll('？', '? ')
+      .replaceAll('\uff1b', '; ').replaceAll('；', '; ')
+      .replaceAll('\uff1a', ': ').replaceAll('：', ': ')
+      .replaceAll('\uff0c', ', ').replaceAll('，', ', ')
+      .replaceAll('\u3002', '. ').replaceAll('。', '. ')
+      .replaceAll('\u3001', ', ').replaceAll('、', ', ')
+      .replaceAll('\u2026', '...').replaceAll('……', '...')
+      .replaceAll('——', ' — ');
 
-    // Convert any remaining Chinese characters into clean English terms
+    // Step 3: Handle single residual Chinese characters with Pinyin fallback
     text = text.replace(/[\u4e00-\u9fa5]+/g, (match) => {
-      const gMatch = glossary.find(g => g.originalZh === match);
-      if (gMatch) return ` ${gMatch.translatedEn} `;
-      return '';
+      const pinyin = getPinyinForText(match);
+      return ` ${pinyin} `;
     });
 
-    // Formatting cleanup
-    text = text.replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
+    // Step 4: Re-insert translated tokens
+    for (const [ph, en] of placeholderMap.entries()) {
+      text = text.replaceAll(ph, en);
+    }
+
+    // Step 5: Clean spacing and punctuation grammar
+    text = text
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.!?;:])/g, '$1')
+      .replace(/([.!?])\s*([a-z])/g, (_, p, letter) => `${p} ${letter.toUpperCase()}`)
+      .trim();
+
     if (text) {
+      // Capitalize first letter of paragraph
+      text = text.charAt(0).toUpperCase() + text.slice(1);
       translatedParagraphs.push(text);
     }
   }
 
   return translatedParagraphs.join('\n');
+}
+
+/**
+ * Rule #2 & Rule #3 Compliance: Eradicates any leftover Chinese characters from English translation output,
+ * replacing them with clean Pinyin transliterated equivalents.
+ */
+export function cleanUnwantedChineseFromEnglish(text: string): string {
+  if (!text) return '';
+  if (!/[\u4e00-\u9fa5]/.test(text)) return text;
+
+  return text.replace(/[\u4e00-\u9fa5]+/g, (match) => {
+    const pinyin = getPinyinForText(match);
+    const cleanPinyin = pinyin
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u4e00-\u9fa5]+/g, '')
+      .trim();
+    return cleanPinyin ? ` ${cleanPinyin} ` : '';
+  }).replace(/\s+/g, ' ').trim();
 }
 
 function getPossibleDrifts(originalZh: string, correctEn: string, oldEn?: string): string[] {
@@ -439,9 +488,6 @@ function getPossibleDrifts(originalZh: string, correctEn: string, oldEn?: string
   } else if (originalZh === '云岚宗') {
     drifts.add('Cloud Mist Sect');
     drifts.add('Mist Cloud Sect');
-  } else if (originalZh === '华裔中年男子' || originalZh === '华裔男子') {
-    drifts.add('Chinese-descent Man');
-    drifts.add('Chinese Descent Man');
   }
 
   drifts.delete(correctEn);
@@ -450,4 +496,68 @@ function getPossibleDrifts(originalZh: string, correctEn: string, oldEn?: string
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Re-translates a single paragraph using specified tone style and glossary constraints.
+ */
+export function retranslateParagraph(
+  rawZh: string,
+  glossary: GlossaryEntry[],
+  style: TranslationStyle = 'xianxia'
+): string {
+  if (!rawZh || !rawZh.trim()) return '';
+
+  let draft = simulateLLMTranslationDraft(rawZh, glossary);
+
+  // Apply style-specific tone adjustments
+  if (style === 'xianxia') {
+    draft = draft
+      .replace(/\bmaster\b/gi, 'Master')
+      .replace(/\bsect master\b/gi, 'Sect Leader')
+      .replace(/\byoung master\b/gi, 'Young Master')
+      .replace(/\belder\b/gi, 'Elder')
+      .replace(/\blooking for death\b/gi, 'courting death!')
+      .replace(/\bseeking death\b/gi, 'courting death!');
+  } else if (style === 'fluent') {
+    // Simplify archaic syntax for snappy modern reading
+    draft = draft
+      .replace(/\bwhere could there still be\b/gi, 'there was no longer any')
+      .replace(/\bcarrying a trace of\b/gi, 'with a hint of')
+      .replace(/\bthe heart within\b/gi, 'inside')
+      .replace(/\bshining brightly so that\b/gi, 'dazzling enough to');
+  }
+
+  // Capitalize sentence beginnings
+  if (draft.length > 0) {
+    draft = draft.charAt(0).toUpperCase() + draft.slice(1);
+  }
+
+  return draft;
+}
+
+/**
+ * Generates 2-3 alternate phrasing candidates for a paragraph.
+ */
+export function getParagraphAlternatives(
+  rawZh: string,
+  currentEn: string,
+  glossary: GlossaryEntry[]
+): string[] {
+  const alts = new Set<string>();
+
+  const xianxiaDraft = retranslateParagraph(rawZh, glossary, 'xianxia');
+  const fluentDraft = retranslateParagraph(rawZh, glossary, 'fluent');
+  const faithfulDraft = simulateLLMTranslationDraft(rawZh, glossary);
+
+  if (xianxiaDraft && xianxiaDraft !== currentEn) alts.add(xianxiaDraft);
+  if (fluentDraft && fluentDraft !== currentEn) alts.add(fluentDraft);
+  if (faithfulDraft && faithfulDraft !== currentEn) alts.add(faithfulDraft);
+
+  // If no alternatives yet, create a polished variant
+  if (alts.size === 0 && currentEn) {
+    alts.add(currentEn.replace(/\bHe\b/g, 'The youth').replace(/\bhis\b/g, "the boy's"));
+  }
+
+  return Array.from(alts).slice(0, 3);
 }

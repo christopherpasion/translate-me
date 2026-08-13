@@ -1,6 +1,10 @@
-import React, { useRef, useState } from 'react';
-import type { Chapter, GlossaryEntry, SelfHealingRecord } from '../types';
-import { ShieldCheck, Edit2, Check, RefreshCw, Sparkles, Lock, Unlock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import type { Chapter, GlossaryEntry, SelfHealingRecord, ChineseScript } from '../types';
+import { getPinyinForText } from '../services/pinyinService';
+import { convertToTraditional, convertToSimplified } from '../services/scriptConverter';
+import { retranslateParagraph, getParagraphAlternatives, type TranslationStyle } from '../services/translationEngine';
+import { extractEntitiesFromChinese, type ExtractedEntity } from '../services/nerExtractor';
+import { ShieldCheck, Edit2, Check, Sparkles, BookOpen, RefreshCw, Wand2, Plus } from 'lucide-react';
 
 interface DualPaneStudioProps {
   chapter: Chapter | null;
@@ -8,8 +12,10 @@ interface DualPaneStudioProps {
   healingRecords: SelfHealingRecord[];
   onSaveContent: (contentZh: string, contentEn: string) => void;
   onQuickUpdateGlossary: (originalZh: string, newEn: string) => void;
-  onReTranslateChapter: () => void;
+  onReTranslateChapter?: () => void;
   onPolishProse?: () => void;
+  onOpenDictionaryModal?: () => void;
+  translationStyle?: TranslationStyle;
 }
 
 export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
@@ -19,18 +25,20 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   onSaveContent,
   onQuickUpdateGlossary,
   onReTranslateChapter,
-  onPolishProse
+  onPolishProse,
+  onOpenDictionaryModal,
+  translationStyle = 'xianxia'
 }) => {
-  const leftPaneRef = useRef<HTMLDivElement>(null);
-  const rightPaneRef = useRef<HTMLDivElement>(null);
-  const isSyncingRef = useRef<boolean>(false);
-
   // Inline editing popover state
   const [editingTerm, setEditingTerm] = useState<{ zh: string; en: string; x: number; y: number } | null>(null);
   const [newEnInput, setNewEnInput] = useState('');
 
   // Synchronous Cross-Highlighting State across Chinese and English panes
   const [hoveredTermZh, setHoveredTermZh] = useState<string | null>(null);
+  const [hoveredParaIdx, setHoveredParaIdx] = useState<number | null>(null);
+
+  // Paragraph alternatives state
+  const [alternativesState, setAlternativesState] = useState<{ paraIdx: number; alts: string[] } | null>(null);
 
   // Editable raw text states
   const [isEditingZh, setIsEditingZh] = useState(false);
@@ -38,56 +46,45 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   const [isEditingEn, setIsEditingEn] = useState(false);
   const [rawEnText, setRawEnText] = useState(chapter?.contentEn || '');
 
-  // Synchronize raw text state when chapter props change (e.g. after Re-Translate or Polish)
-  React.useEffect(() => {
+  // Chinese Script View Mode ('simplified' | 'traditional')
+  const [scriptMode, setScriptMode] = useState<ChineseScript>('simplified');
+
+  // Mobile Active Tab State ('all' | 'zh' | 'en')
+  const [mobileTab, setMobileTab] = useState<'all' | 'zh' | 'en'>('all');
+
+  // Synchronize raw text state when chapter props change
+  useEffect(() => {
     if (chapter) {
       setRawZhText(chapter.contentZh || '');
-      setRawEnText(chapter.contentEn || '');
+      setRawEnText(stripMarkdown(chapter.contentEn || ''));
     }
-  }, [chapter?.id, chapter?.contentZh, chapter?.contentEn]);
+  }, [chapter]);
 
-  // Scroll Sync Lock Toggle State
-  const [isScrollSyncLocked, setIsScrollSyncLocked] = useState(true);
+  // Scan for unmapped entities to suggest 1-click addition to glossary
+  const unmappedDiscoveredEntities = useMemo<ExtractedEntity[]>(() => {
+    if (!chapter?.contentZh) return [];
+    return extractEntitiesFromChinese(chapter.contentZh, glossary).slice(0, 6);
+  }, [chapter?.contentZh, glossary]);
 
-  // Synchronized Paragraph-Aligned Scrolling Logic
-  const handleScroll = (source: 'left' | 'right') => {
-    if (!isScrollSyncLocked || isSyncingRef.current) return;
-    isSyncingRef.current = true;
+  // Unified Row-by-Row Paragraph Pairs (Guarantees 100% Side-by-Side Alignment with ZERO drift)
+  const alignedRows = useMemo(() => {
+    if (!chapter) return [];
+    const displayText = scriptMode === 'traditional' ? convertToTraditional(chapter.contentZh || '') : convertToSimplified(chapter.contentZh || '');
+    const zhParas = displayText.split('\n').map(p => p.trim()).filter(Boolean);
+    const cleanEn = stripMarkdown(chapter.contentEn || '');
+    const enParas = cleanEn.split('\n').map(p => p.trim()).filter(Boolean);
+    const maxCount = Math.max(zhParas.length, enParas.length);
 
-    const sourcePane = source === 'left' ? leftPaneRef.current : rightPaneRef.current;
-    const targetPane = source === 'left' ? rightPaneRef.current : leftPaneRef.current;
-
-    if (sourcePane && targetPane) {
-      const sourceParas = Array.from(sourcePane.querySelectorAll('p'));
-      const targetParas = Array.from(targetPane.querySelectorAll('p'));
-
-      if (sourceParas.length > 0 && targetParas.length > 0) {
-        const paneTop = sourcePane.getBoundingClientRect().top;
-        let activeIdx = 0;
-
-        for (let i = 0; i < sourceParas.length; i++) {
-          const pTop = sourceParas[i].getBoundingClientRect().top - paneTop;
-          if (pTop >= 0) {
-            activeIdx = i;
-            break;
-          }
-        }
-
-        const targetActivePara = targetParas[Math.min(activeIdx, targetParas.length - 1)];
-        if (targetActivePara) {
-          const targetOffset = targetActivePara.offsetTop - targetPane.offsetTop;
-          targetPane.scrollTop = targetOffset;
-        }
-      } else {
-        const percentage = sourcePane.scrollTop / (sourcePane.scrollHeight - sourcePane.clientHeight || 1);
-        targetPane.scrollTop = percentage * (targetPane.scrollHeight - targetPane.clientHeight);
-      }
+    const rows = [];
+    for (let i = 0; i < maxCount; i++) {
+      rows.push({
+        idx: i,
+        zh: zhParas[i] || '',
+        en: enParas[i] || ''
+      });
     }
-
-    setTimeout(() => {
-      isSyncingRef.current = false;
-    }, 60);
-  };
+    return rows;
+  }, [chapter, scriptMode]);
 
   if (!chapter) {
     return (
@@ -97,23 +94,51 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     );
   }
 
-  // Highlight Glossary Terms in Chinese Text
-  const renderChineseContent = (text: string) => {
-    if (!text) return null;
-    const paragraphs = text.split('\n');
+  const handleRetranslateSinglePara = (pIdx: number) => {
+    if (!chapter) return;
+    const zhParas = (chapter.contentZh || '').split('\n').map(p => p.trim()).filter(Boolean);
+    const enParas = (chapter.contentEn || '').split('\n').map(p => p.trim()).filter(Boolean);
+    const targetZh = zhParas[pIdx] || '';
+    if (!targetZh.trim()) return;
 
-    return paragraphs.map((para, pIdx) => {
-      if (!para.trim()) return <br key={pIdx} />;
+    const newEnDraft = retranslateParagraph(targetZh, glossary, translationStyle);
+    
+    // Replace paragraph in English content
+    const updatedEnParas = [...enParas];
+    while (updatedEnParas.length <= pIdx) updatedEnParas.push('');
+    updatedEnParas[pIdx] = newEnDraft;
 
-      return (
-        <p key={pIdx} style={{ marginBottom: '1rem' }}>
-          {renderHighlightedZhParagraph(para)}
-        </p>
-      );
-    });
+    const newEnContent = updatedEnParas.join('\n\n');
+    setRawEnText(newEnContent);
+    onSaveContent(chapter.contentZh, newEnContent);
+  };
+
+  const handleShowAlternatives = (pIdx: number) => {
+    if (!chapter) return;
+    const zhParas = (chapter.contentZh || '').split('\n').map(p => p.trim()).filter(Boolean);
+    const enParas = (chapter.contentEn || '').split('\n').map(p => p.trim()).filter(Boolean);
+    const targetZh = zhParas[pIdx] || '';
+    const currentEn = enParas[pIdx] || '';
+
+    const alts = getParagraphAlternatives(targetZh, currentEn, glossary);
+    setAlternativesState({ paraIdx: pIdx, alts });
+  };
+
+  const handleApplyAlternative = (pIdx: number, selectedEn: string) => {
+    if (!chapter) return;
+    const enParas = (chapter.contentEn || '').split('\n').map(p => p.trim()).filter(Boolean);
+    const updatedEnParas = [...enParas];
+    while (updatedEnParas.length <= pIdx) updatedEnParas.push('');
+    updatedEnParas[pIdx] = selectedEn;
+
+    const newEnContent = updatedEnParas.join('\n\n');
+    setRawEnText(newEnContent);
+    onSaveContent(chapter.contentZh, newEnContent);
+    setAlternativesState(null);
   };
 
   const renderHighlightedZhParagraph = (para: string) => {
+    if (!para) return null;
     const sortedGlossary = [...glossary].sort((a, b) => b.originalZh.length - a.originalZh.length);
     const regexParts = sortedGlossary.map(g => escapeRegExp(g.originalZh)).filter(Boolean);
 
@@ -123,14 +148,19 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     const parts = para.split(regex);
 
     return parts.map((part, i) => {
-      const matched = sortedGlossary.find(g => g.originalZh === part);
+      const matched = sortedGlossary.find(g =>
+        g.originalZh === part || convertToTraditional(g.originalZh) === part
+      );
+
       if (matched) {
         const isHovered = hoveredTermZh === matched.originalZh;
+        const pinyinText = matched.pinyin || getPinyinForText(matched.originalZh);
+
         return (
           <span
             key={i}
             className={`term-highlight ${isHovered ? 'term-highlight-active' : ''}`}
-            title={`Mapped to: "${matched.translatedEn}" (${matched.category})`}
+            title={`Pinyin: ${pinyinText} | EN: "${matched.translatedEn}" (${matched.category})`}
             onMouseEnter={() => setHoveredTermZh(matched.originalZh)}
             onMouseLeave={() => setHoveredTermZh(null)}
             onClick={(e) => {
@@ -146,6 +176,9 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
             }}
           >
             {part}
+            <sub className="pinyin-sub" style={{ fontSize: '0.65em', opacity: 0.8, marginLeft: '2px', color: '#ec4899' }}>
+              [{pinyinText}]
+            </sub>
           </span>
         );
       }
@@ -153,32 +186,8 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     });
   };
 
-  // Render Highlighted English Content with Self-Healing Badges & Synchronous Cross-Highlighting
-  const renderEnglishContent = (text: string) => {
-    if (!text) return null;
-    const rawParagraphs = text.split('\n').map(p => p.trim()).filter(Boolean);
-    const titleClean = chapter?.titleEn?.replace(/^Chapter\s+\d+:\s*/i, '').trim().toLowerCase() || '';
-
-    const paragraphs = rawParagraphs.filter((para, idx) => {
-      if (idx === 0 && titleClean) {
-        const pClean = para.toLowerCase();
-        if (pClean === titleClean || titleClean.includes(pClean) || pClean.includes(titleClean)) {
-          return false; // Skip redundant title line!
-        }
-      }
-      return true;
-    });
-
-    return paragraphs.map((para, pIdx) => {
-      return (
-        <p key={pIdx} style={{ marginBottom: '1rem' }}>
-          {renderHighlightedEnParagraph(para)}
-        </p>
-      );
-    });
-  };
-
   const renderHighlightedEnParagraph = (para: string) => {
+    if (!para) return null;
     const sortedGlossary = [...glossary].sort((a, b) => b.translatedEn.length - a.translatedEn.length);
     const regexParts = sortedGlossary.map(g => escapeRegExp(g.translatedEn)).filter(Boolean);
 
@@ -192,12 +201,14 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
       if (matched) {
         const isHovered = hoveredTermZh === matched.originalZh;
         const healedRecord = healingRecords.find(h => h.termZh === matched.originalZh);
+        const pinyinText = matched.pinyin || getPinyinForText(matched.originalZh);
+
         if (healedRecord) {
           return (
             <span
               key={i}
               className={`self-healed-badge ${isHovered ? 'term-highlight-active' : ''}`}
-              title={`[Self-Healed Agent] Auto-corrected drift "${healedRecord.incorrectEn}" -> "${matched.translatedEn}"`}
+              title={`[Self-Healed Agent] Auto-corrected drift "${healedRecord.incorrectEn}" -> "${matched.translatedEn}" (${pinyinText})`}
               onMouseEnter={() => setHoveredTermZh(matched.originalZh)}
               onMouseLeave={() => setHoveredTermZh(null)}
             >
@@ -211,7 +222,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
           <span
             key={i}
             className={`term-highlight ${isHovered ? 'term-highlight-active' : ''}`}
-            title={`Glossary Term (${matched.category}): Original ZH "${matched.originalZh}"`}
+            title={`Glossary Term (${matched.category}): ZH "${matched.originalZh}" [${pinyinText}]`}
             onMouseEnter={() => setHoveredTermZh(matched.originalZh)}
             onMouseLeave={() => setHoveredTermZh(null)}
             onClick={(e) => {
@@ -241,9 +252,6 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     }
   };
 
-  // Mobile Active Tab State ('all' | 'zh' | 'en')
-  const [mobileTab, setMobileTab] = useState<'all' | 'zh' | 'en'>('all');
-
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       {/* Mobile Touch Tab Bar (< 768px) */}
@@ -258,243 +266,376 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
           className={`mobile-tab-btn ${mobileTab === 'zh' ? 'active' : ''}`}
           onClick={() => setMobileTab('zh')}
         >
-          🇨🇳 Chinese
+          Chinese
         </button>
         <button
           className={`mobile-tab-btn ${mobileTab === 'en' ? 'active' : ''}`}
           onClick={() => setMobileTab('en')}
         >
-          🇬🇧 English
+          English
         </button>
       </div>
 
-      <div className={`pane-split mobile-tab-${mobileTab}`}>
-        {/* LEFT PANE: Chinese Raw Text */}
-        <div className={`editor-pane ${mobileTab === 'en' ? 'mobile-hidden' : ''}`}>
-          <div className="pane-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-cyan)', flexShrink: 0 }}></span>
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Raw Chinese Source</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-              {/* Scroll Sync Lock Toggle */}
-              <button
-                className={`btn ${isScrollSyncLocked ? 'btn-secondary' : 'btn-primary'}`}
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
-                onClick={() => setIsScrollSyncLocked(!isScrollSyncLocked)}
-                title={isScrollSyncLocked ? 'Scroll Sync Locked: Panes scroll together paragraph by paragraph. Click to unlock.' : 'Scroll Sync Unlocked: Panes scroll independently. Click to lock.'}
-              >
-                {isScrollSyncLocked ? <Lock size={12} style={{ color: 'var(--primary-cyan)' }} /> : <Unlock size={12} />}
-                <span className="pane-btn-text">{isScrollSyncLocked ? 'Sync' : 'Free'}</span>
-              </button>
-
-              {isEditingZh ? (
-                <button
-                  className="btn btn-primary"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
-                  onClick={() => {
-                    onSaveContent(rawZhText, chapter.contentEn);
-                    setIsEditingZh(false);
-                  }}
-                >
-                  <Check size={12} /> <span className="pane-btn-text">Save</span>
-                </button>
-              ) : (
-                <button
-                  className="btn btn-secondary"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
-                  onClick={() => {
-                    setRawZhText(chapter.contentZh);
-                    setIsEditingZh(true);
-                  }}
-                >
-                  <Edit2 size={12} /> <span className="pane-btn-text">Edit</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div
-            className="pane-content chinese-text"
-            ref={leftPaneRef}
-            onScroll={() => handleScroll('left')}
-          >
-            {isEditingZh ? (
-              <textarea
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  background: 'transparent',
-                  color: '#fff',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '1.15rem',
-                  fontFamily: 'var(--font-zh)',
-                  lineHeight: '2',
-                  resize: 'none'
-                }}
-                value={rawZhText}
-                onChange={(e) => setRawZhText(e.target.value)}
-              />
-            ) : (
-              renderChineseContent(chapter.contentZh)
-            )}
+      {/* Main Studio Toolbar & Subheader */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Script Mode:</span>
+          <div style={{ display: 'flex', background: 'var(--bg-tertiary)', borderRadius: '6px', padding: '2px' }}>
+            <button
+              className={`pill-toggle ${scriptMode === 'simplified' ? 'active' : ''}`}
+              onClick={() => setScriptMode('simplified')}
+              style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+            >
+              简体 (Simplified)
+            </button>
+            <button
+              className={`pill-toggle ${scriptMode === 'traditional' ? 'active' : ''}`}
+              onClick={() => setScriptMode('traditional')}
+              style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+            >
+              繁體 (Traditional)
+            </button>
           </div>
         </div>
 
-        {/* RIGHT PANE: English Translation */}
-        <div className={`editor-pane ${mobileTab === 'zh' ? 'mobile-hidden' : ''}`}>
-          <div className="pane-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-green)', flexShrink: 0 }}></span>
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>English Translation</span>
-              {chapter.selfHealedCount > 0 && (
-                <span className="badge badge-xianxia desktop-theme-text" style={{ fontSize: '0.7rem' }}>
-                  {chapter.selfHealedCount} Healed
-                </span>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-              <button
-                className="btn btn-secondary"
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
-                onClick={onReTranslateChapter}
-                title="Re-translate using updated Glossary Map"
-              >
-                <RefreshCw size={12} /> <span className="pane-btn-text">Re-Translate</span>
-              </button>
-
-              {onPolishProse && (
-                <button
-                  className="btn btn-secondary"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--accent-purple)', borderColor: 'var(--accent-purple)', gap: '0.25rem' }}
-                  onClick={onPolishProse}
-                  title="Upgrade English translation into smooth, literary prose"
-                >
-                  <Sparkles size={12} /> <span className="pane-btn-text">Polish</span>
-                </button>
-              )}
-
-              {isEditingEn ? (
-                <button
-                  className="btn btn-primary"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
-                  onClick={() => {
-                    onSaveContent(chapter.contentZh, rawEnText);
-                    setIsEditingEn(false);
-                  }}
-                >
-                  <Check size={12} /> <span className="pane-btn-text">Save</span>
-                </button>
-              ) : (
-                <button
-                  className="btn btn-secondary"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', gap: '0.25rem' }}
-                  onClick={() => {
-                    setRawEnText(chapter.contentEn);
-                    setIsEditingEn(true);
-                  }}
-                >
-                  <Edit2 size={12} /> <span className="pane-btn-text">Edit</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div
-            className="pane-content"
-            ref={rightPaneRef}
-            onScroll={() => handleScroll('right')}
-          >
-            {isEditingEn ? (
-              <textarea
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  background: 'transparent',
-                  color: '#fff',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '1.05rem',
-                  lineHeight: '1.8',
-                  resize: 'none'
-                }}
-                value={rawEnText}
-                onChange={(e) => setRawEnText(e.target.value)}
-              />
-            ) : chapter.contentEn ? (
-              renderEnglishContent(chapter.contentEn)
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem', textAlign: 'center', padding: '2rem' }}>
-                <div style={{ background: 'rgba(0, 242, 254, 0.1)', padding: '1.25rem', borderRadius: '50%', border: '1px solid rgba(0, 242, 254, 0.3)' }}>
-                  <RefreshCw size={32} style={{ color: 'var(--primary-cyan)' }} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', color: '#fff', fontWeight: 700 }}>No English Translation Draft Yet</h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem', maxWidth: '340px' }}>
-                    Click below to run the Self-Healing Translation Engine using your active 2-tier Glossary Map.
-                  </p>
-                </div>
-                <button className="btn btn-primary" onClick={onReTranslateChapter}>
-                  <RefreshCw size={16} /> Translate Chapter Now
-                </button>
-              </div>
-            )}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {onOpenDictionaryModal && (
+            <button className="btn-action secondary" onClick={onOpenDictionaryModal} style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+              <BookOpen size={14} /> Master Dictionary
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Inline Quick Term Editor Popup */}
-      {editingTerm && (
+      {/* Discovered Entities Quick-Add Banner */}
+      {unmappedDiscoveredEntities.length > 0 && (
         <div
-          className="glass-panel"
           style={{
-            position: 'fixed',
-            left: `${Math.max(10, Math.min(window.innerWidth - 330, editingTerm.x))}px`,
-            top: `${Math.max(10, Math.min(window.innerHeight - 170, editingTerm.y))}px`,
-            zIndex: 9999,
-            padding: '0.85rem',
-            width: '310px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.5), var(--shadow-glow)',
-            border: '1px solid var(--primary-cyan)',
-            background: 'var(--bg-panel)'
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.35rem 1rem',
+            background: 'rgba(0, 242, 254, 0.05)',
+            borderBottom: '1px solid rgba(0, 242, 254, 0.15)',
+            fontSize: '0.75rem',
+            flexWrap: 'wrap'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              Self-Learning Edit for: <strong style={{ color: 'var(--primary-cyan)' }}>{editingTerm.zh}</strong>
-            </div>
+          <span style={{ color: 'var(--primary-cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Sparkles size={12} /> Discovered Entities:
+          </span>
+          {unmappedDiscoveredEntities.map((ent: ExtractedEntity, eIdx: number) => (
             <button
-              onClick={() => setEditingTerm(null)}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', padding: '0 0.2rem', lineHeight: 1 }}
-            >
-              ×
-            </button>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              value={newEnInput}
-              onChange={(e) => setNewEnInput(e.target.value)}
+              key={eIdx}
+              onClick={() => onQuickUpdateGlossary(ent.originalZh, ent.suggestedEn)}
+              title={`Click to add "${ent.originalZh}" -> "${ent.suggestedEn}" to glossary`}
               style={{
-                flex: 1,
-                padding: '0.4rem 0.6rem',
-                background: 'rgba(255, 255, 255, 0.08)',
+                background: 'var(--bg-elevated)',
                 border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
+                borderRadius: '9999px',
+                padding: '0.1rem 0.5rem',
                 color: 'var(--text-main)',
-                fontSize: '0.85rem'
+                fontSize: '0.72rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                transition: 'border-color 0.15s ease'
               }}
-              autoFocus
-            />
-            <button className="btn btn-primary" style={{ padding: '0.4rem 0.75rem' }} onClick={handleSaveInlineEdit}>
-              Update
+            >
+              <span>{ent.originalZh}</span>
+              <span style={{ color: 'var(--primary-cyan)' }}>→ {ent.suggestedEn}</span>
+              <Plus size={10} style={{ color: '#10b981' }} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Raw Edit Mode Overlays */}
+      {isEditingZh ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-cyan)' }}>Editing Raw Chinese Text</span>
+            <button className="btn btn-primary" onClick={() => { setIsEditingZh(false); onSaveContent(rawZhText, rawEnText); }}>
+              <Check size={14} /> Done
             </button>
           </div>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
-            Updates Glossary Map and cascades across all chapters automatically.
-          </p>
+          <textarea
+            className="raw-textarea"
+            value={rawZhText}
+            onChange={(e) => setRawZhText(e.target.value)}
+            style={{ flex: 1 }}
+          />
+        </div>
+      ) : isEditingEn ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-cyan)' }}>Editing English Translation Draft</span>
+            <button className="btn btn-primary" onClick={() => { const cleaned = stripMarkdown(rawEnText); setIsEditingEn(false); setRawEnText(cleaned); onSaveContent(rawZhText, cleaned); }}>
+              <Check size={14} /> Done
+            </button>
+          </div>
+          <textarea
+            className="raw-textarea"
+            value={rawEnText}
+            onChange={(e) => setRawEnText(e.target.value)}
+            style={{ flex: 1 }}
+          />
+        </div>
+      ) : (
+        /* Unified Row-Aligned Translation Grid */
+        <div className="aligned-translation-grid">
+          {/* Sticky Column Headers */}
+          <div className="aligned-grid-sticky-header">
+            <div className={`header-col ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>
+              <h3 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                Chinese Source ({scriptMode === 'traditional' ? '繁體' : '简体'})
+              </h3>
+              <button className="icon-button" onClick={() => setIsEditingZh(true)} title="Edit Raw Chinese Text">
+                <Edit2 size={14} />
+              </button>
+            </div>
+
+            <div className={`header-col ${mobileTab === 'zh' ? 'hidden-mobile' : ''}`}>
+              <h3 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                English Translation Draft
+              </h3>
+              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                {onReTranslateChapter && (
+                  <button
+                    className="btn-action secondary"
+                    onClick={onReTranslateChapter}
+                    title="Re-run full AI translation on this chapter"
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem' }}
+                  >
+                    🔄 Retranslate
+                  </button>
+                )}
+                {onPolishProse && (
+                  <button
+                    className="btn-action secondary"
+                    onClick={onPolishProse}
+                    title="Polish English prose style"
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem' }}
+                  >
+                    <Sparkles size={11} /> Polish Prose
+                  </button>
+                )}
+                <button className="icon-button" onClick={() => setIsEditingEn(true)} title="Edit English Text">
+                  <Edit2 size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Aligned Paragraph Rows */}
+          {alignedRows.map((row) => {
+            const isHovered = hoveredParaIdx === row.idx;
+            const isShowingAlternatives = alternativesState?.paraIdx === row.idx;
+
+            return (
+              <div
+                key={row.idx}
+                className={`translation-row ${isHovered ? 'row-active' : ''}`}
+                onMouseEnter={() => setHoveredParaIdx(row.idx)}
+                onMouseLeave={() => setHoveredParaIdx(null)}
+              >
+                {/* Left Cell: Chinese Paragraph */}
+                <div className={`translation-cell chinese-cell ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>
+                  {isHovered && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        left: '0px',
+                        background: 'var(--primary-cyan)',
+                        color: '#000',
+                        fontSize: '0.65rem',
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: '9999px',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        zIndex: 10
+                      }}
+                    >
+                      ¶ {row.idx + 1}
+                    </span>
+                  )}
+                  <p className="chinese-text" style={{ margin: 0, paddingTop: '0.25rem' }}>
+                    {renderHighlightedZhParagraph(row.zh)}
+                  </p>
+                </div>
+
+                {/* Right Cell: English Paragraph */}
+                <div className={`translation-cell english-cell ${mobileTab === 'zh' ? 'hidden-mobile' : ''}`}>
+                  {isHovered && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        left: '0px',
+                        background: '#3b82f6',
+                        color: '#fff',
+                        fontSize: '0.65rem',
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: '9999px',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        zIndex: 10
+                      }}
+                    >
+                      ¶ {row.idx + 1}
+                    </span>
+                  )}
+
+                  {/* Paragraph Action Bar on Hover */}
+                  {isHovered && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '-10px',
+                        right: '0px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-color)',
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: '9999px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        zIndex: 10
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleRetranslateSinglePara(row.idx)}
+                        title="Re-translate only this paragraph with current style & glossary"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--primary-cyan)',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.2rem',
+                          padding: '2px 4px'
+                        }}
+                      >
+                        <RefreshCw size={11} />
+                        <span>Re-translate</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleShowAlternatives(row.idx)}
+                        title="View alternate phrasing suggestions"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--accent-purple)',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.2rem',
+                          padding: '2px 4px'
+                        }}
+                      >
+                        <Wand2 size={11} />
+                        <span>Phrasings</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <p style={{ margin: 0, lineHeight: 1.8, paddingTop: '0.25rem' }}>
+                    {renderHighlightedEnParagraph(row.en)}
+                  </p>
+
+                  {/* Alternate Phrasings Dropdown */}
+                  {isShowingAlternatives && alternativesState && (
+                    <div
+                      style={{
+                        marginTop: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-glow)',
+                        borderRadius: 'var(--radius-sm)',
+                        boxShadow: 'var(--shadow-card)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-cyan)' }}>
+                          💡 Select Alternate Phrasing:
+                        </span>
+                        <button
+                          onClick={() => setAlternativesState(null)}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        {alternativesState.alts.map((alt, aIdx) => (
+                          <button
+                            key={aIdx}
+                            onClick={() => handleApplyAlternative(row.idx, alt)}
+                            style={{
+                              textAlign: 'left',
+                              padding: '0.35rem 0.5rem',
+                              borderRadius: '4px',
+                              background: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-color)',
+                              color: 'var(--text-main)',
+                              fontSize: '0.78rem',
+                              lineHeight: '1.4',
+                              cursor: 'pointer',
+                              transition: 'border-color 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary-cyan)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-color)')}
+                          >
+                            "{alt}"
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Inline Term Editor Popover */}
+      {editingTerm && (
+        <div
+          className="inline-popover"
+          style={{ top: `${editingTerm.y}px`, left: `${editingTerm.x}px` }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+            Quick Edit: "{editingTerm.zh}" [{getPinyinForText(editingTerm.zh)}]
+          </div>
+          <input
+            type="text"
+            className="search-input"
+            value={newEnInput}
+            onChange={(e) => setNewEnInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSaveInlineEdit()}
+            autoFocus
+          />
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
+            <button className="btn-action secondary" onClick={() => setEditingTerm(null)}>
+              Cancel
+            </button>
+            <button className="btn-action primary" onClick={handleSaveInlineEdit}>
+              Update & Cascade
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -503,4 +644,30 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Strips common markdown formatting artifacts that AI models emit
+ * e.g. **bold**, *italic*, # Headers, --- separators, backtick code blocks
+ * Safe to run on translated English prose without altering meaning.
+ */
+function stripMarkdown(text: string): string {
+  if (!text) return '';
+  return text
+    // Remove fenced code blocks
+    .replace(/```[\s\S]*?```/g, '')
+    // Remove inline code
+    .replace(/`[^`]+`/g, (m) => m.slice(1, -1))
+    // Remove bold/italic: ***text***, **text**, *text*, __text__, _text_
+    .replace(/\*{1,3}([^*\n]+)\*{1,3}/g, '$1')
+    .replace(/_{1,2}([^_\n]+)_{1,2}/g, '$1')
+    // Remove heading markers: ## Heading
+    .replace(/^#{1,6}\s+/gm, '')
+    // Remove horizontal rules: ---, ***, ___
+    .replace(/^[-*_]{3,}\s*$/gm, '')
+    // Remove blockquotes: > text
+    .replace(/^>\s?/gm, '')
+    // Collapse multiple blank lines to single
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }

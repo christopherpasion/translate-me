@@ -1,7 +1,9 @@
 import React from 'react';
 import type { Novel, Chapter } from '../types';
 import { StorageService } from '../services/storage';
-import { Sparkles, GitFork, Plus, Sidebar, Trash2, Cpu } from 'lucide-react';
+import { cleanAndTranslateChapterTitle } from '../services/translationEngine';
+import type { TranslationStyle } from '../services/translationEngine';
+import { Sparkles, GitFork, Plus, Sidebar, Trash2, Cpu, BookOpen, Brain, Layers } from 'lucide-react';
 
 interface StudioHeaderProps {
   currentNovel: Novel;
@@ -16,6 +18,11 @@ interface StudioHeaderProps {
   onToggleSidebar: () => void;
   onOpenAISettings?: () => void;
   onSyncSupabaseCloud?: () => void;
+  onOpenDictionaryModal?: () => void;
+  onOpenAITrainingModal?: () => void;
+  onOpenBatchModal?: () => void;
+  translationStyle?: TranslationStyle;
+  onSelectTranslationStyle?: (style: TranslationStyle) => void;
   isSidebarOpen: boolean;
   glossaryCount: number;
 }
@@ -32,6 +39,11 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   onToggleSidebar,
   onOpenAISettings,
   onSyncSupabaseCloud,
+  onOpenDictionaryModal,
+  onOpenAITrainingModal,
+  onOpenBatchModal,
+  translationStyle = 'xianxia',
+  onSelectTranslationStyle,
   isSidebarOpen,
   glossaryCount
 }) => {
@@ -79,7 +91,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           </button>
         </div>
 
-        {/* Chapter Dropdown & Quick Actions */}
+        {/* Chapter Dropdown & Quick Actions (Rule #3: Clean Chapter Titles) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: '240px', justifyContent: 'flex-end' }}>
           <select
             value={currentChapter?.id || ''}
@@ -100,11 +112,15 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
               textOverflow: 'ellipsis'
             }}
           >
-            {chapters.map(ch => (
-              <option key={ch.id} value={ch.id} style={{ background: '#111827' }}>
-                Ch. {ch.chapterNumber}: {ch.titleEn.replace(/^Chapter\s+\d+:\s*/i, '')}
-              </option>
-            ))}
+            {chapters.map(ch => {
+              const cleanTitle = cleanAndTranslateChapterTitle(ch.titleZh, ch.chapterNumber);
+              const displayTitle = ch.titleEn ? ch.titleEn : cleanTitle;
+              return (
+                <option key={ch.id} value={ch.id} style={{ background: '#111827' }}>
+                  Ch. {ch.chapterNumber}: {displayTitle.replace(/^Chapter\s+\d+:\s*/i, '')}
+                </option>
+              );
+            })}
           </select>
 
           <button className="btn btn-secondary" style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={onOpenNewChapterModal} title="Add New Chapter">
@@ -117,7 +133,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
               className="btn btn-secondary"
               style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', color: 'var(--accent-red)', borderColor: 'rgba(239,68,68,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}
               onClick={() => {
-                if (confirm(`Are you sure you want to delete Chapter ${currentChapter.chapterNumber}: ${currentChapter.titleEn}?`)) {
+                if (confirm(`Are you sure you want to delete Chapter ${currentChapter.chapterNumber}?`)) {
                   onDeleteChapter(currentChapter.id);
                 }
               }}
@@ -131,7 +147,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
 
       {/* Row 2: Studio Action Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', width: '100%', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        {/* Prominent 1-Click Paste & Translate Primary Button */}
         <button
           className="btn btn-primary"
           onClick={onOpenNewChapterModal}
@@ -142,7 +157,67 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <span>📋 Paste Chapter</span>
         </button>
 
-        {/* Scan Terms */}
+        {/* Translation Tone Preset Selector */}
+        {onSelectTranslationStyle && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <select
+              value={translationStyle}
+              onChange={(e) => onSelectTranslationStyle(e.target.value as TranslationStyle)}
+              title="Select Translation Prose Style"
+              style={{
+                background: 'var(--bg-elevated)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--border-color)',
+                padding: '0.35rem 0.5rem',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <option value="xianxia">🐉 Xianxia / Cultivation</option>
+              <option value="fluent">⚡ Fluent Webnovel</option>
+              <option value="faithful">📖 Faithful / Literal</option>
+            </select>
+          </div>
+        )}
+
+        {onOpenBatchModal && (
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenBatchModal}
+            title="Batch translate multiple chapters in queue"
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#38bdf8', borderColor: 'rgba(56,189,248,0.3)' }}
+          >
+            <Layers size={14} style={{ color: '#38bdf8' }} />
+            <span>Batch ({chapters.length})</span>
+          </button>
+        )}
+
+        {onOpenDictionaryModal && (
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenDictionaryModal}
+            title="Open Master Chinese-English Dictionary & Pinyin Lookup"
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#ec4899', borderColor: 'rgba(236,72,153,0.3)' }}
+          >
+            <BookOpen size={14} />
+            <span>Dictionary</span>
+          </button>
+        )}
+
+        {onOpenAITrainingModal && (
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenAITrainingModal}
+            title="View AI Parallel Corpus Training & In-Context Style Benchmarks"
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#818cf8', borderColor: 'rgba(129,140,248,0.3)' }}
+          >
+            <Brain size={14} style={{ color: '#818cf8' }} />
+            <span>AI Trainer</span>
+          </button>
+        )}
+
         <button
           className="btn btn-secondary"
           onClick={onRunEntityScan}
@@ -153,7 +228,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <span>Scan Terms</span>
         </button>
 
-        {/* Glossary Sidebar Toggle */}
         <button
           className={`btn ${isSidebarOpen ? 'btn-primary' : 'btn-secondary'}`}
           onClick={onToggleSidebar}
@@ -163,7 +237,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <span>Glossary ({glossaryCount})</span>
         </button>
 
-        {/* Character Graph */}
         <button
           className="btn btn-secondary"
           onClick={onOpenCharacterGraph}
@@ -174,7 +247,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <span>Graph</span>
         </button>
 
-        {/* Supabase Cloud Sync */}
         {onSyncSupabaseCloud && (
           <button
             className="btn btn-secondary"
