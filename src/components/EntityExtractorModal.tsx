@@ -39,8 +39,8 @@ export const EntityExtractorModal: React.FC<EntityExtractorModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Sparkles size={22} style={{ color: 'var(--primary-cyan)' }} />
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>Pre-Translation Entity Scanner</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Pre-Translation Entity Scanner</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>
                 Found {entities.length} character names & proper nouns in Chinese text — converted to English
               </p>
             </div>
@@ -87,7 +87,7 @@ export const EntityExtractorModal: React.FC<EntityExtractorModalProps> = ({
                       />
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-zh)' }}>
+                          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}>
                             {item.originalZh}
                           </span>
                           <span className={`badge badge-${item.category === 'character' ? 'xianxia' : 'scifi'}`}>

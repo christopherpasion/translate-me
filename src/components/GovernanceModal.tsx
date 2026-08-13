@@ -33,8 +33,8 @@ export const GovernanceModal: React.FC<GovernanceModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <ShieldCheck size={24} style={{ color: 'var(--accent-amber)' }} />
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>Owner Governance & Self-Healing Approval</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Review AI recommendations and reader correction suggestions for global cascade replacement</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Owner Governance & Self-Healing Approval</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>Review AI recommendations and reader correction suggestions for global cascade replacement</p>
             </div>
           </div>
           <button className="btn btn-secondary btn-icon" onClick={onClose}>
@@ -43,7 +43,7 @@ export const GovernanceModal: React.FC<GovernanceModalProps> = ({
         </div>
 
         {/* Tab Selector */}
-        <div style={{ padding: '0.75rem 1.5rem', background: 'rgba(15, 23, 42, 0.6)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem' }}>
+        <div style={{ padding: '0.75rem 1.5rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem' }}>
           <button
             className={`btn ${activeTab === 'ai' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setActiveTab('ai')}
@@ -58,7 +58,7 @@ export const GovernanceModal: React.FC<GovernanceModalProps> = ({
             style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
           >
             <Users size={16} />
-            <span>Reader Suggestions ({pendingSugs.length})</span>
+            <span>Community Reader Suggestions ({pendingSugs.length})</span>
           </button>
         </div>
 
@@ -73,11 +73,11 @@ export const GovernanceModal: React.FC<GovernanceModalProps> = ({
                 <div
                   key={rec.id}
                   className="glass-panel"
-                  style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--primary-cyan)' }}
+                  style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--primary-cyan)', background: 'var(--bg-elevated)' }}
                 >
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-zh)' }}>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}>
                         {rec.originalZh}
                       </span>
                       <ArrowRight size={14} style={{ color: 'var(--text-dim)' }} />
@@ -122,11 +122,11 @@ export const GovernanceModal: React.FC<GovernanceModalProps> = ({
                 <div
                   key={sug.id}
                   className="glass-panel"
-                  style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--accent-amber)' }}
+                  style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--accent-amber)', background: 'var(--bg-elevated)' }}
                 >
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-zh)' }}>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}>
                         {sug.originalZh}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', textDecoration: 'line-through' }}>

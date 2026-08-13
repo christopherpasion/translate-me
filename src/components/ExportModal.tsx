@@ -69,8 +69,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Download size={22} style={{ color: 'var(--primary-cyan)' }} />
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>Export Novel Translation</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Generate formatted eBook with Glossary Appendix</p>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Export Novel Translation</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>Generate formatted eBook with Glossary Appendix</p>
             </div>
           </div>
           <button className="btn btn-secondary btn-icon" onClick={onClose}>
@@ -80,7 +80,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Select Format</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Select Format</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
               {[
                 { id: 'markdown', label: 'Markdown (.md)', icon: FileText },
@@ -95,38 +95,42 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     onClick={() => setExportFormat(item.id as any)}
                     className="glass-panel"
                     style={{
-                      padding: '0.75rem',
+                      padding: '0.85rem 0.75rem',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '0.4rem',
                       cursor: 'pointer',
-                      border: isSel ? '1px solid var(--primary-cyan)' : '1px solid var(--border-color)',
-                      background: isSel ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255,255,255,0.03)'
+                      borderRadius: 'var(--radius-sm)',
+                      border: isSel ? '2px solid var(--primary-cyan)' : '1px solid var(--border-color)',
+                      background: isSel ? 'rgba(0, 242, 254, 0.12)' : 'var(--bg-elevated)',
+                      boxShadow: isSel ? '0 0 12px rgba(0, 242, 254, 0.2)' : 'none'
                     }}
                   >
-                    <IconComp size={20} style={{ color: isSel ? 'var(--primary-cyan)' : 'var(--text-muted)' }} />
-                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: isSel ? '#fff' : 'var(--text-muted)' }}>{item.label}</span>
+                    <IconComp size={22} style={{ color: isSel ? 'var(--primary-cyan)' : 'var(--text-muted)' }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: isSel ? 700 : 500, color: isSel ? 'var(--text-main)' : 'var(--text-muted)' }}>{item.label}</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', background: 'var(--bg-elevated)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 500 }}>
               <input
                 type="checkbox"
                 checked={includeGlossaryAppendix}
                 onChange={(e) => setIncludeGlossaryAppendix(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--primary-cyan)', cursor: 'pointer' }}
               />
               <span>Include Official Glossary & Character Guide Appendix ({glossary.length} terms)</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 500 }}>
               <input
                 type="checkbox"
                 checked={includeSelfHealingReport}
                 onChange={(e) => setIncludeSelfHealingReport(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--primary-cyan)', cursor: 'pointer' }}
               />
               <span>Include Self-Healing Alignment Audit Log</span>
             </label>

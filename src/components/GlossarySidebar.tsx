@@ -226,7 +226,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
         <div className="modal-overlay" style={{ zIndex: 120 }}>
           <div className="modal-card" style={{ maxWidth: '420px' }}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
                 {editingEntry.id ? 'Edit Glossary Term' : 'Add New Glossary Term'}
               </h3>
               <button className="btn btn-secondary btn-icon" onClick={() => setEditingEntry(null)}>✕</button>
@@ -240,7 +240,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                     required
                     value={editingEntry.originalZh || ''}
                     onChange={(e) => setEditingEntry({ ...editingEntry, originalZh: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff', fontFamily: 'var(--font-zh)' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}
                   />
                 </div>
                 <div>
@@ -250,7 +250,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                     required
                     value={editingEntry.translatedEn || ''}
                     onChange={(e) => setEditingEntry({ ...editingEntry, translatedEn: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
                 <div>
@@ -260,7 +260,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                     value={editingEntry.pinyin || ''}
                     onChange={(e) => setEditingEntry({ ...editingEntry, pinyin: e.target.value })}
                     placeholder="e.g. Xiāo Yán"
-                    style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -269,7 +269,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                     <select
                       value={editingEntry.category || 'character'}
                       onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value as EntityCategory })}
-                      style={{ width: '100%', padding: '0.5rem', background: '#1f2937', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                      style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                     >
                       <option value="character">Character (人名)</option>
                       <option value="faction">Sect / Faction (宗门)</option>
@@ -284,7 +284,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                     <select
                       value={editingEntry.scope || 'local'}
                       onChange={(e) => setEditingEntry({ ...editingEntry, scope: e.target.value as TermScope })}
-                      style={{ width: '100%', padding: '0.5rem', background: '#1f2937', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                      style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                     >
                       <option value="local">Local (This Novel)</option>
                       <option value="global">Global (All Novels)</option>
@@ -298,7 +298,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                     value={editingEntry.notes || ''}
                     onChange={(e) => setEditingEntry({ ...editingEntry, notes: e.target.value })}
                     placeholder="e.g. Protagonist / Rival"
-                    style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
               </div>

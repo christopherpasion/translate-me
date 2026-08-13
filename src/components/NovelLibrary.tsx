@@ -70,8 +70,8 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Layers size={24} style={{ color: 'var(--primary-cyan)' }} />
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>Novel Library Workspace</h2>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Manage multiple Chinese web novel translation projects with 2-tier glossaries</p>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Novel Library Workspace</h2>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>Manage multiple Chinese web novel translation projects with 2-tier glossaries</p>
             </div>
           </div>
           <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
@@ -81,7 +81,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
         </div>
 
         {/* Filter Toolbar */}
-        <div style={{ padding: '1rem 1.5rem', background: 'rgba(15, 23, 42, 0.6)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
             <input
@@ -92,10 +92,10 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
               style={{
                 width: '100%',
                 padding: '0.5rem 0.75rem 0.5rem 2.25rem',
-                background: 'rgba(255, 255, 255, 0.05)',
+                background: 'var(--bg-card)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-sm)',
-                color: '#fff',
+                color: 'var(--text-main)',
                 outline: 'none'
               }}
             />
@@ -105,9 +105,17 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
             {['all', 'xianxia', 'wuxia', 'scifi', 'urban'].map(g => (
               <button
                 key={g}
-                className={`btn ${selectedGenre === g ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', textTransform: 'capitalize' }}
+                className={`badge ${selectedGenre === g ? 'badge-active' : ''}`}
                 onClick={() => setSelectedGenre(g)}
+                style={{
+                  cursor: 'pointer',
+                  border: selectedGenre === g ? '1px solid var(--primary-cyan)' : '1px solid var(--border-color)',
+                  background: selectedGenre === g ? 'rgba(0, 242, 254, 0.15)' : 'var(--bg-card)',
+                  color: selectedGenre === g ? 'var(--primary-cyan)' : 'var(--text-muted)',
+                  textTransform: 'capitalize',
+                  padding: '0.35rem 0.75rem',
+                  fontWeight: 600
+                }}
               >
                 {g}
               </button>
@@ -116,34 +124,39 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
         </div>
 
         {/* Novel Cards Grid */}
-        <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {filteredNovels.map(novel => (
             <div
               key={novel.id}
-              className="glass-panel glass-panel-hover"
-              style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer' }}
               onClick={() => {
                 onSelectNovel(novel.id);
                 onClose();
               }}
+              className="glass-panel"
+              style={{
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-elevated)',
+                transition: 'all 0.2s ease'
+              }}
             >
               <div>
                 <div style={{
-                  height: '80px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: novel.coverGradient,
                   display: 'flex',
-                  alignItems: 'flex-end',
-                  padding: '0.75rem',
-                  marginBottom: '1rem',
-                  boxShadow: 'inset 0 -30px 20px rgba(0,0,0,0.4)'
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '0.75rem'
                 }}>
                   <span className={`badge badge-${novel.genre}`} style={{ textTransform: 'uppercase' }}>
                     {novel.genre}
                   </span>
                 </div>
 
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', marginBottom: '0.2rem' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.2rem' }}>
                   {novel.titleZh}
                 </h3>
                 <p style={{ fontSize: '0.9rem', color: 'var(--primary-cyan)', fontWeight: 500, marginBottom: '0.5rem' }}>
@@ -159,7 +172,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
 
               <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  <strong style={{ color: '#fff' }}>{novel.translatedCount}</strong> / {novel.chaptersCount} chapters
+                  <strong style={{ color: 'var(--text-main)' }}>{novel.translatedCount}</strong> / {novel.chaptersCount} chapters
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary-cyan)', fontSize: '0.85rem', fontWeight: 600 }}>
                   <span>Open Studio</span>
@@ -176,7 +189,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
         <div className="modal-overlay" style={{ zIndex: 110 }}>
           <div className="modal-card" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Create New Novel Project</h3>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Create New Novel Project</h3>
               <button className="btn btn-secondary btn-icon" onClick={() => setIsModalOpen(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmitNewNovel}>
@@ -189,7 +202,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                     placeholder="e.g. 完美世界"
                     value={titleZh}
                     onChange={(e) => setTitleZh(e.target.value)}
-                    style={{ width: '100%', padding: '0.6rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
                 <div>
@@ -200,7 +213,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                     placeholder="e.g. Perfect World"
                     value={titleEn}
                     onChange={(e) => setTitleEn(e.target.value)}
-                    style={{ width: '100%', padding: '0.6rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -211,7 +224,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                       placeholder="e.g. 辰东 (Chen Dong)"
                       value={author}
                       onChange={(e) => setAuthor(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                      style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                     />
                   </div>
                   <div>
@@ -219,7 +232,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                     <select
                       value={genre}
                       onChange={(e) => setGenre(e.target.value as Genre)}
-                      style={{ width: '100%', padding: '0.65rem', background: '#1f2937', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                      style={{ width: '100%', padding: '0.65rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                     >
                       <option value="xianxia">Xianxia (仙侠)</option>
                       <option value="wuxia">Wuxia (武侠)</option>
@@ -236,7 +249,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                     placeholder="Brief description..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    style={{ width: '100%', padding: '0.6rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                    style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
               </div>

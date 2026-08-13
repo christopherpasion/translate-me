@@ -406,14 +406,14 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
         <div className="modal-overlay" style={{ zIndex: 120 }}>
           <div className="modal-card" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Suggest Translation Fix to Owner</h3>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Suggest Translation Fix to Owner</h3>
               <button className="btn btn-secondary btn-icon" onClick={() => setIsSuggestingOpen(false)}>✕</button>
             </div>
 
             {isSubmitted ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--primary-cyan)' }}>
                 <Check size={40} style={{ marginBottom: '0.5rem' }} />
-                <h4>Suggestion Submitted!</h4>
+                <h4 style={{ color: 'var(--text-main)' }}>Suggestion Submitted!</h4>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
                   Thank you! The novel owner will review your suggestion in their Owner Governance panel.
                 </p>
@@ -431,7 +431,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                       placeholder="e.g. Indominus Dragon or Xiao Yan"
                       value={selectedTextForSuggest}
                       onChange={(e) => setSelectedTextForSuggest(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                      style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                     />
                   </div>
 
@@ -445,7 +445,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                       placeholder="e.g. Furious Dragon"
                       value={suggestedFixEn}
                       onChange={(e) => setSuggestedFixEn(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--primary-cyan)', fontWeight: 600 }}
+                      style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--primary-cyan)', fontWeight: 600 }}
                     />
                   </div>
 
@@ -458,7 +458,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                       placeholder="Why should this name or phrase be updated?"
                       value={suggestReason}
                       onChange={(e) => setSuggestReason(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
+                      style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                     />
                   </div>
                 </div>

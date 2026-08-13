@@ -88,8 +88,8 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Globe size={24} style={{ color: 'var(--primary-cyan)' }} />
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>Import Chapter from Web / JJWXC</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Auto-fetches novel chapter and strips anti-copy comment numbers</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Import Chapter from Web / JJWXC</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>Auto-fetches novel chapter and strips anti-copy comment numbers</p>
             </div>
           </div>
           <button className="btn btn-secondary btn-icon" onClick={onClose}>
@@ -98,7 +98,7 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
         </div>
 
         {/* Tab Selector */}
-        <div style={{ padding: '0.75rem 1.5rem', background: 'rgba(15, 23, 42, 0.6)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem' }}>
+        <div style={{ padding: '0.75rem 1.5rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem' }}>
           <button
             className={`btn ${activeTab === 'url' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setActiveTab('url')}
@@ -133,10 +133,10 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
                   style={{
                     width: '100%',
                     padding: '0.65rem 0.8rem',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'var(--bg-elevated)',
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     fontSize: '0.9rem'
                   }}
                 />
@@ -158,10 +158,10 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
                   style={{
                     width: '100%',
                     padding: '0.65rem 0.8rem',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'var(--bg-elevated)',
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     fontFamily: 'var(--font-zh)'
                   }}
                 />

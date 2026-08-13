@@ -25,8 +25,8 @@ export const CharacterGraphModal: React.FC<CharacterGraphModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <GitFork size={24} style={{ color: 'var(--accent-purple)' }} />
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>Character & Sect Relationship Graph</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Visual knowledge map auto-generated for {novelTitle}</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Character & Sect Relationship Graph</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>Visual knowledge map auto-generated for {novelTitle}</p>
             </div>
           </div>
           <button className="btn btn-secondary btn-icon" onClick={onClose}>
@@ -94,15 +94,15 @@ export const CharacterGraphModal: React.FC<CharacterGraphModalProps> = ({
           </div>
 
           {/* Node Detail Inspector Sidebar */}
-          <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-cyan)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-cyan)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
               Entity Inspector
             </h4>
 
             {selectedNode ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-zh)' }}>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}>
                     {selectedNode.originalZh}
                   </div>
                   <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--primary-cyan)' }}>
@@ -111,12 +111,12 @@ export const CharacterGraphModal: React.FC<CharacterGraphModalProps> = ({
                 </div>
 
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  <strong>Category:</strong> <span style={{ color: '#fff', textTransform: 'capitalize' }}>{selectedNode.category}</span>
+                  <strong>Category:</strong> <span style={{ color: 'var(--text-main)', textTransform: 'capitalize' }}>{selectedNode.category}</span>
                 </div>
 
                 {selectedNode.gender && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <strong>Gender:</strong> <span style={{ color: '#fff', textTransform: 'capitalize' }}>{selectedNode.gender}</span>
+                    <strong>Gender:</strong> <span style={{ color: 'var(--text-main)', textTransform: 'capitalize' }}>{selectedNode.gender}</span>
                   </div>
                 )}
 
@@ -137,7 +137,7 @@ export const CharacterGraphModal: React.FC<CharacterGraphModalProps> = ({
 
             {/* Cultivation Rank Hierarchy Breakdown */}
             <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
-              <h5 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <h5 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <Award size={14} style={{ color: 'var(--accent-amber)' }} /> Realm Pyramid
               </h5>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
