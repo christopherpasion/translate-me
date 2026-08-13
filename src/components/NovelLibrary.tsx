@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Novel, Genre } from '../types';
-import { Plus, Search, Layers, ArrowRight } from 'lucide-react';
+import { Plus, Search, Layers, ArrowRight, X } from 'lucide-react';
 
 interface NovelLibraryProps {
   novels: Novel[];
@@ -18,6 +18,17 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isModalOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, isModalOpen]);
 
   // Form state for creating novel
   const [titleZh, setTitleZh] = useState('');
@@ -64,8 +75,8 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
   };
 
   return (
-    <div className="modal-overlay" style={{ background: 'rgba(5, 8, 16, 0.95)' }}>
-      <div className="modal-card" style={{ maxWidth: '950px', height: '85vh' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(5, 8, 16, 0.85)' }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '950px', height: '85vh' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Layers size={24} style={{ color: 'var(--primary-cyan)' }} />
@@ -74,10 +85,15 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>Manage multiple Chinese web novel translation projects with 2-tier glossaries</p>
             </div>
           </div>
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            <Plus size={16} />
-            <span>Create New Novel</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)} style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}>
+              <Plus size={16} />
+              <span>Create New Novel</span>
+            </button>
+            <button className="btn btn-secondary btn-icon" onClick={onClose} title="Close Library (Esc)">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Filter Toolbar */}
