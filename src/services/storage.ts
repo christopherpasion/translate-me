@@ -433,15 +433,37 @@ const INITIAL_SUGGESTIONS: ReaderSuggestion[] = [
 ];
 
 const DELETED_CHAPTERS_KEY = 'trans_me_deleted_chapters_v2';
+const DELETED_NOVELS_KEY = 'trans_me_deleted_novels_v2';
 
 export const StorageService = {
   getNovels(): Novel[] {
     const data = localStorage.getItem(NOVELS_KEY);
-    if (!data) {
-      localStorage.setItem(NOVELS_KEY, JSON.stringify(INITIAL_NOVELS));
-      return INITIAL_NOVELS;
-    }
-    return JSON.parse(data);
+    const deletedNovelData = localStorage.getItem(DELETED_NOVELS_KEY);
+    const deletedNovelIds: string[] = deletedNovelData ? JSON.parse(deletedNovelData) : [];
+
+    let rawList: Novel[] = data ? JSON.parse(data) : INITIAL_NOVELS;
+    rawList = rawList.filter(n => !deletedNovelIds.includes(n.id));
+
+    // Dynamically calculate accurate chaptersCount & translatedCount for each novel from real stored chapters
+    const chaptersData = localStorage.getItem(CHAPTERS_KEY);
+    const deletedChapData = localStorage.getItem(DELETED_CHAPTERS_KEY);
+    const deletedChapIds: string[] = deletedChapData ? JSON.parse(deletedChapData) : [];
+    let allChapters: Chapter[] = chaptersData ? JSON.parse(chaptersData) : INITIAL_CHAPTERS;
+    allChapters = allChapters.filter(c => !deletedChapIds.includes(c.id));
+
+    const updatedList = rawList.map(novel => {
+      const novelChapters = allChapters.filter(c => c.novelId === novel.id);
+      const chaptersCount = novelChapters.length;
+      const translatedCount = novelChapters.filter(c => c.contentEn && c.contentEn.trim().length > 0).length;
+      return {
+        ...novel,
+        chaptersCount,
+        translatedCount
+      };
+    });
+
+    localStorage.setItem(NOVELS_KEY, JSON.stringify(updatedList));
+    return updatedList;
   },
 
   saveNovel(novel: Novel): Novel[] {
@@ -457,9 +479,34 @@ export const StorageService = {
   },
 
   deleteNovel(id: string): Novel[] {
-    const list = this.getNovels().filter(n => n.id !== id);
-    localStorage.setItem(NOVELS_KEY, JSON.stringify(list));
-    return list;
+    // Record deleted novel ID so it never resurrects from INITIAL_NOVELS
+    const deletedNovelData = localStorage.getItem(DELETED_NOVELS_KEY);
+    const deletedNovelIds: string[] = deletedNovelData ? JSON.parse(deletedNovelData) : [];
+    if (!deletedNovelIds.includes(id)) {
+      deletedNovelIds.push(id);
+      localStorage.setItem(DELETED_NOVELS_KEY, JSON.stringify(deletedNovelIds));
+    }
+
+    const currentNovels = this.getNovels().filter(n => n.id !== id);
+    localStorage.setItem(NOVELS_KEY, JSON.stringify(currentNovels));
+
+    // Cascade delete chapters associated with this novel
+    const chaptersData = localStorage.getItem(CHAPTERS_KEY);
+    if (chaptersData) {
+      const allChapters: Chapter[] = JSON.parse(chaptersData);
+      const remainingChapters = allChapters.filter(c => c.novelId !== id);
+      localStorage.setItem(CHAPTERS_KEY, JSON.stringify(remainingChapters));
+    }
+
+    // Cascade delete local glossary terms associated with this novel
+    const glossaryData = localStorage.getItem(GLOSSARY_KEY);
+    if (glossaryData) {
+      const allTerms: GlossaryEntry[] = JSON.parse(glossaryData);
+      const remainingTerms = allTerms.filter(g => g.scope === 'global' || (!g.id.startsWith(`g-${id}`) && !g.id.includes(id)));
+      localStorage.setItem(GLOSSARY_KEY, JSON.stringify(remainingTerms));
+    }
+
+    return currentNovels;
   },
 
   getChapters(novelId: string): Chapter[] {

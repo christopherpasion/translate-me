@@ -336,6 +336,33 @@ export const App: React.FC = () => {
     }
   };
 
+  // Delete novel permanently and cascade select remaining novel
+  const handleDeleteNovel = (novelId: string) => {
+    const updated = StorageService.deleteNovel(novelId);
+    setNovels(updated);
+    if (selectedNovelId === novelId) {
+      if (updated.length > 0) {
+        handleSelectNovel(updated[0].id);
+      } else {
+        const fallback = StorageService.saveNovel({
+          id: `novel-${Date.now()}`,
+          titleZh: '新书项目',
+          titleEn: 'New Novel Project',
+          author: 'Author',
+          genre: 'xianxia',
+          coverGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          description: 'Your novel workspace.',
+          chaptersCount: 0,
+          translatedCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        setNovels(fallback);
+        handleSelectNovel(fallback[0].id);
+      }
+    }
+  };
+
   // Create New Chapter from pasted raw web text (Smart Clean + Entity Auto Scan + AI Translation)
   const handleCreateNewChapter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -662,6 +689,7 @@ export const App: React.FC = () => {
             setSelectedNovelId(novel.id);
             setIsLibraryOpen(false);
           }}
+          onDeleteNovel={handleDeleteNovel}
           onClose={() => setIsLibraryOpen(false)}
         />
       )}

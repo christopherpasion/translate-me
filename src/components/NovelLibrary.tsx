@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import type { Novel, Genre } from '../types';
-import { Plus, Search, Layers, ArrowRight, X } from 'lucide-react';
+import { Plus, Search, Layers, ArrowRight, X, Trash2 } from 'lucide-react';
 
 interface NovelLibraryProps {
   novels: Novel[];
   onSelectNovel: (id: string) => void;
   onCreateNovel: (newNovel: Omit<Novel, 'id' | 'chaptersCount' | 'translatedCount' | 'createdAt' | 'updatedAt'>) => void;
+  onDeleteNovel?: (id: string) => void;
   onClose: () => void;
 }
 
@@ -13,22 +14,30 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
   novels,
   onSelectNovel,
   onCreateNovel,
+  onDeleteNovel,
   onClose
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [novelToDelete, setNovelToDelete] = useState<Novel | null>(null);
 
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isModalOpen) {
-        onClose();
+      if (e.key === 'Escape') {
+        if (novelToDelete) {
+          setNovelToDelete(null);
+        } else if (isModalOpen) {
+          setIsModalOpen(false);
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, isModalOpen]);
+  }, [onClose, isModalOpen, novelToDelete]);
 
   // Form state for creating novel
   const [titleZh, setTitleZh] = useState('');
@@ -86,7 +95,14 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)} style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}>
+            <button
+              className="btn btn-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsModalOpen(true);
+              }}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
+            >
               <Plus size={16} />
               <span>Create New Novel</span>
             </button>
@@ -164,12 +180,30 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
                   marginBottom: '0.75rem'
                 }}>
                   <span className={`badge badge-${novel.genre}`} style={{ textTransform: 'uppercase' }}>
                     {novel.genre}
                   </span>
+                  {onDeleteNovel && (
+                    <button
+                      className="btn btn-secondary btn-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNovelToDelete(novel);
+                      }}
+                      title={`Delete ${novel.titleEn || novel.titleZh}`}
+                      style={{
+                        padding: '0.25rem 0.45rem',
+                        color: 'var(--accent-red)',
+                        borderColor: 'rgba(239, 68, 68, 0.3)',
+                        background: 'rgba(239, 68, 68, 0.08)'
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
 
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.2rem' }}>
@@ -202,13 +236,29 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
 
       {/* Create Novel Modal */}
       {isModalOpen && (
-        <div className="modal-overlay" style={{ zIndex: 110 }}>
-          <div className="modal-card" style={{ maxWidth: '500px' }}>
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsModalOpen(false);
+          }}
+          style={{ zIndex: 120, background: 'rgba(5, 8, 16, 0.85)' }}
+        >
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <div className="modal-header">
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Create New Novel Project</h3>
-              <button className="btn btn-secondary btn-icon" onClick={() => setIsModalOpen(false)}>✕</button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsModalOpen(false);
+                }}
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleSubmitNewNovel}>
+            <form onSubmit={handleSubmitNewNovel} onClick={(e) => e.stopPropagation()}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>Chinese Title (书名)</label>
@@ -270,13 +320,103 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsModalOpen(false);
+                  }}
+                >
+                  Cancel
+                </button>
                 <button type="submit" className="btn btn-primary">Create Novel</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Delete Novel Confirmation Modal */}
+      {novelToDelete && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            e.stopPropagation();
+            setNovelToDelete(null);
+          }}
+          style={{ zIndex: 130, background: 'rgba(5, 8, 16, 0.85)' }}
+        >
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-red)' }}>
+                <Trash2 size={20} />
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Delete Novel Confirmation</h2>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => setNovelToDelete(null)}
+                style={{ border: 'none', background: 'transparent' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
+                Are you sure you want to permanently delete{' '}
+                <strong style={{ color: 'var(--primary-cyan)' }}>
+                  {novelToDelete.titleEn || novelToDelete.titleZh}
+                </strong>?
+              </p>
+
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  lineHeight: 1.5,
+                  color: '#f87171'
+                }}
+              >
+                ⚠️ <strong>Warning:</strong> This will permanently delete this novel, all of its chapters, raw text, translations, and novel-specific glossary terms. This action cannot be undone.
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setNovelToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  border: 'none',
+                  boxShadow: '0 2px 10px rgba(239, 68, 68, 0.35)'
+                }}
+                onClick={() => {
+                  if (onDeleteNovel) {
+                    onDeleteNovel(novelToDelete.id);
+                  }
+                  setNovelToDelete(null);
+                }}
+              >
+                <Trash2 size={14} /> Delete Novel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
