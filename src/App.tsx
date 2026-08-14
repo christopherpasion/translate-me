@@ -144,9 +144,15 @@ export const App: React.FC = () => {
   // New Chapter Form state
   const [newChapContentZh, setNewChapContentZh] = useState('');
 
-  // Initial Data Load
+  // Ref to track active novel ID for realtime subscription callbacks
+  const selectedNovelIdRef = React.useRef(selectedNovelId);
   useEffect(() => {
-    // StorageService lazily initializes seed data when reading novels
+    selectedNovelIdRef.current = selectedNovelId;
+  }, [selectedNovelId]);
+
+  // Initial Data Load & 100% Automatic Cloud Sync
+  useEffect(() => {
+    // 1. Instant offline cache load
     const loadedNovels = StorageService.getNovels();
     setNovels(loadedNovels);
 
@@ -167,6 +173,45 @@ export const App: React.FC = () => {
     }
 
     setCustomRules(getCustomNoiseRules());
+
+    // 2. Fetch live data from Supabase Cloud Database (ensures cross-device parity)
+    SupabaseService.fetchNovels().then((cloudNovels) => {
+      if (cloudNovels && Array.isArray(cloudNovels)) {
+        setNovels(cloudNovels);
+        if (cloudNovels.length > 0) {
+          const currentId = selectedNovelIdRef.current || cloudNovels[0].id;
+          const targetId = cloudNovels.some(n => n.id === currentId) ? currentId : cloudNovels[0].id;
+          setSelectedNovelId(targetId);
+
+          SupabaseService.fetchChapters(targetId).then((cloudChaps) => {
+            setChapters(cloudChaps);
+            if (cloudChaps.length > 0) {
+              setSelectedChapterId(cloudChaps[0].id);
+            }
+          });
+        } else {
+          setChapters([]);
+          setSelectedChapterId('');
+        }
+      }
+    });
+
+    // 3. Real-time subscription across all devices (PC, Phone, Tablet)
+    const unsubscribe = SupabaseService.subscribeToChanges(() => {
+      SupabaseService.fetchNovels().then((refreshedNovels) => {
+        setNovels(refreshedNovels);
+      });
+      const activeId = selectedNovelIdRef.current;
+      if (activeId) {
+        SupabaseService.fetchChapters(activeId).then((refreshedChaps) => {
+          setChapters(refreshedChaps);
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Listen for translation-error custom events

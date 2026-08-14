@@ -1,5 +1,6 @@
 import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion, TokenUsage } from '../types';
 import { getPinyinForText } from './pinyinService';
+import { SupabaseService } from './supabaseService';
 
 const NOVELS_KEY = 'trans_me_novels_v2';
 const CHAPTERS_KEY = 'trans_me_chapters_v2';
@@ -475,6 +476,8 @@ export const StorageService = {
       list.unshift(novel);
     }
     localStorage.setItem(NOVELS_KEY, JSON.stringify(list));
+    // Asynchronously upsert to Supabase Cloud Database for cross-device sync
+    SupabaseService.saveNovelCloud(novel);
     return list;
   },
 
@@ -505,6 +508,9 @@ export const StorageService = {
       const remainingTerms = allTerms.filter(g => g.scope === 'global' || (!g.id.startsWith(`g-${id}`) && !g.id.includes(id)));
       localStorage.setItem(GLOSSARY_KEY, JSON.stringify(remainingTerms));
     }
+
+    // Asynchronously delete from Supabase Cloud Database for cross-device sync
+    SupabaseService.deleteNovelCloud(id);
 
     return currentNovels;
   },
@@ -569,6 +575,9 @@ export const StorageService = {
       this.saveNovel(novel);
     }
 
+    // Asynchronously upsert chapter to Supabase Cloud Database for cross-device sync
+    SupabaseService.saveChapterCloud(chapter);
+
     return chapter;
   },
 
@@ -586,6 +595,9 @@ export const StorageService = {
       deletedIds.push(chapterId);
       localStorage.setItem(DELETED_CHAPTERS_KEY, JSON.stringify(deletedIds));
     }
+
+    // Asynchronously delete chapter from Supabase Cloud Database for cross-device sync
+    SupabaseService.deleteChapterCloud(chapterId);
 
     if (target) {
       const novels = this.getNovels();
@@ -657,6 +669,10 @@ export const StorageService = {
     }
 
     localStorage.setItem(GLOSSARY_KEY, JSON.stringify(all));
+
+    // Asynchronously upsert to Supabase Cloud Database for cross-device sync
+    SupabaseService.saveGlossaryCloud(sanitizedEntry);
+
     return all;
   },
 
@@ -665,6 +681,10 @@ export const StorageService = {
     let all: GlossaryEntry[] = data ? JSON.parse(data) : [...INITIAL_GLOBAL_GLOSSARY, ...INITIAL_LOCAL_GLOSSARY];
     all = all.filter(g => g.id !== id);
     localStorage.setItem(GLOSSARY_KEY, JSON.stringify(all));
+
+    // Asynchronously delete from Supabase Cloud Database for cross-device sync
+    SupabaseService.deleteGlossaryCloud(id);
+
     return all;
   },
 
