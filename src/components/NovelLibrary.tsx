@@ -156,83 +156,120 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
           </div>
         </div>
 
-        {/* Novel Cards Grid */}
-        <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', overflowY: 'auto' }}>
-          {filteredNovels.map(novel => (
-            <div
-              key={novel.id}
-              onClick={() => {
-                onSelectNovel(novel.id);
-                onClose();
-              }}
-              className="glass-panel"
-              style={{
-                padding: '1.25rem',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-elevated)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '0.75rem'
-                }}>
-                  <span className={`badge badge-${novel.genre}`} style={{ textTransform: 'uppercase' }}>
-                    {novel.genre}
-                  </span>
-                  {onDeleteNovel && (
-                    <button
-                      className="btn btn-secondary btn-icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setNovelToDelete(novel);
-                      }}
-                      title={`Delete ${novel.titleEn || novel.titleZh}`}
-                      style={{
-                        padding: '0.25rem 0.45rem',
-                        color: 'var(--accent-red)',
-                        borderColor: 'rgba(239, 68, 68, 0.3)',
-                        background: 'rgba(239, 68, 68, 0.08)'
-                      }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.2rem' }}>
-                  {novel.titleZh}
-                </h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--primary-cyan)', fontWeight: 500, marginBottom: '0.5rem' }}>
-                  {novel.titleEn}
-                </p>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                  By {novel.author}
-                </p>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {novel.description}
-                </p>
-              </div>
-
-              <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  <strong style={{ color: 'var(--text-main)' }}>{novel.translatedCount}</strong> / {novel.chaptersCount} chapters
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary-cyan)', fontSize: '0.85rem', fontWeight: 600 }}>
-                  <span>Open Novel</span>
-                  <ArrowRight size={14} />
-                </div>
-              </div>
+        {/* Novel Cards Grid or Empty State */}
+        {filteredNovels.length === 0 ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(0, 242, 254, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '1rem',
+              border: '1px solid rgba(0, 242, 254, 0.2)'
+            }}>
+              <Layers size={32} style={{ color: 'var(--primary-cyan)' }} />
             </div>
-          ))}
-        </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, marginBottom: '0.4rem' }}>
+              {searchQuery ? 'No Matching Novels Found' : 'No Novels in Library'}
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.5, margin: '0 auto 1.5rem auto' }}>
+              {searchQuery
+                ? `No novel projects match "${searchQuery}". Try a different search term or clear the filter.`
+                : 'Your novel workspace is empty. Create your first novel project to start translating with AI!'}
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsModalOpen(true);
+              }}
+              style={{ padding: '0.6rem 1.25rem', gap: '0.4rem', fontWeight: 700 }}
+            >
+              <Plus size={18} />
+              <span>Create Your First Novel</span>
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', overflowY: 'auto' }}>
+            {filteredNovels.map(novel => (
+              <div
+                key={novel.id}
+                onClick={() => {
+                  onSelectNovel(novel.id);
+                  onClose();
+                }}
+                className="glass-panel"
+                style={{
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-elevated)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <span className={`badge badge-${novel.genre}`} style={{ textTransform: 'uppercase' }}>
+                      {novel.genre}
+                    </span>
+                    {onDeleteNovel && (
+                      <button
+                        className="btn btn-secondary btn-icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNovelToDelete(novel);
+                        }}
+                        title={`Delete ${novel.titleEn || novel.titleZh}`}
+                        style={{
+                          padding: '0.25rem 0.45rem',
+                          color: 'var(--accent-red)',
+                          borderColor: 'rgba(239, 68, 68, 0.3)',
+                          background: 'rgba(239, 68, 68, 0.08)'
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.2rem' }}>
+                    {novel.titleZh}
+                  </h3>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--primary-cyan)', fontWeight: 500, marginBottom: '0.5rem' }}>
+                    {novel.titleEn}
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                    By {novel.author}
+                  </p>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {novel.description}
+                  </p>
+                </div>
+
+                <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    <strong style={{ color: 'var(--text-main)' }}>{novel.translatedCount}</strong> / {novel.chaptersCount} chapters
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary-cyan)', fontSize: '0.85rem', fontWeight: 600 }}>
+                    <span>Open Novel</span>
+                    <ArrowRight size={14} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Create Novel Modal */}

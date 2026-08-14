@@ -21,7 +21,7 @@ import { DictionaryLookupModal } from './components/DictionaryLookupModal';
 import { AITrainingModal } from './components/AITrainingModal';
 import { BatchTranslateModal } from './components/BatchTranslateModal';
 import { PublicReaderView } from './components/PublicReaderView';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, BookOpen, Plus, Layers } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Main Data States
@@ -344,21 +344,9 @@ export const App: React.FC = () => {
       if (updated.length > 0) {
         handleSelectNovel(updated[0].id);
       } else {
-        const fallback = StorageService.saveNovel({
-          id: `novel-${Date.now()}`,
-          titleZh: '新书项目',
-          titleEn: 'New Novel Project',
-          author: 'Author',
-          genre: 'xianxia',
-          coverGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          description: 'Your novel workspace.',
-          chaptersCount: 0,
-          translatedCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        setNovels(fallback);
-        handleSelectNovel(fallback[0].id);
+        setSelectedNovelId('');
+        setChapters([]);
+        setSelectedChapterId('');
       }
     }
   };
@@ -593,8 +581,49 @@ export const App: React.FC = () => {
         onToggleAppTheme={() => setAppTheme(appTheme === 'dark' ? 'light' : 'dark')}
       />
 
-      {/* Main View Router: Public Reader View vs Admin Translation Studio */}
-      {viewMode === 'reader' && currentNovel ? (
+      {/* Main View Router: Public Reader View vs Admin Translation Studio vs Empty State */}
+      {!currentNovel ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem', textAlign: 'center', background: 'var(--bg-dark)' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'rgba(0, 242, 254, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1.25rem',
+            border: '1px solid rgba(0, 242, 254, 0.25)',
+            boxShadow: '0 0 25px rgba(0, 242, 254, 0.15)'
+          }}>
+            <BookOpen size={40} style={{ color: 'var(--primary-cyan)' }} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, marginBottom: '0.5rem' }}>
+            Your Translation Studio is Ready
+          </h2>
+          <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', maxWidth: '480px', lineHeight: 1.6, margin: '0 auto 2rem auto' }}>
+            You have no active novel projects. Create a new novel project or open the library to import Chinese web novels, build custom glossaries, and translate with AI.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsLibraryOpen(true)}
+              style={{ padding: '0.65rem 1.4rem', fontSize: '0.95rem', fontWeight: 700, gap: '0.5rem' }}
+            >
+              <Plus size={18} />
+              <span>Create New Novel Project</span>
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setIsLibraryOpen(true)}
+              style={{ padding: '0.65rem 1.25rem', fontSize: '0.95rem', gap: '0.5rem' }}
+            >
+              <Layers size={18} style={{ color: 'var(--primary-cyan)' }} />
+              <span>Open Novel Library</span>
+            </button>
+          </div>
+        </div>
+      ) : viewMode === 'reader' ? (
         <PublicReaderView
           currentNovel={currentNovel}
           chapters={chapters}
@@ -606,29 +635,27 @@ export const App: React.FC = () => {
       ) : (
         <>
           {/* Studio Header Toolbar */}
-          {currentNovel && (
-            <StudioHeader
-              currentNovel={currentNovel}
-              chapters={chapters}
-              currentChapter={currentChapter}
-              onSelectChapter={setSelectedChapterId}
-              onOpenNewChapterModal={() => setIsNewChapterOpen(true)}
-              onDeleteChapter={handleDeleteChapter}
-              onRunEntityScan={handleRunEntityScan}
-              onRunSelfHealing={handleRunSelfHealingPass}
-              onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
-              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-              onOpenAISettings={() => setIsAISettingsOpen(true)}
-              onSyncSupabaseCloud={handleSyncSupabaseCloud}
-              onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
-              onOpenAITrainingModal={() => setIsAITrainingOpen(true)}
-              onOpenBatchModal={() => setIsBatchModalOpen(true)}
-              translationStyle={translationStyle}
-              onSelectTranslationStyle={setTranslationStyle}
-              isSidebarOpen={isSidebarOpen}
-              glossaryCount={glossary.length}
-            />
-          )}
+          <StudioHeader
+            currentNovel={currentNovel}
+            chapters={chapters}
+            currentChapter={currentChapter}
+            onSelectChapter={setSelectedChapterId}
+            onOpenNewChapterModal={() => setIsNewChapterOpen(true)}
+            onDeleteChapter={handleDeleteChapter}
+            onRunEntityScan={handleRunEntityScan}
+            onRunSelfHealing={handleRunSelfHealingPass}
+            onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            onOpenAISettings={() => setIsAISettingsOpen(true)}
+            onSyncSupabaseCloud={handleSyncSupabaseCloud}
+            onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
+            onOpenAITrainingModal={() => setIsAITrainingOpen(true)}
+            onOpenBatchModal={() => setIsBatchModalOpen(true)}
+            translationStyle={translationStyle}
+            onSelectTranslationStyle={setTranslationStyle}
+            isSidebarOpen={isSidebarOpen}
+            glossaryCount={glossary.length}
+          />
 
           {/* Main Studio View */}
           <main className="main-view">
@@ -686,7 +713,7 @@ export const App: React.FC = () => {
             };
             const updated = StorageService.saveNovel(novel);
             setNovels(updated);
-            setSelectedNovelId(novel.id);
+            handleSelectNovel(novel.id);
             setIsLibraryOpen(false);
           }}
           onDeleteNovel={handleDeleteNovel}

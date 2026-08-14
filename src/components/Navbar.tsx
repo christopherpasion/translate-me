@@ -65,11 +65,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               textOverflow: 'ellipsis'
             }}
           >
-            {novels.map(novel => (
-              <option key={novel.id} value={novel.id} style={{ background: '#111827', color: '#fff' }}>
-                📚 {novel.titleEn || novel.titleZh}
+            {novels.length === 0 ? (
+              <option value="" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                (No Novels Created)
               </option>
-            ))}
+            ) : (
+              novels.map(novel => (
+                <option key={novel.id} value={novel.id} style={{ background: 'var(--bg-elevated)', color: 'var(--text-main)' }}>
+                  📚 {novel.titleEn || novel.titleZh}
+                </option>
+              ))
+            )}
           </select>
 
           <button
@@ -191,8 +197,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <select
                   value={selectedNovelId}
                   onChange={(e) => {
-                    onSelectNovel(e.target.value);
-                    setIsMobileMenuOpen(false);
+                    if (e.target.value) {
+                      onSelectNovel(e.target.value);
+                      setIsMobileMenuOpen(false);
+                    }
                   }}
                   style={{
                     width: '100%',
@@ -206,11 +214,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     marginBottom: '0.5rem'
                   }}
                 >
-                  {novels.map(novel => (
-                    <option key={novel.id} value={novel.id} style={{ background: 'var(--bg-elevated)', color: 'var(--text-main)' }}>
-                      📚 {novel.titleEn || novel.titleZh}
+                  {novels.length === 0 ? (
+                    <option value="" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                      (No Novels Created)
                     </option>
-                  ))}
+                  ) : (
+                    novels.map(novel => (
+                      <option key={novel.id} value={novel.id} style={{ background: 'var(--bg-elevated)', color: 'var(--text-main)' }}>
+                        📚 {novel.titleEn || novel.titleZh}
+                      </option>
+                    ))
+                  )}
                 </select>
 
                 <button
