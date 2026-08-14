@@ -248,7 +248,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                   }}
                 >
                   <span>{g.icon}</span>
-                  <span>{g.nameZh.split(' / ')[0]} ({count})</span>
+                  <span>{g.nameEn.split(' / ')[0]} ({count})</span>
                 </button>
               );
             })}
@@ -531,7 +531,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                         <optgroup key={cat.id} label={cat.name} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
                           {cat.genres.map(g => (
                             <option key={g.id} value={g.id}>
-                              {g.icon} {g.nameZh} — {g.nameEn}
+                              {g.icon} {g.nameEn} ({g.nameZh})
                             </option>
                           ))}
                         </optgroup>
@@ -589,8 +589,8 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                           }}
                         >
                           {isSelected && <Check size={11} />}
-                          <span>{tag.nameZh}</span>
-                          <span style={{ opacity: 0.7 }}>({tag.nameEn})</span>
+                          <span>{tag.nameEn}</span>
+                          <span style={{ opacity: 0.7 }}>({tag.nameZh})</span>
                         </button>
                       );
                     })}
