@@ -21,6 +21,7 @@ import { DictionaryLookupModal } from './components/DictionaryLookupModal';
 import { AITrainingModal } from './components/AITrainingModal';
 import { BatchTranslateModal } from './components/BatchTranslateModal';
 import { PublicReaderView } from './components/PublicReaderView';
+import { getStarterGlossaryForGenre } from './services/genrePresets';
 import { Sparkles, BookOpen, Plus, Layers } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -121,7 +122,7 @@ export const App: React.FC = () => {
     }, 180);
 
     try {
-      const result = await translateChapterWithAI(chapterId, rawZh, glossaryEntries);
+      const result = await translateChapterWithAI(chapterId, rawZh, glossaryEntries, currentNovel?.genre);
       clearInterval(interval);
       setTranslationProgress(100);
       setTranslationStep('✨ Translation Complete!');
@@ -702,7 +703,7 @@ export const App: React.FC = () => {
             handleSelectNovel(id);
             setIsLibraryOpen(false);
           }}
-          onCreateNovel={(newNovel) => {
+          onCreateNovel={(newNovel, seedStarterGlossary) => {
             const novel: Novel = {
               ...newNovel,
               id: `novel-${Date.now()}`,
@@ -713,8 +714,30 @@ export const App: React.FC = () => {
             };
             const updated = StorageService.saveNovel(novel);
             setNovels(updated);
+
+            // Auto-seed starter glossary terms if requested
+            if (seedStarterGlossary) {
+              const starterTerms = getStarterGlossaryForGenre(novel.genre);
+              for (const term of starterTerms) {
+                StorageService.saveGlossaryEntry({
+                  id: `g-${novel.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+                  originalZh: term.originalZh,
+                  translatedEn: term.translatedEn,
+                  category: term.category,
+                  scope: 'local',
+                  notes: term.notes || `Starter preset for ${novel.genre}`,
+                  occurrences: 1,
+                  updatedAt: new Date().toISOString()
+                });
+              }
+            }
+
             handleSelectNovel(novel.id);
             setIsLibraryOpen(false);
+          }}
+          onUpdateNovel={(updatedNovel) => {
+            const updated = StorageService.saveNovel(updatedNovel);
+            setNovels(updated);
           }}
           onDeleteNovel={handleDeleteNovel}
           onClose={() => setIsLibraryOpen(false)}

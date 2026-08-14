@@ -4,6 +4,7 @@ import { StorageService } from './storage';
 import { buildFewShotReferencePrompt } from './referenceAligner';
 import { getActiveTrainingRulesPrompt } from './aiTrainingService';
 import { customNeuralTranslator } from './customNeuralTranslator';
+import { getGenreMeta } from './genrePresets';
 
 export type AIProvider = 'custom-neural' | 'built-in' | 'ollama' | 'gemini' | 'openai' | 'deepseek' | 'groq';
 
@@ -80,7 +81,8 @@ const API_COOLDOWN_MS = 5000;
 export async function translateChapterWithAI(
   chapterId: string,
   rawChinese: string,
-  glossary: GlossaryEntry[]
+  glossary: GlossaryEntry[],
+  genre?: string
 ): Promise<TranslationResult> {
   const settings = getAISettings();
 
@@ -124,7 +126,7 @@ export async function translateChapterWithAI(
     try {
       const endpoint = settings.ollamaEndpoint || DEFAULT_OLLAMA_ENDPOINT;
       const model = settings.ollamaModel || DEFAULT_OLLAMA_MODEL;
-      return await translateWithOllamaAPI(chapterId, rawChinese, glossary, endpoint, model);
+      return await translateWithOllamaAPI(chapterId, rawChinese, glossary, endpoint, model, genre);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[TranslateMe] Ollama translation failed:', message);
@@ -136,7 +138,7 @@ export async function translateChapterWithAI(
     }
   } else if (settings.provider === 'deepseek') {
     try {
-      return await translateWithDeepSeekAPI(chapterId, rawChinese, glossary, deepseekKey);
+      return await translateWithDeepSeekAPI(chapterId, rawChinese, glossary, deepseekKey, genre);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[TranslateMe] DeepSeek API failed:', message);
@@ -159,7 +161,7 @@ export async function translateChapterWithAI(
     }
   } else if (settings.provider === 'gemini') {
     try {
-      return await translateWithGeminiAPI(chapterId, rawChinese, glossary, geminiKey);
+      return await translateWithGeminiAPI(chapterId, rawChinese, glossary, geminiKey, genre);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[TranslateMe] Gemini API failed:', message);
@@ -178,7 +180,7 @@ export async function translateChapterWithAI(
     }
   } else if (settings.provider === 'groq') {
     try {
-      return await translateWithDeepSeekAPI(chapterId, rawChinese, glossary, groqKey);
+      return await translateWithDeepSeekAPI(chapterId, rawChinese, glossary, groqKey, genre);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[TranslateMe] Groq API failed:', message);
@@ -200,7 +202,8 @@ async function translateWithDeepSeekAPI(
   _chapterId: string,
   rawChinese: string,
   glossary: GlossaryEntry[],
-  apiKey: string
+  apiKey: string,
+  genre?: string
 ): Promise<TranslationResult> {
   const activeTerms = glossary
     .filter(g => rawChinese.includes(g.originalZh))
@@ -210,9 +213,14 @@ async function translateWithDeepSeekAPI(
   // Internal Few-Shot Gold-Standard Reference Injection
   const referencePrompt = buildFewShotReferencePrompt(rawChinese);
   const trainingRulesPrompt = getActiveTrainingRulesPrompt();
+  const genreMeta = getGenreMeta(genre);
 
   const systemPrompt = `You are an elite, award-winning Chinese web novel translator and literary editor specializing in Xianxia, Wuxia, Xuanhuan, Imperial Court, and Sci-Fi.
 Translate the raw Chinese text into clean, high-rhythm, natural, fluent English prose.
+
+GENRE & TONE TARGET:
+- Novel Genre: ${genreMeta.nameEn} (${genreMeta.nameZh})
+- Prose Tone Guideline: ${genreMeta.translationToneGuide}
 
 ${trainingRulesPrompt}
 
@@ -287,7 +295,8 @@ async function translateWithGeminiAPI(
   _chapterId: string,
   rawChinese: string,
   glossary: GlossaryEntry[],
-  apiKey: string
+  apiKey: string,
+  genre?: string
 ): Promise<TranslationResult> {
   const activeTerms = glossary
     .filter(g => rawChinese.includes(g.originalZh))
@@ -296,9 +305,14 @@ async function translateWithGeminiAPI(
 
   const referencePrompt = buildFewShotReferencePrompt(rawChinese);
   const trainingRulesPrompt = getActiveTrainingRulesPrompt();
+  const genreMeta = getGenreMeta(genre);
 
   const prompt = `You are an elite, award-winning Chinese web novel translator and literary editor specializing in Xianxia, Wuxia, Xuanhuan, Imperial Court, and Sci-Fi.
 Translate the raw Chinese text into clean, high-rhythm, natural, fluent English prose.
+
+GENRE & TONE TARGET:
+- Novel Genre: ${genreMeta.nameEn} (${genreMeta.nameZh})
+- Prose Tone Guideline: ${genreMeta.translationToneGuide}
 
 ${trainingRulesPrompt}
 
@@ -369,7 +383,8 @@ async function translateWithOllamaAPI(
   rawChinese: string,
   glossary: GlossaryEntry[],
   endpoint: string,
-  modelName: string
+  modelName: string,
+  genre?: string
 ): Promise<TranslationResult> {
   const activeTerms = glossary
     .filter(g => rawChinese.includes(g.originalZh))
@@ -378,9 +393,14 @@ async function translateWithOllamaAPI(
 
   const referencePrompt = buildFewShotReferencePrompt(rawChinese);
   const trainingRulesPrompt = getActiveTrainingRulesPrompt();
+  const genreMeta = getGenreMeta(genre);
 
   const systemPrompt = `You are an elite, award-winning Chinese web novel translator and literary editor specializing in Xianxia, Wuxia, Xuanhuan, Imperial Court, and Sci-Fi.
 Translate the raw Chinese text into clean, high-rhythm, natural, fluent English prose.
+
+GENRE & TONE TARGET:
+- Novel Genre: ${genreMeta.nameEn} (${genreMeta.nameZh})
+- Prose Tone Guideline: ${genreMeta.translationToneGuide}
 
 ${trainingRulesPrompt}
 

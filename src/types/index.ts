@@ -1,13 +1,26 @@
 export type Genre = 
   | 'xianxia' 
-  | 'wuxia' 
   | 'xuanhuan' 
-  | 'historical' 
-  | 'scifi' 
-  | 'urban' 
-  | 'romance' 
+  | 'wuxia' 
+  | 'western-fantasy'
+  | 'isekai' 
+  | 'system' 
   | 'gaming' 
-  | 'classical';
+  | 'urban' 
+  | 'supernatural'
+  | 'business'
+  | 'scifi' 
+  | 'historical' 
+  | 'court'
+  | 'military'
+  | 'romance' 
+  | 'danmei'
+  | 'horror'
+  | 'mystery'
+  | 'apocalyptic'
+  | 'comedy'
+  | 'classical'
+  | string;
 
 export type EntityCategory = 'character' | 'faction' | 'realm' | 'location' | 'item' | 'idiom';
 
@@ -101,6 +114,7 @@ export interface Novel {
   titleEn: string;
   author: string;
   genre: Genre;
+  tags?: string[];
   coverGradient: string;
   description: string;
   chaptersCount: number;

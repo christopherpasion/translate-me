@@ -3,6 +3,7 @@ import type { Novel, Chapter } from '../types';
 import { StorageService } from '../services/storage';
 import { cleanAndTranslateChapterTitle } from '../services/translationEngine';
 import type { TranslationStyle } from '../services/translationEngine';
+import { getGenreMeta, WEB_NOVEL_TROPE_TAGS } from '../services/genrePresets';
 import { Sparkles, GitFork, Plus, Sidebar, Trash2, Cpu, BookOpen, Brain, Layers } from 'lucide-react';
 
 interface StudioHeaderProps {
@@ -63,9 +64,54 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
             {currentNovel.titleEn || currentNovel.titleZh}
           </h2>
-          <span className={`badge badge-${currentNovel.genre}`}>
-            {currentNovel.genre.toUpperCase()}
-          </span>
+          {/* Genre Badge */}
+          {(() => {
+            const genreMeta = getGenreMeta(currentNovel.genre);
+            return (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  background: genreMeta.badgeGradient,
+                  border: `1px solid ${genreMeta.badgeBorder}`,
+                  color: genreMeta.badgeColor,
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '9999px',
+                  textTransform: 'uppercase'
+                }}
+              >
+                <span>{genreMeta.icon}</span>
+                <span>{genreMeta.nameEn.split(' / ')[0]}</span>
+              </span>
+            );
+          })()}
+
+          {/* Trope Tag Pills */}
+          {currentNovel.tags && currentNovel.tags.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              {currentNovel.tags.slice(0, 2).map(tagId => {
+                const tagMeta = WEB_NOVEL_TROPE_TAGS.find(t => t.id === tagId);
+                return (
+                  <span
+                    key={tagId}
+                    style={{
+                      fontSize: '0.68rem',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '4px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border-color)',
+                      color: tagMeta ? tagMeta.color : 'var(--text-dim)'
+                    }}
+                  >
+                    🏷️ {tagMeta ? tagMeta.nameZh : tagId}
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
           {/* Token Usage & Cost Counter Pill */}
           <button
