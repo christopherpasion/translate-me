@@ -797,17 +797,34 @@ body.light-mode .search-input {
   transition: all 0.2s ease;
 }
 
-.mobile-tab-btn.active {
-  background: var(--primary-cyan);
-  color: #090d16;
-  border-color: var(--primary-cyan);
-  font-weight: 700;
+.hidden-mobile {
+  display: none !important;
 }
 
-@media (max-width: 768px) {
-  .mobile-tab-bar {
-    display: flex;
-  }
+.mobile-tab-btn.active {
+  background: var(--primary-cyan) !important;
+  color: #090d16 !important;
+  border-color: var(--primary-cyan) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4) !important;
+}
+
+/* Horizontal Scroll Utilities for Mobile Toolbars */
+.mobile-scroll-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+.mobile-scroll-row::-webkit-scrollbar {
+  height: 3px;
+}
+.mobile-scroll-row::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 9999px;
 }
 
 /* 🍔 Mobile Navigation Hamburger Button & Drawer Overlay */
@@ -821,6 +838,8 @@ body.light-mode .search-input {
   cursor: pointer;
   align-items: center;
   justify-content: center;
+  min-height: 36px;
+  min-width: 36px;
 }
 
 .mobile-nav-backdrop {
@@ -832,7 +851,8 @@ body.light-mode .search-input {
   width: 100vw !important;
   height: 100vh !important;
   background: rgba(0, 0, 0, 0.75) !important;
-  backdrop-filter: blur(6px) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
   z-index: 9999999 !important;
   display: flex !important;
   justify-content: flex-end !important;
@@ -847,7 +867,7 @@ body.light-mode .search-input {
   box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8) !important;
   display: flex !important;
   flex-direction: column !important;
-  animation: slideInRight 0.25s ease-out !important;
+  animation: slideInRight 0.22s ease-out !important;
   z-index: 10000000 !important;
   overflow: hidden !important;
 }
@@ -881,10 +901,30 @@ body.light-mode .search-input {
 .mobile-drawer-content {
   padding: 1.25rem !important;
   overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
   flex: 1 !important;
 }
 
+/* ========================================================================= */
+/* 📱 Universal Mobile Responsiveness (< 768px)                              */
+/* ========================================================================= */
 @media (max-width: 768px) {
+  .mobile-tab-bar {
+    display: flex !important;
+    gap: 0.35rem !important;
+    padding: 0.4rem 0.75rem !important;
+    background: var(--bg-elevated) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .mobile-tab-btn {
+    flex: 1 !important;
+    padding: 0.45rem 0.5rem !important;
+    font-size: 0.8rem !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+  }
+
   .mobile-hamburger-btn {
     display: flex !important;
   }
@@ -909,46 +949,156 @@ body.light-mode .search-input {
     display: none !important;
   }
 
-  .pane-split {
+  /* Dual Pane Grid System Mobile Overhaul */
+  .aligned-translation-grid {
+    padding: 0 0.5rem 3rem 0.5rem !important;
+  }
+
+  .aligned-grid-sticky-header {
+    margin: 0 -0.5rem 0.75rem -0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+    display: flex !important;
     flex-direction: column !important;
+    gap: 0.5rem !important;
   }
 
-  .editor-pane.mobile-hidden {
-    display: none !important;
+  .aligned-grid-sticky-header .header-col {
+    width: 100% !important;
+    justify-content: space-between !important;
   }
 
-  .navbar {
-    padding: 0.5rem 0.75rem !important;
+  /* Translation Row behavior on mobile: Stacked when both visible, 100% width when single tab */
+  .translation-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    padding: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    border-radius: var(--radius-sm) !important;
   }
 
-  .studio-toolbar {
-    padding: 0.5rem 0.75rem !important;
+  .translation-cell {
+    width: 100% !important;
+  }
+
+  .chinese-cell {
+    border-right: none !important;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.1) !important;
+    padding-right: 0 !important;
+    padding-bottom: 0.6rem !important;
+  }
+
+  [data-theme="light"] .chinese-cell,
+  body.light-mode .chinese-cell {
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.12) !important;
+  }
+
+  .english-cell {
+    padding-left: 0 !important;
+  }
+
+  .chinese-text {
+    font-size: 1.05rem !important;
+    line-height: 1.7 !important;
+  }
+
+  .english-text {
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Universal Modal Overhaul for Mobile Devices */
+  .modal-overlay {
+    padding: 0.4rem !important;
+  }
+
+  .modal-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 92vh !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  .modal-card-lg {
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+  }
+
+  .modal-header {
+    padding: 0.85rem 1rem !important;
+  }
+
+  .modal-body {
+    padding: 0.85rem 1rem !important;
+  }
+
+  .modal-footer {
+    padding: 0.75rem 1rem !important;
     flex-wrap: wrap !important;
     gap: 0.5rem !important;
   }
 
-  .modal-content {
-    width: 95vw !important;
-    max-height: 92vh !important;
+  .modal-footer .btn {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+
+  .navbar {
+    padding: 0.45rem 0.65rem !important;
+  }
+
+  .brand-title {
+    font-size: 1.05rem !important;
+  }
+
+  .studio-header {
+    padding: 0.5rem 0.75rem !important;
   }
 
   .glossary-sidebar {
     position: fixed !important;
     right: 0 !important;
-    top: 55px !important;
+    top: 50px !important;
     bottom: 0 !important;
     width: 320px !important;
-    max-width: 85vw !important;
+    max-width: 90vw !important;
     z-index: 9999 !important;
     box-shadow: -10px 0 30px rgba(0,0,0,0.6) !important;
   }
 
   .reader-toolbar {
     flex-direction: column !important;
-    align-items: flex-start !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
   }
 
   .btn {
     min-height: 38px !important;
   }
+
+  /* Responsive Form Grids */
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
 }
+
+/* Ultra-compact screens (< 480px) */
+@media (max-width: 480px) {
+  .brand-badge {
+    display: none !important;
+  }
+
+  .studio-header h2 {
+    font-size: 0.95rem !important;
+  }
+
+  .chinese-text {
+    font-size: 1rem !important;
+  }
+
+  .english-text {
+    font-size: 0.9rem !important;
+  }
+}
+

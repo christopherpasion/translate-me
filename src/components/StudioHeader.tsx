@@ -92,7 +92,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         </div>
 
         {/* Chapter Dropdown & Quick Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: '240px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: '220px', justifyContent: 'flex-end' }}>
           <select
             value={currentChapter?.id || ''}
             onChange={(e) => onSelectChapter(e.target.value)}
@@ -101,7 +101,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
               maxWidth: '280px',
               minWidth: '120px',
               background: 'var(--bg-elevated)',
-              color: '#fff',
+              color: 'var(--text-main)',
               border: '1px solid var(--border-color)',
               padding: '0.35rem 0.5rem',
               borderRadius: 'var(--radius-sm)',
@@ -116,7 +116,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
               const cleanTitle = cleanAndTranslateChapterTitle(ch.titleZh, ch.chapterNumber);
               const displayTitle = ch.titleEn ? ch.titleEn : cleanTitle;
               return (
-                <option key={ch.id} value={ch.id} style={{ background: '#111827' }}>
+                <option key={ch.id} value={ch.id} style={{ background: 'var(--bg-elevated)', color: 'var(--text-main)' }}>
                   Ch. {ch.chapterNumber}: {displayTitle.replace(/^Chapter\s+\d+:\s*/i, '')}
                 </option>
               );
@@ -141,13 +141,13 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         </div>
       </div>
 
-      {/* Row 2: Studio Action Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', width: '100%', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Row 2: Studio Action Controls (Mobile Scrollable Row) */}
+      <div className="mobile-scroll-row" style={{ width: '100%', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color)' }}>
         <button
           className="btn btn-primary"
           onClick={onOpenNewChapterModal}
           title="Paste raw web novel text to clean & translate into English"
-          style={{ fontWeight: 700, gap: '0.35rem', padding: '0.35rem 0.75rem', fontSize: '0.8rem', flex: 1, minWidth: '130px', justifyContent: 'center' }}
+          style={{ fontWeight: 700, gap: '0.35rem', padding: '0.35rem 0.75rem', fontSize: '0.8rem', flexShrink: 0, whiteSpace: 'nowrap' }}
         >
           <Plus size={14} />
           <span>📋 Paste Chapter</span>
@@ -155,7 +155,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
 
         {/* Translation Tone Preset Selector */}
         {onSelectTranslationStyle && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
             <select
               value={translationStyle}
               onChange={(e) => onSelectTranslationStyle(e.target.value as TranslationStyle)}
@@ -169,12 +169,13 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 outline: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
-              <option value="xianxia">⚔️ Xianxia / Cultivation</option>
-              <option value="fluent">⚡ Fluent Web Novel</option>
-              <option value="faithful">📖 Faithful Literal</option>
+              <option value="xianxia">⚔️ Xianxia</option>
+              <option value="fluent">⚡ Fluent</option>
+              <option value="faithful">📖 Faithful</option>
             </select>
           </div>
         )}
@@ -185,7 +186,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             className="btn btn-secondary"
             onClick={onOpenBatchModal}
             title="Batch translate multiple chapters in queue with real-time progress"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: 'var(--primary-cyan)', borderColor: 'rgba(0, 242, 254, 0.3)' }}
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: 'var(--primary-cyan)', borderColor: 'rgba(0, 242, 254, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             <Layers size={14} />
             <span>Batch ({chapters.length})</span>
@@ -198,7 +199,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             className="btn btn-secondary"
             onClick={onOpenDictionaryModal}
             title="Search 5,000+ Chinese-English Xianxia, Wuxia, and Cultivation Terms"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#ec4899', borderColor: 'rgba(236, 72, 153, 0.3)' }}
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#ec4899', borderColor: 'rgba(236, 72, 153, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             <BookOpen size={14} />
             <span>Dictionary</span>
@@ -211,40 +212,51 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             className="btn btn-secondary"
             onClick={onOpenAITrainingModal}
             title="Open AI Parallel Corpus Trainer, Style Learner & In-Memory Model fine-tuner"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#a855f7', borderColor: 'rgba(168, 85, 247, 0.3)' }}
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#a855f7', borderColor: 'rgba(168, 85, 247, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             <Brain size={14} />
             <span>AI Trainer</span>
           </button>
         )}
 
+        {/* Character Graph Modal Trigger */}
         <button
           className="btn btn-secondary"
-          onClick={onRunEntityScan}
-          title="Run Named Entity Recognition (NER) to discover character names, factions, and items"
-          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
+          onClick={onOpenCharacterGraph}
+          title="Explore Dynamic Character & Faction Relationship Network Graph"
+          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: 'var(--accent-green)', borderColor: 'rgba(16, 185, 129, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
         >
-          <Sparkles size={14} style={{ color: 'var(--primary-cyan)' }} />
-          <span>Scan Terms</span>
+          <GitFork size={14} />
+          <span>Graph</span>
         </button>
 
+        {/* Glossary Sidebar Toggle */}
         <button
-          className={`btn ${isSidebarOpen ? 'btn-primary' : 'btn-secondary'}`}
+          className="btn btn-secondary"
           onClick={onToggleSidebar}
-          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
+          title={isSidebarOpen ? "Hide Glossary Sidebar" : "Show Glossary Sidebar"}
+          style={{
+            padding: '0.35rem 0.65rem',
+            fontSize: '0.8rem',
+            color: isSidebarOpen ? 'var(--primary-cyan)' : 'var(--text-muted)',
+            borderColor: isSidebarOpen ? 'var(--primary-cyan)' : 'var(--border-color)',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
+          }}
         >
           <Sidebar size={14} />
           <span>Glossary ({glossaryCount})</span>
         </button>
 
+        {/* Scan Terms Trigger */}
         <button
           className="btn btn-secondary"
-          onClick={onOpenCharacterGraph}
-          title="View visual character relationship tree & sect hierarchy"
-          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
+          onClick={onRunEntityScan}
+          title="Run Named Entity Recognition (NER) to discover character names, factions, and items"
+          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', flexShrink: 0, whiteSpace: 'nowrap' }}
         >
-          <GitFork size={14} style={{ color: 'var(--accent-purple)' }} />
-          <span>Graph</span>
+          <Sparkles size={14} style={{ color: 'var(--primary-cyan)' }} />
+          <span>Scan Terms</span>
         </button>
 
         {onSyncSupabaseCloud && (
@@ -252,7 +264,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             className="btn btn-secondary"
             onClick={onSyncSupabaseCloud}
             title="Sync all chapters & terms to Supabase Cloud Database"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#60a5fa', borderColor: 'rgba(96,165,250,0.3)' }}
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#60a5fa', borderColor: 'rgba(96,165,250,0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             <span>☁️ Cloud Sync</span>
           </button>

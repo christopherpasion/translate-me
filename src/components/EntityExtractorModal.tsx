@@ -33,8 +33,8 @@ export const EntityExtractorModal: React.FC<EntityExtractorModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-card" style={{ maxWidth: '750px', maxHeight: '85vh' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(5, 8, 16, 0.85)' }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '750px', maxHeight: '85vh' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Sparkles size={22} style={{ color: 'var(--primary-cyan)' }} />

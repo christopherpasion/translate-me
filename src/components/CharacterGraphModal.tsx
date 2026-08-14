@@ -19,8 +19,8 @@ export const CharacterGraphModal: React.FC<CharacterGraphModalProps> = ({
   const [selectedNode, setSelectedNode] = useState<GlossaryEntry | null>(characters[0] || null);
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-card" style={{ maxWidth: '900px', height: '85vh' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(5, 8, 16, 0.85)' }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', height: '85vh' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <GitFork size={24} style={{ color: 'var(--accent-purple)' }} />

@@ -27,8 +27,8 @@ export const GovernanceModal: React.FC<GovernanceModalProps> = ({
   const pendingSugs = suggestions.filter(s => s.status === 'pending');
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-card" style={{ maxWidth: '800px', height: '80vh' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(5, 8, 16, 0.85)' }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', height: '80vh' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <ShieldCheck size={24} style={{ color: 'var(--accent-amber)' }} />

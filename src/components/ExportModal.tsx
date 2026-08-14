@@ -63,8 +63,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-card" style={{ maxWidth: '550px' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(5, 8, 16, 0.85)' }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '550px' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Download size={22} style={{ color: 'var(--primary-cyan)' }} />

@@ -223,8 +223,8 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
 
       {/* Add / Edit Entry Modal */}
       {editingEntry && (
-        <div className="modal-overlay" style={{ zIndex: 120 }}>
-          <div className="modal-card" style={{ maxWidth: '420px' }}>
+        <div className="modal-overlay" onClick={() => setEditingEntry(null)} style={{ zIndex: 120, background: 'rgba(5, 8, 16, 0.85)' }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
             <div className="modal-header">
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
                 {editingEntry.id ? 'Edit Glossary Term' : 'Add New Glossary Term'}

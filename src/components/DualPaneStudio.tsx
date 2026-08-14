@@ -310,18 +310,16 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
       {/* Discovered Entities Quick-Add Banner */}
       {unmappedDiscoveredEntities.length > 0 && (
         <div
+          className="mobile-scroll-row"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
             padding: '0.35rem 1rem',
             background: 'rgba(0, 242, 254, 0.05)',
             borderBottom: '1px solid rgba(0, 242, 254, 0.15)',
             fontSize: '0.75rem',
-            flexWrap: 'wrap'
+            width: '100%'
           }}
         >
-          <span style={{ color: 'var(--primary-cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <span style={{ color: 'var(--primary-cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
             <Sparkles size={12} /> Discovered Entities:
           </span>
           {unmappedDiscoveredEntities.map((ent: ExtractedEntity, eIdx: number) => (
@@ -340,6 +338,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.25rem',
+                flexShrink: 0,
                 transition: 'border-color 0.15s ease'
               }}
             >
@@ -439,6 +438,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
                 className={`translation-row ${isHovered ? 'row-active' : ''}`}
                 onMouseEnter={() => setHoveredParaIdx(row.idx)}
                 onMouseLeave={() => setHoveredParaIdx(null)}
+                onClick={() => setHoveredParaIdx(hoveredParaIdx === row.idx ? null : row.idx)}
               >
                 {/* Left Cell: Chinese Paragraph */}
                 <div className={`translation-cell chinese-cell ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>

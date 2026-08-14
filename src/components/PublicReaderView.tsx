@@ -281,12 +281,11 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
 
       {/* Main Chapter Content Card */}
       <div
-        className="glass-panel"
+        className="glass-panel reader-content-card"
         style={{
           background: 'var(--bg-card)',
           color: 'var(--text-main)',
           borderRadius: 'var(--radius-lg)',
-          padding: '2.5rem 3rem',
           border: '1px solid var(--border-color)',
           boxShadow: 'var(--shadow-card)',
           transition: 'all 0.3s ease'
@@ -403,8 +402,12 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
 
       {/* Reader Suggestion Modal */}
       {isSuggestingOpen && (
-        <div className="modal-overlay" style={{ zIndex: 120 }}>
-          <div className="modal-card" style={{ maxWidth: '500px' }}>
+        <div
+          className="modal-overlay"
+          onClick={() => setIsSuggestingOpen(false)}
+          style={{ zIndex: 120, background: 'rgba(5, 8, 16, 0.85)' }}
+        >
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <div className="modal-header">
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Suggest Translation Fix to Owner</h3>
               <button className="btn btn-secondary btn-icon" onClick={() => setIsSuggestingOpen(false)}>✕</button>

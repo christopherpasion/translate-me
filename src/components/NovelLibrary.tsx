@@ -113,8 +113,8 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
         </div>
 
         {/* Filter Toolbar */}
-        <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ padding: '0.75rem 1.25rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          <div style={{ position: 'relative', width: '100%' }}>
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
             <input
               type="text"
@@ -133,7 +133,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="mobile-scroll-row" style={{ width: '100%' }}>
             {['all', 'xianxia', 'wuxia', 'scifi', 'urban'].map(g => (
               <button
                 key={g}
@@ -146,7 +146,8 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                   color: selectedGenre === g ? 'var(--primary-cyan)' : 'var(--text-muted)',
                   textTransform: 'capitalize',
                   padding: '0.35rem 0.75rem',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  flexShrink: 0
                 }}
               >
                 {g}
@@ -156,7 +157,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
         </div>
 
         {/* Novel Cards Grid */}
-        <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', overflowY: 'auto' }}>
           {filteredNovels.map(novel => (
             <div
               key={novel.id}
@@ -282,7 +283,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                     style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>Author (作者)</label>
                     <input

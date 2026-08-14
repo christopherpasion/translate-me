@@ -202,15 +202,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '0.9rem',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    marginBottom: '0.5rem'
                   }}
                 >
                   {novels.map(novel => (
-                    <option key={novel.id} value={novel.id}>
-                      {novel.titleZh} ({novel.titleEn})
+                    <option key={novel.id} value={novel.id} style={{ background: 'var(--bg-elevated)', color: 'var(--text-main)' }}>
+                      📚 {novel.titleEn || novel.titleZh}
                     </option>
                   ))}
                 </select>
+
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.55rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                  onClick={() => {
+                    onOpenLibrary();
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <Layers size={15} style={{ color: 'var(--primary-cyan)' }} />
+                  <span>Browse All Novels / Library</span>
+                </button>
               </div>
 
               {/* View Switcher */}
