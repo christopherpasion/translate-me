@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Novel, Genre } from '../types';
 import { Plus, Search, Layers, ArrowRight, X, Trash2, Edit3, Sparkles, Check, Tag } from 'lucide-react';
-import { getGenreMeta, getAllGenreCategories, WEB_NOVEL_TROPE_TAGS, GENRE_DEFINITIONS } from '../services/genrePresets';
+import { getGenreMeta, getAllGenreCategories, WEB_NOVEL_TROPE_TAGS, GENRE_DEFINITIONS, detectSuggestedGenre } from '../services/genrePresets';
 
 interface NovelLibraryProps {
   novels: Novel[];
@@ -57,6 +57,16 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [seedStarterGlossary, setSeedStarterGlossary] = useState(true);
   const [description, setDescription] = useState('');
+
+  // AI Genre & Trope Auto-Detector
+  const aiGenreSuggestion = useMemo(() => {
+    if (editingNovel) return null;
+    return detectSuggestedGenre({
+      titleZh,
+      titleEn,
+      description
+    });
+  }, [titleZh, titleEn, description, editingNovel]);
 
   const openCreateModal = () => {
     setEditingNovel(null);
@@ -187,68 +197,99 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
           </div>
         </div>
 
-        {/* Filter Toolbar */}
+        {/* Filter Toolbar: Search Bar + Categorized Dropdown + Quick Pills */}
         <div style={{ padding: '0.75rem 1.25rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-          <div style={{ position: 'relative', width: '100%' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
-            <input
-              type="text"
-              placeholder="Search novels by title, author, or trope tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem 0.5rem 2.25rem',
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-main)',
-                outline: 'none'
-              }}
-            />
+          {/* Row 1: Search & Categorized Dropdown */}
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+              <input
+                type="text"
+                placeholder="Search novels by title, author, or trope tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.75rem 0.55rem 2.25rem',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  fontSize: '0.88rem'
+                }}
+              />
+            </div>
+
+            {/* Categorized Genre Filter Dropdown (Replaces horizontal scrollbar) */}
+            <div style={{ minWidth: '240px' }}>
+              <select
+                value={selectedGenre}
+                onChange={(e) => setSelectedGenre(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.85rem',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-main)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="all">📚 All Genres ({novels.length})</option>
+                {genreCategories.map(cat => (
+                  <optgroup key={cat.id} label={cat.name} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+                    {cat.genres.map(g => {
+                      const count = novels.filter(n => n.genre === g.id).length;
+                      return (
+                        <option key={g.id} value={g.id}>
+                          {g.icon} {g.nameEn.split(' / ')[0]} ({count})
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Genre Filter Carousel */}
-          <div className="mobile-scroll-row" style={{ width: '100%', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-            <button
-              className={`badge ${selectedGenre === 'all' ? 'badge-active' : ''}`}
-              onClick={() => setSelectedGenre('all')}
-              style={{
-                cursor: 'pointer',
-                border: selectedGenre === 'all' ? '1px solid var(--primary-cyan)' : '1px solid var(--border-color)',
-                background: selectedGenre === 'all' ? 'rgba(0, 242, 254, 0.15)' : 'var(--bg-card)',
-                color: selectedGenre === 'all' ? 'var(--primary-cyan)' : 'var(--text-muted)',
-                padding: '0.35rem 0.75rem',
-                fontWeight: 600,
-                flexShrink: 0
-              }}
-            >
-              📚 All ({novels.length})
-            </button>
+          {/* Row 2: Popular Quick Filters (4-5 shortcut chips, clean & wrapped) */}
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginRight: '0.2rem' }}>
+              Quick Filters:
+            </span>
+            {['all', 'xianxia', 'system', 'isekai', 'scifi', 'urban'].map(gId => {
+              const isSelected = selectedGenre === gId;
+              const gMeta = gId === 'all' ? null : getGenreMeta(gId);
+              const count = gId === 'all' ? novels.length : novels.filter(n => n.genre === gId).length;
+              const label = gId === 'all' ? 'All' : gMeta?.nameEn.split(' / ')[0];
+              const icon = gId === 'all' ? '📚' : gMeta?.icon;
 
-            {Object.values(GENRE_DEFINITIONS).map(g => {
-              const isSelected = selectedGenre === g.id;
-              const count = novels.filter(n => n.genre === g.id).length;
               return (
                 <button
-                  key={g.id}
-                  className={`badge ${isSelected ? 'badge-active' : ''}`}
-                  onClick={() => setSelectedGenre(g.id)}
+                  key={gId}
+                  type="button"
+                  onClick={() => setSelectedGenre(gId)}
                   style={{
-                    cursor: 'pointer',
-                    border: isSelected ? `1px solid ${g.badgeColor}` : '1px solid var(--border-color)',
-                    background: isSelected ? g.badgeGradient : 'var(--bg-card)',
-                    color: isSelected ? g.badgeColor : 'var(--text-muted)',
-                    padding: '0.35rem 0.75rem',
+                    padding: '0.22rem 0.65rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.74rem',
                     fontWeight: 600,
-                    flexShrink: 0,
-                    display: 'flex',
+                    cursor: 'pointer',
+                    border: isSelected ? '1px solid var(--primary-cyan)' : '1px solid var(--border-color)',
+                    background: isSelected ? 'rgba(0, 242, 254, 0.15)' : 'var(--bg-card)',
+                    color: isSelected ? 'var(--primary-cyan)' : 'var(--text-muted)',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '0.3rem'
+                    gap: '0.25rem',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  <span>{g.icon}</span>
-                  <span>{g.nameEn.split(' / ')[0]} ({count})</span>
+                  <span>{icon}</span>
+                  <span>{label} ({count})</span>
                 </button>
               );
             })}
@@ -276,7 +317,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
             </h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '420px', lineHeight: 1.5, margin: '0 auto 1.5rem auto' }}>
               {searchQuery
-                ? `No novel projects match "${searchQuery}". Try searching another keyword or clear the genre filter.`
+                ? `No novel projects match "${searchQuery}". Try searching another keyword or select All Genres.`
                 : 'Your novel library is empty. Create your first novel project to start translating with 20+ genre presets & AI!'}
             </p>
             <button
@@ -474,7 +515,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 完美世界 or 诡秘之主"
+                    placeholder="e.g. 完美世界 or 诡秘之主 or 全球高武系统"
                     value={titleZh}
                     onChange={(e) => setTitleZh(e.target.value)}
                     style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
@@ -494,6 +535,56 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                     style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>
+
+                {/* Real-time AI Suggested Genre Banner */}
+                {aiGenreSuggestion && (
+                  <div style={{
+                    padding: '0.65rem 0.85rem',
+                    background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
+                    border: '1px solid rgba(0, 242, 254, 0.25)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
+                      <Sparkles size={14} style={{ color: 'var(--primary-cyan)' }} />
+                      <span style={{ color: 'var(--text-muted)' }}>AI Suggestion:</span>
+                      <strong style={{ color: 'var(--primary-cyan)' }}>
+                        {aiGenreSuggestion.genreMeta.icon} {aiGenreSuggestion.genreMeta.nameEn.split(' / ')[0]}
+                      </strong>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7, color: 'var(--text-dim)' }}>
+                        ({aiGenreSuggestion.confidence}% match • {aiGenreSuggestion.reason})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGenre(aiGenreSuggestion.genre);
+                        setIsCustomGenre(false);
+                        setSelectedTags(prev => Array.from(new Set([...prev, ...aiGenreSuggestion.suggestedTags])));
+                      }}
+                      style={{
+                        padding: '0.25rem 0.65rem',
+                        borderRadius: '4px',
+                        background: 'var(--primary-cyan)',
+                        color: '#000',
+                        border: 'none',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      <span>⚡ Apply Suggestion</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Author & Categorized Genre Preset */}
                 <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

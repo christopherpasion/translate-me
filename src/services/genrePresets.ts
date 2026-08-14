@@ -412,3 +412,168 @@ export function getStarterGlossaryForGenre(genreId: string): StarterGlossaryItem
   }
   return [];
 }
+
+export interface GenreSuggestion {
+  genre: Genre;
+  confidence: number;
+  genreMeta: GenreMetadata;
+  suggestedTags: string[];
+  matchedKeywords: string[];
+  reason: string;
+}
+
+export function detectSuggestedGenre(input: {
+  titleZh?: string;
+  titleEn?: string;
+  description?: string;
+  sampleText?: string;
+}): GenreSuggestion | null {
+  const fullText = [
+    input.titleZh || '',
+    input.titleEn || '',
+    input.description || '',
+    input.sampleText || ''
+  ].join(' ').toLowerCase();
+
+  if (!fullText.trim()) return null;
+
+  const rules: Array<{
+    genre: Genre;
+    keywords: string[];
+    tags: string[];
+    nameZh: string;
+  }> = [
+    {
+      genre: 'system',
+      keywords: ['系统', '宿主', '面板', '属性点', '签到', '任务', '升级', '神豪系统', '挂机', '无限流', '叮！', 'system', 'litrpg', 'stat window', 'level up'],
+      tags: ['op_mc', 'face_slapping', 'invincible_start'],
+      nameZh: '系统流'
+    },
+    {
+      genre: 'xianxia',
+      keywords: ['修仙', '修真', '金丹', '元婴', '筑基', '宗门', '飞升', '道心', '灵石', '天劫', '飞剑', '仙尊', '仙帝', '洞府', '丹药', '凡人修仙', '完美世界', '遮天', 'xianxia', 'cultivation', 'dantian', 'immortal'],
+      tags: ['op_mc', 'alchemy', 'slow_burn'],
+      nameZh: '仙侠/修真'
+    },
+    {
+      genre: 'xuanhuan',
+      keywords: ['玄幻', '斗气', '武魂', '异界', '神帝', '至尊', '血脉', '圣尊', '神王', '斗破', '武动', '大主宰', 'xuanhuan', 'spirit beast', 'divine'],
+      tags: ['op_mc', 'face_slapping', 'invincible_start'],
+      nameZh: '玄幻'
+    },
+    {
+      genre: 'isekai',
+      keywords: ['穿越', '重生', '前世', '魂穿', '快穿', '转生', '重回', '从零开始', 'isekai', 'transmigration', 'reincarnation', 'rebirth'],
+      tags: ['kingdom_building', 'op_mc', 'invincible_start'],
+      nameZh: '穿越/重生'
+    },
+    {
+      genre: 'wuxia',
+      keywords: ['武侠', '江湖', '武林', '轻功', '内力', '剑客', '少侠', '掌门', '镖局', '金庸', '古龙', 'wuxia', 'martial arts', 'jianghu'],
+      tags: ['slow_burn'],
+      nameZh: '武侠'
+    },
+    {
+      genre: 'western-fantasy',
+      keywords: ['西幻', '魔法', '法师', '巨龙', '骑士', '奥术', '禁咒', '精灵', '矮人', '巫师', '魔杖', 'western fantasy', 'magic', 'mage', 'dragon', 'knight'],
+      tags: ['kingdom_building', 'alchemy'],
+      nameZh: '西幻/魔法'
+    },
+    {
+      genre: 'gaming',
+      keywords: ['网游', '电竞', '虚拟现实', '全息', '开荒', '公会', '刺客', '法爷', '副本', 'boss', 'vrmmorpg', 'esports', 'guild', 'gaming'],
+      tags: ['op_mc', 'face_slapping'],
+      nameZh: '网游/电竞'
+    },
+    {
+      genre: 'scifi',
+      keywords: ['科幻', '星际', '机甲', '光脑', '战舰', '量子', '赛博', '黑科技', '异形', '虫族', '太空', '舰队', 'scifi', 'cyberpunk', 'mecha', 'starship'],
+      tags: ['infinite_flow', 'kingdom_building'],
+      nameZh: '科幻/机甲'
+    },
+    {
+      genre: 'horror',
+      keywords: ['恐怖', '惊悚', '灵异', '厉鬼', '诡异', '规则', '鬼魂', '凶宅', '冥婚', '盗墓', '恐怖屋', 'horror', 'ghost', 'paranormal', 'haunted'],
+      tags: ['infinite_flow'],
+      nameZh: '灵异/惊悚'
+    },
+    {
+      genre: 'mystery',
+      keywords: ['悬疑', '推理', '侦探', '破案', '刑侦', '凶手', '谋杀', '诡秘', '解密', 'mystery', 'detective', 'deduction'],
+      tags: ['slow_burn'],
+      nameZh: '悬疑/推理'
+    },
+    {
+      genre: 'historical',
+      keywords: ['历史', '大明', '大唐', '三国', '汉朝', '皇帝', '权谋', '争霸', '诸侯', '天下', '将军', 'historical', 'dynasty', 'kingdom'],
+      tags: ['kingdom_building', 'slow_burn'],
+      nameZh: '历史争霸'
+    },
+    {
+      genre: 'court',
+      keywords: ['宫斗', '宅斗', '后宫', '贵妃', '太后', '皇后', '王妃', '摄政王', '嫡女', '庶女', '王爷', 'court', 'palace', 'empress'],
+      tags: ['female_lead', 'face_slapping'],
+      nameZh: '宫斗/权谋'
+    },
+    {
+      genre: 'urban',
+      keywords: ['都市', '神豪', '首富', '校花', '保镖', '校草', '医生', '神医', '鉴宝', '直播', '奶爸', 'urban', 'city', 'slice of life'],
+      tags: ['face_slapping', 'cozy_life'],
+      nameZh: '都市生活'
+    },
+    {
+      genre: 'business',
+      keywords: ['商战', '首富', '金融', '风投', '上市', '创业', '商业帝国', '投资', '股票', 'business', 'tycoon', 'billionaire'],
+      tags: ['op_mc', 'kingdom_building'],
+      nameZh: '商战/神豪'
+    },
+    {
+      genre: 'romance',
+      keywords: ['言情', '甜宠', '虐恋', '总裁', '白月光', '替身', '追妻', '隐婚', '破镜重圆', '初恋', 'romance', 'love story'],
+      tags: ['female_lead', 'cozy_life'],
+      nameZh: '言情/甜宠'
+    },
+    {
+      genre: 'apocalyptic',
+      keywords: ['末世', '丧尸', '废土', '避难所', '变异', '核冬天', '极寒', '囤货', '晶核', 'apocalypse', 'wasteland', 'zombie'],
+      tags: ['kingdom_building', 'op_mc'],
+      nameZh: '末世/废土'
+    }
+  ];
+
+  let bestMatch: {
+    genre: Genre;
+    score: number;
+    matchedKeywords: string[];
+    tags: string[];
+  } | null = null;
+
+  for (const rule of rules) {
+    const matched = rule.keywords.filter(kw => fullText.includes(kw));
+    if (matched.length > 0) {
+      const score = matched.length;
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = {
+          genre: rule.genre,
+          score,
+          matchedKeywords: matched,
+          tags: rule.tags
+        };
+      }
+    }
+  }
+
+  if (!bestMatch || bestMatch.score === 0) return null;
+
+  const confidence = Math.min(99, Math.max(75, 70 + bestMatch.score * 10));
+  const genreMeta = getGenreMeta(bestMatch.genre);
+
+  return {
+    genre: bestMatch.genre,
+    confidence,
+    genreMeta,
+    suggestedTags: bestMatch.tags,
+    matchedKeywords: bestMatch.matchedKeywords,
+    reason: `Detected: "${bestMatch.matchedKeywords.slice(0, 3).join(', ')}"`
+  };
+}
