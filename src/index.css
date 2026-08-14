@@ -1102,3 +1102,106 @@ body.light-mode .search-input {
   }
 }
 
+/* ========================================================================= */
+/* 📱 iPad & Tablet Viewport Responsiveness (769px – 1024px)                 */
+/* ========================================================================= */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .navbar {
+    padding: 0.5rem 0.85rem !important;
+  }
+
+  .brand-title {
+    font-size: 1.1rem !important;
+  }
+
+  .desktop-novel-selector select {
+    max-width: 150px !important;
+    font-size: 0.76rem !important;
+    padding: 0.3rem 0.45rem !important;
+  }
+
+  .desktop-admin-tools {
+    gap: 0.35rem !important;
+  }
+
+  .desktop-admin-tools .btn {
+    padding: 0.32rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    gap: 0.25rem !important;
+  }
+
+  .desktop-role-btn {
+    padding: 0.32rem 0.55rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Dual-Pane CAT Side-by-Side on Tablet */
+  .aligned-translation-grid {
+    padding: 0 1rem 3rem 1rem !important;
+  }
+
+  .aligned-grid-sticky-header {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.25rem !important;
+    margin: 0 -1rem 1rem -1rem !important;
+    padding: 0.5rem 1rem !important;
+  }
+
+  .translation-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.25rem !important;
+    padding: 0.8rem 1rem !important;
+  }
+
+  .chinese-cell {
+    border-right: 1px dashed rgba(255, 255, 255, 0.08) !important;
+    border-bottom: none !important;
+    padding-right: 1rem !important;
+    padding-bottom: 0 !important;
+  }
+
+  [data-theme="light"] .chinese-cell,
+  body.light-mode .chinese-cell {
+    border-right: 1px dashed rgba(0, 0, 0, 0.12) !important;
+    border-bottom: none !important;
+  }
+
+  .chinese-text {
+    font-size: 1.1rem !important;
+    line-height: 1.75 !important;
+  }
+
+  .english-text {
+    font-size: 0.98rem !important;
+    line-height: 1.65 !important;
+  }
+
+  /* Glossary Sidebar as Floating Overlay on iPad */
+  .glossary-sidebar {
+    position: fixed !important;
+    right: 0 !important;
+    top: 50px !important;
+    bottom: 0 !important;
+    width: 340px !important;
+    max-width: 80vw !important;
+    z-index: 50 !important;
+    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  /* Reader View on Tablet */
+  .reader-content-card {
+    padding: 2.25rem 2rem !important;
+    max-width: 820px !important;
+    margin: 0 auto !important;
+  }
+
+  /* Modal Dialogs on Tablet */
+  .modal-card {
+    max-width: 85vw !important;
+    max-height: 85vh !important;
+  }
+}
+
+
