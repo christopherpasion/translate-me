@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion } from './types';
+import React, { useState, useEffect, useRef } from 'react';
+import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion, Bookmark, UserProfile } from './types';
 import { StorageService } from './services/storage';
+import { AuthService } from './services/authService';
 import { extractEntitiesFromChinese, type ExtractedEntity } from './services/nerExtractor';
-import { cascadeTermReplacement, cleanAndTranslateChapterTitle, type TranslationStyle } from './services/translationEngine';
-import { translateChapterWithAI, getAISettings } from './services/aiProvider';
-import { smartCleanWebNovelText, getCustomNoiseRules, addCustomNoiseRule, removeCustomNoiseRule } from './services/textCleaner';
+import { cascadeTermReplacement, type TranslationStyle } from './services/translationEngine';
 import { SupabaseService } from './services/supabaseService';
 
 import { Navbar } from './components/Navbar';
@@ -16,13 +15,13 @@ import { EntityExtractorModal } from './components/EntityExtractorModal';
 import { CharacterGraphModal } from './components/CharacterGraphModal';
 import { GovernanceModal } from './components/GovernanceModal';
 import { ExportModal } from './components/ExportModal';
-import { AISettingsModal } from './components/AISettingsModal';
 import { DictionaryLookupModal } from './components/DictionaryLookupModal';
-import { AITrainingModal } from './components/AITrainingModal';
-import { BatchTranslateModal } from './components/BatchTranslateModal';
 import { PublicReaderView } from './components/PublicReaderView';
+import { BookmarksModal } from './components/BookmarksModal';
+import { AuthModal } from './components/AuthModal';
+import { ChapterUploaderModal } from './components/ChapterUploaderModal';
 import { getStarterGlossaryForGenre } from './services/genrePresets';
-import { Sparkles, BookOpen, Plus, Layers } from 'lucide-react';
+import { BookOpen, Layers, Upload } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Main Data States
@@ -35,14 +34,18 @@ export const App: React.FC = () => {
   const [recommendations, setRecommendations] = useState<AIRecommendation[]>([]);
   const [suggestions, setSuggestions] = useState<ReaderSuggestion[]>([]);
 
-  // Role View Mode ('admin' | 'reader')
+  // User & Bookmarks States
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(AuthService.getCurrentUser());
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+
+  // Role View Mode ('admin' | 'reader') - Default to Reader
   const [viewMode, setViewMode] = useState<'admin' | 'reader'>('reader');
 
-  // App Theme State ('dark' | 'light') - Default to White Theme as requested
+  // App Theme State ('dark' | 'light') - Default to Light Theme
   const [appTheme, setAppTheme] = useState<'dark' | 'light'>('light');
 
   // Translation Prose Style ('xianxia' | 'fluent' | 'faithful')
-  const [translationStyle, setTranslationStyle] = useState<TranslationStyle>('xianxia');
+  const [translationStyle] = useState<TranslationStyle>('xianxia');
 
   useEffect(() => {
     if (appTheme === 'light') {
@@ -54,7 +57,7 @@ export const App: React.FC = () => {
     }
   }, [appTheme]);
 
-  // Modals & Panels State
+  // Modals State
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isEntityScanOpen, setIsEntityScanOpen] = useState(false);
@@ -62,99 +65,25 @@ export const App: React.FC = () => {
   const [isCharacterGraphOpen, setIsCharacterGraphOpen] = useState(false);
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [isNewChapterOpen, setIsNewChapterOpen] = useState(false);
-  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
   const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
-  const [isAITrainingOpen, setIsAITrainingOpen] = useState(false);
-  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [translationError, setTranslationError] = useState<{ provider: string; message: string } | null>(null);
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [translationProgress, setTranslationProgress] = useState(0);
-  const [translationStep, setTranslationStep] = useState('Initializing AI Translation...');
-  const [activeEngineLabel, setActiveEngineLabel] = useState('DeepSeek-V3 AI');
+  const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authDefaultTab, setAuthDefaultTab] = useState<'reader' | 'creator'>('reader');
+  const [isUploaderOpen, setIsUploaderOpen] = useState(false);
 
-  const executeTranslationWithProgress = async (
-    chapterId: string,
-    rawZh: string,
-    glossaryEntries: GlossaryEntry[]
-  ) => {
-    const settings = getAISettings();
-    const providerName = settings.provider === 'custom-neural'
-      ? 'Translate-Me Neural Core (In-House AI) 🧠'
-      : settings.provider === 'ollama'
-        ? `Ollama Local (${settings.ollamaModel || 'Qwen 2.5'}) 🆓`
-        : settings.provider === 'deepseek'
-          ? 'DeepSeek-V3 AI'
-          : settings.provider === 'gemini'
-            ? 'Google Gemini API'
-            : settings.provider === 'groq'
-              ? 'Groq (Llama 3) 🆓'
-              : 'Built-In Local Engine';
-
-    const providerShort = settings.provider === 'custom-neural'
-      ? 'In-House Neural AI'
-      : settings.provider === 'ollama'
-        ? 'Ollama LLM'
-        : settings.provider === 'deepseek'
-          ? 'DeepSeek-V3'
-          : settings.provider === 'gemini'
-            ? 'Gemini AI'
-            : settings.provider === 'groq'
-              ? 'Groq Llama 3'
-              : 'Local Engine';
-    setActiveEngineLabel(providerName);
-    setIsTranslating(true);
-    setTranslationProgress(10);
-    setTranslationStep('🔍 Scanning & Injecting Glossary Terms...');
-
-    let progressValue = 10;
-    const interval = setInterval(() => {
-      progressValue += Math.floor(Math.random() * 8) + 4;
-      if (progressValue > 92) {
-        progressValue = 92;
-        setTranslationStep('🛡️ Finalizing Xianxia & Sci-Fi Prose Alignment...');
-      } else if (progressValue > 60) {
-        setTranslationStep(`✍️ Translating Prose with ${providerShort}...`);
-      } else if (progressValue > 30) {
-        setTranslationStep(`⚡ Calling ${providerShort}...`);
-      }
-      setTranslationProgress(progressValue);
-    }, 180);
-
-    try {
-      const result = await translateChapterWithAI(chapterId, rawZh, glossaryEntries, currentNovel?.genre);
-      clearInterval(interval);
-      setTranslationProgress(100);
-      setTranslationStep('✨ Translation Complete!');
-      await new Promise(r => setTimeout(r, 200));
-      return result;
-    } catch (err) {
-      clearInterval(interval);
-      throw err;
-    } finally {
-      setIsTranslating(false);
-      setTranslationProgress(0);
-    }
-  };
-
-  // Custom noise rules state
-  const [customRules, setCustomRules] = useState<string[]>([]);
-  const [newRuleInput, setNewRuleInput] = useState('');
-
-  // New Chapter Form state
-  const [newChapContentZh, setNewChapContentZh] = useState('');
-
-  // Ref to track active novel ID for realtime subscription callbacks
-  const selectedNovelIdRef = React.useRef(selectedNovelId);
+  // Ref to track active novel ID for realtime callbacks
+  const selectedNovelIdRef = useRef(selectedNovelId);
   useEffect(() => {
     selectedNovelIdRef.current = selectedNovelId;
   }, [selectedNovelId]);
 
-  // Initial Data Load & 100% Automatic Cloud Sync
+  // Initial Data Load
   useEffect(() => {
-    // 1. Instant offline cache load
+    // 1. Load local offline cache
     const loadedNovels = StorageService.getNovels();
     setNovels(loadedNovels);
+    setBookmarks(StorageService.getBookmarks());
+    setCurrentUser(AuthService.getCurrentUser());
 
     if (loadedNovels.length > 0) {
       const initialNovelId = loadedNovels[0].id;
@@ -172,58 +101,46 @@ export const App: React.FC = () => {
       setSuggestions(StorageService.getReaderSuggestions(initialNovelId));
     }
 
-    setCustomRules(getCustomNoiseRules());
+    // 2. Auth state change listener
+    const handleAuthChange = (e: Event) => {
+      const customEvent = e as CustomEvent<UserProfile | null>;
+      setCurrentUser(customEvent.detail);
+    };
+    window.addEventListener('auth-changed', handleAuthChange);
 
-    // 2. Fetch live data from Supabase Cloud Database (ensures cross-device parity)
+    // 3. Supabase Cloud Sync
     SupabaseService.fetchNovels().then((cloudNovels) => {
-      if (cloudNovels && Array.isArray(cloudNovels)) {
+      if (cloudNovels && Array.isArray(cloudNovels) && cloudNovels.length > 0) {
         setNovels(cloudNovels);
-        if (cloudNovels.length > 0) {
-          const currentId = selectedNovelIdRef.current || cloudNovels[0].id;
-          const targetId = cloudNovels.some(n => n.id === currentId) ? currentId : cloudNovels[0].id;
-          setSelectedNovelId(targetId);
+        const currentId = selectedNovelIdRef.current || cloudNovels[0].id;
+        const targetId = cloudNovels.some(n => n.id === currentId) ? currentId : cloudNovels[0].id;
+        setSelectedNovelId(targetId);
 
-          SupabaseService.fetchChapters(targetId).then((cloudChaps) => {
+        SupabaseService.fetchChapters(targetId).then((cloudChaps) => {
+          if (cloudChaps && cloudChaps.length > 0) {
             setChapters(cloudChaps);
-            if (cloudChaps.length > 0) {
-              setSelectedChapterId(cloudChaps[0].id);
-            }
-          });
-        } else {
-          setChapters([]);
-          setSelectedChapterId('');
-        }
+            setSelectedChapterId(cloudChaps[0].id);
+          }
+        });
       }
     });
 
-    // 3. Real-time subscription across all devices (PC, Phone, Tablet)
     const unsubscribe = SupabaseService.subscribeToChanges(() => {
       SupabaseService.fetchNovels().then((refreshedNovels) => {
-        setNovels(refreshedNovels);
+        if (refreshedNovels && refreshedNovels.length > 0) setNovels(refreshedNovels);
       });
       const activeId = selectedNovelIdRef.current;
       if (activeId) {
         SupabaseService.fetchChapters(activeId).then((refreshedChaps) => {
-          setChapters(refreshedChaps);
+          if (refreshedChaps) setChapters(refreshedChaps);
         });
       }
     });
 
     return () => {
+      window.removeEventListener('auth-changed', handleAuthChange);
       unsubscribe();
     };
-  }, []);
-
-  // Listen for translation-error custom events
-  useEffect(() => {
-    const handleErrorEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ provider: string; message: string }>;
-      if (customEvent.detail) {
-        setTranslationError(customEvent.detail);
-      }
-    };
-    window.addEventListener('translation-error', handleErrorEvent);
-    return () => window.removeEventListener('translation-error', handleErrorEvent);
   }, []);
 
   // Sync state when novel changes
@@ -244,9 +161,106 @@ export const App: React.FC = () => {
   const currentNovel = novels.find(n => n.id === selectedNovelId) || null;
   const currentChapter = chapters.find(c => c.id === selectedChapterId) || null;
 
-  // Active recommendations & pending suggestions count
+  // Active pending suggestions count
   const pendingGovCount = recommendations.filter(r => r.status === 'pending').length +
                           suggestions.filter(s => s.status === 'pending').length;
+
+  // Check if current novel/chapter is bookmarked
+  const isCurrentBookmarked = Boolean(
+    currentNovel && bookmarks.some(b => b.novelId === currentNovel.id && b.chapterId === selectedChapterId)
+  );
+
+  // Toggle Bookmark Handler
+  const handleToggleBookmark = () => {
+    if (!currentNovel || !currentChapter) return;
+
+    const existing = bookmarks.find(b => b.novelId === currentNovel.id);
+    if (existing && existing.chapterId === currentChapter.id) {
+      const updated = StorageService.removeBookmark(currentNovel.id);
+      setBookmarks(updated);
+    } else {
+      const newBm: Bookmark = {
+        id: `bm-${Date.now()}`,
+        novelId: currentNovel.id,
+        novelTitle: currentNovel.titleEn || currentNovel.titleZh,
+        novelCoverGradient: currentNovel.coverGradient,
+        chapterId: currentChapter.id,
+        chapterNumber: currentChapter.chapterNumber || 1,
+        chapterTitle: currentChapter.titleEn || `Chapter ${currentChapter.chapterNumber || 1}`,
+        updatedAt: new Date().toISOString()
+      };
+      const updated = StorageService.saveBookmark(newBm);
+      setBookmarks(updated);
+    }
+  };
+
+  // Jump from Bookmark to Chapter
+  const handleSelectBookmark = (novelId: string, chapterId: string) => {
+    handleSelectNovel(novelId);
+    setSelectedChapterId(chapterId);
+    setViewMode('reader');
+  };
+
+  // Remove Bookmark
+  const handleRemoveBookmark = (novelId: string) => {
+    const updated = StorageService.removeBookmark(novelId);
+    setBookmarks(updated);
+  };
+
+  // Role Switch with Auth Check
+  const handleToggleViewMode = () => {
+    if (viewMode === 'reader') {
+      // Switching to Creator Studio
+      if (currentUser?.role === 'creator') {
+        setViewMode('admin');
+      } else {
+        setAuthDefaultTab('creator');
+        setIsAuthOpen(true);
+      }
+    } else {
+      // Switching to Reader Mode
+      setViewMode('reader');
+    }
+  };
+
+  // Upload Single Chapter
+  const handleUploadSingleChapter = (novelId: string, chapterData: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>) => {
+    const newChapter: Chapter = {
+      ...chapterData,
+      id: `chap-${novelId}-${Date.now()}`,
+      extractedTermsCount: 0,
+      selfHealedCount: 0,
+      updatedAt: new Date().toISOString()
+    };
+
+    StorageService.saveChapter(newChapter);
+    const updatedChapters = StorageService.getChapters(novelId);
+    setChapters(updatedChapters);
+    setSelectedChapterId(newChapter.id);
+    setNovels(StorageService.getNovels());
+  };
+
+  // Upload Bulk Chapters
+  const handleUploadBulkChapters = (novelId: string, bulkList: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>[]) => {
+    for (let i = 0; i < bulkList.length; i++) {
+      const item = bulkList[i];
+      const newChapter: Chapter = {
+        ...item,
+        id: `chap-${novelId}-${Date.now()}-${i}`,
+        extractedTermsCount: 0,
+        selfHealedCount: 0,
+        updatedAt: new Date().toISOString()
+      };
+      StorageService.saveChapter(newChapter);
+    }
+
+    const updatedChapters = StorageService.getChapters(novelId);
+    setChapters(updatedChapters);
+    if (updatedChapters.length > 0) {
+      setSelectedChapterId(updatedChapters[updatedChapters.length - 1].id);
+    }
+    setNovels(StorageService.getNovels());
+  };
 
   // Save / update Glossary Entry
   const handleSaveGlossaryEntry = (entry: Partial<GlossaryEntry>) => {
@@ -267,7 +281,7 @@ export const App: React.FC = () => {
     const updatedGlossary = StorageService.saveGlossaryEntry(fullEntry);
     setGlossary(updatedGlossary);
 
-    // Trigger cascade term replacement across all chapters
+    // Trigger cascade replacement
     cascadeTermReplacement(selectedNovelId, fullEntry.originalZh, '', fullEntry.translatedEn);
     setChapters(StorageService.getChapters(selectedNovelId));
     setHealingRecords(StorageService.getHealingRecords());
@@ -292,38 +306,9 @@ export const App: React.FC = () => {
     const updatedGlossary = StorageService.saveGlossaryEntry(entryToSave);
     setGlossary(updatedGlossary);
 
-    // Global cascade replacement
-    const updatedCount = cascadeTermReplacement(selectedNovelId, originalZh, oldEn, newEn);
+    cascadeTermReplacement(selectedNovelId, originalZh, oldEn, newEn);
     setChapters(StorageService.getChapters(selectedNovelId));
     setHealingRecords(StorageService.getHealingRecords());
-
-    if (updatedCount > 0) {
-      console.log(`[Cascade Alignment] Updated ${updatedCount} chapters for term "${originalZh}" -> "${newEn}"`);
-    }
-  };
-
-  // Re-translate current chapter with active self-healing agent
-  const handleRunSelfHealingPass = async () => {
-    if (!currentChapter) return;
-    try {
-      const result = await executeTranslationWithProgress(
-        currentChapter.id,
-        currentChapter.contentZh,
-        glossary
-      );
-      const updated: Chapter = {
-        ...currentChapter,
-        contentEn: result.translatedEn,
-        status: 'translated',
-        selfHealedCount: result.selfHealedRecords.length,
-        updatedAt: new Date().toISOString()
-      };
-      StorageService.saveChapter(updated);
-      setChapters(StorageService.getChapters(selectedNovelId));
-      setHealingRecords(StorageService.getHealingRecords());
-    } catch (err) {
-      console.error('Self-healing pass error:', err);
-    }
   };
 
   // Entity Scan Modal Trigger
@@ -344,7 +329,7 @@ export const App: React.FC = () => {
         category: ent.category,
         scope: 'local',
         gender: ent.gender,
-        notes: `Auto-extracted from NER Scan (Confidence ${Math.round(ent.confidence * 100)}%)`,
+        notes: `Auto-extracted from NER Scan (${Math.round(ent.confidence * 100)}% confidence)`,
         occurrences: ent.count,
         updatedAt: new Date().toISOString()
       };
@@ -352,12 +337,9 @@ export const App: React.FC = () => {
     }
     setGlossary(StorageService.getGlossary(selectedNovelId));
     setIsEntityScanOpen(false);
-
-    // Auto trigger re-translation with newly injected entities
-    handleRunSelfHealingPass();
   };
 
-  // Save manual Chinese/English edits from DualPaneStudio
+  // Save manual edits from DualPaneStudio
   const handleSaveChapterContent = (contentZh: string, contentEn: string) => {
     if (!currentChapter) return;
     const updated: Chapter = {
@@ -371,7 +353,7 @@ export const App: React.FC = () => {
     setChapters(StorageService.getChapters(selectedNovelId));
   };
 
-  // Delete chapter permanently and auto-select next available chapter
+  // Delete chapter permanently
   const handleDeleteChapter = (chapterId: string) => {
     StorageService.deleteChapter(chapterId);
     const updatedChaps = StorageService.getChapters(selectedNovelId);
@@ -382,7 +364,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // Delete novel permanently and cascade select remaining novel
+  // Delete novel permanently
   const handleDeleteNovel = (novelId: string) => {
     const updated = StorageService.deleteNovel(novelId);
     setNovels(updated);
@@ -397,239 +379,42 @@ export const App: React.FC = () => {
     }
   };
 
-  // Create New Chapter from pasted raw web text (Smart Clean + Entity Auto Scan + AI Translation)
-  const handleCreateNewChapter = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newChapContentZh.trim()) return;
-
-    // 1. Smart Clean web novel text (strips ads, comments, copyright noise)
-    const cleaned = smartCleanWebNovelText(newChapContentZh);
-
-    // Rule #3: Automatically translate chapter title so no Chinese characters remain in English badges
-    const rawTitleZh = cleaned.chapterTitle || `第${chapters.length + 1}章`;
-    const cleanTitleEn = cleanAndTranslateChapterTitle(rawTitleZh, chapters.length + 1);
-
-    const nextNumber = chapters.length + 1;
-    const newChapId = `chap-${selectedNovelId}-${Date.now()}`;
-
-    // 2. Pre-save raw chapter draft
-    const draftChapter: Chapter = {
-      id: newChapId,
-      novelId: selectedNovelId,
-      chapterNumber: nextNumber,
-      titleZh: rawTitleZh,
-      titleEn: cleanTitleEn,
-      contentZh: cleaned.contentZh,
-      contentEn: '',
-      status: 'extracting',
-      extractedTermsCount: 0,
-      selfHealedCount: 0,
-      updatedAt: new Date().toISOString()
-    };
-
-    StorageService.saveChapter(draftChapter);
-    const updatedChaps = StorageService.getChapters(selectedNovelId);
-    setChapters(updatedChaps);
-    setSelectedChapterId(newChapId);
-
-    // 3. Auto Extract Named Entities (NER) & inject into local glossary
-    const extracted = extractEntitiesFromChinese(cleaned.contentZh, glossary);
-    for (const ent of extracted) {
-      if (ent.confidence > 0.6) {
-        StorageService.saveGlossaryEntry({
-          id: `g-${selectedNovelId}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          originalZh: ent.originalZh,
-          translatedEn: ent.suggestedEn,
-          category: ent.category,
-          scope: 'local',
-          gender: ent.gender,
-          notes: `Auto-injected during chapter import`,
-          occurrences: ent.count,
-          updatedAt: new Date().toISOString()
-        });
-      }
-    }
-
-    const currentGlossary = StorageService.getGlossary(selectedNovelId);
-    setGlossary(currentGlossary);
-    setIsNewChapterOpen(false);
-    setNewChapContentZh('');
-
-    // 4. Multi-pass Context-Aware AI Translation
-    try {
-      const translationRes = await executeTranslationWithProgress(
-        newChapId,
-        cleaned.contentZh,
-        currentGlossary
-      );
-
-      const finalChapter: Chapter = {
-        ...draftChapter,
-        contentEn: translationRes.translatedEn,
-        status: 'translated',
-        extractedTermsCount: extracted.length,
-        selfHealedCount: translationRes.selfHealedRecords.length,
-        updatedAt: new Date().toISOString()
-      };
-
-      StorageService.saveChapter(finalChapter);
-      setChapters(StorageService.getChapters(selectedNovelId));
-      setHealingRecords(StorageService.getHealingRecords());
-    } catch (err) {
-      console.error('Import translation error:', err);
-    }
-  };
-
-  // Polish Prose Action
-  const handlePolishProse = async () => {
-    if (!currentChapter || !currentChapter.contentEn) return;
-    try {
-      const result = await executeTranslationWithProgress(
-        currentChapter.id,
-        currentChapter.contentZh,
-        glossary
-      );
-      if (result.translatedEn) {
-        const updated: Chapter = {
-          ...currentChapter,
-          contentEn: result.translatedEn,
-          status: 'translated',
-          updatedAt: new Date().toISOString()
-        };
-        StorageService.saveChapter(updated);
-        setChapters(StorageService.getChapters(selectedNovelId));
-      }
-    } catch (err) {
-      console.error('Polish prose error:', err);
-    }
-  };
-
+  // Sync with Supabase Cloud
   const handleSyncSupabaseCloud = async () => {
-    setIsTranslating(true);
-    setTranslationProgress(35);
-    setTranslationStep('☁️ Syncing local chapters & terms to Supabase Cloud...');
-    try {
-      const res = await SupabaseService.syncAllLocalToCloud(selectedNovelId);
-      setTranslationProgress(100);
-      setTranslationStep(res.message);
-      await new Promise(r => setTimeout(r, 600));
-      const event = new CustomEvent('translation-error', {
-        detail: { message: res.message, provider: 'Supabase Cloud' }
-      });
-      window.dispatchEvent(event);
-    } catch (err) {
-      console.error('[Supabase] Sync error:', err);
-    } finally {
-      setIsTranslating(false);
-      setTranslationProgress(0);
-    }
+    if (!selectedNovelId) return;
+    const result = await SupabaseService.syncAllLocalToCloud(selectedNovelId);
+    alert(result.message);
   };
 
   return (
     <div className="app-container">
-      {/* Translation Loading Overlay with Real-Time Progress Bar */}
-      {isTranslating && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(4, 7, 14, 0.75)', zIndex: 99999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(8px)'
-        }}>
-          <div style={{
-            background: '#0f1729', border: '1px solid rgba(0, 242, 254, 0.2)',
-            borderRadius: '1.25rem', padding: '2rem 2.5rem', width: '420px', maxWidth: '90vw',
-            textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.9), 0 0 40px rgba(0,242,254,0.06)',
-            display: 'flex', flexDirection: 'column', gap: '1.2rem', position: 'relative'
-          }}>
-            <button
-              onClick={() => setIsTranslating(false)}
-              style={{
-                position: 'absolute', top: '1rem', right: '1rem',
-                background: 'none', border: 'none', color: 'var(--text-muted)',
-                cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold'
-              }}
-              title="Cancel Translation Overlay"
-            >
-              ✕
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
-              <div className="spinner" style={{ width: '28px', height: '28px', border: '3px solid rgba(255,255,255,0.15)', borderTopColor: '#00f2fe', borderRadius: '50%', flexShrink: 0 }} />
-              <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#ffffff', textShadow: '0 1px 8px rgba(0,0,0,0.8)', letterSpacing: '0.01em' }}>Translating Chapter...</span>
-            </div>
-
-            <div style={{ fontSize: '0.85rem', color: 'var(--primary-cyan)', fontWeight: 600, minHeight: '1.4em' }}>
-              {translationStep}
-            </div>
-
-            {/* Live Progress Bar */}
-            <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '9999px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{
-                height: '100%', width: `${translationProgress}%`,
-                background: 'linear-gradient(90deg, #3b82f6 0%, #06b6d4 50%, #ec4899 100%)',
-                borderRadius: '9999px', transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-              }} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Engine: {activeEngineLabel}</span>
-              <span style={{ color: '#60a5fa', fontWeight: 800, fontSize: '0.95rem' }}>{translationProgress}%</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Translation Notification Toast */}
-      {translationError && (
-        <div style={{
-          position: 'fixed', top: '1.25rem', right: '1.25rem', zIndex: 99998,
-          background: translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? 'rgba(15, 23, 42, 0.95)' : '#dc2626',
-          border: translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? '1px solid var(--primary-cyan)' : '1px solid rgba(255,255,255,0.2)',
-          color: '#fff',
-          borderRadius: '0.75rem', padding: '0.9rem 1.25rem',
-          boxShadow: '0 12px 35px rgba(0,0,0,0.55)',
-          maxWidth: '440px', width: 'calc(100vw - 2.5rem)', fontSize: '0.85rem', fontWeight: 600,
-          display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
-          backdropFilter: 'blur(8px)'
-        }}>
-          <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: '0.1rem' }}>
-            {translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? '⚡' : '⚠️'}
-          </span>
-          <div style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-            <div style={{
-              fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.25rem',
-              color: translationError.message.includes('Auto-switched') || translationError.message.includes('Synced') ? 'var(--primary-cyan)' : '#fff'
-            }}>
-              {translationError.provider.endsWith('Notice') || translationError.provider.endsWith('Error') || translationError.provider.endsWith('Guard') ? translationError.provider : `${translationError.provider} Notice`}
-            </div>
-            <div style={{ fontWeight: 400, opacity: 0.95, fontSize: '0.8rem', lineHeight: '1.45', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-              {translationError.message}
-            </div>
-          </div>
-          <button onClick={() => setTranslationError(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.1rem', marginLeft: '0.25rem', flexShrink: 0, opacity: 0.85 }}>✕</button>
-        </div>
-      )}
-
       {/* Top Navbar */}
       <Navbar
         novels={novels}
         selectedNovelId={selectedNovelId}
         onSelectNovel={handleSelectNovel}
         onOpenLibrary={() => setIsLibraryOpen(true)}
+        onOpenBookmarks={() => setIsBookmarksOpen(true)}
+        bookmarksCount={bookmarks.length}
         onOpenGlobalGlossary={() => setIsSidebarOpen(true)}
         onOpenGovernance={() => setIsGovernanceOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
-        onOpenNewNovelModal={() => setIsLibraryOpen(true)}
-        onOpenAISettings={() => setIsAISettingsOpen(true)}
+        onOpenUploader={() => setIsUploaderOpen(true)}
+        onOpenAuth={(tab = 'reader') => {
+          setAuthDefaultTab(tab);
+          setIsAuthOpen(true);
+        }}
+        currentUser={currentUser}
         pendingGovernanceCount={pendingGovCount}
         viewMode={viewMode}
-        onToggleViewMode={() => setViewMode(viewMode === 'admin' ? 'reader' : 'admin')}
+        onToggleViewMode={handleToggleViewMode}
         appTheme={appTheme}
         onToggleAppTheme={() => setAppTheme(appTheme === 'dark' ? 'light' : 'dark')}
       />
 
-      {/* Main View Router: Public Reader View vs Admin Translation Studio vs Empty State */}
+      {/* Main View Router */}
       {!currentNovel ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem', textAlign: 'center', background: 'var(--bg-dark)' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem', textAlign: 'center' }}>
           <div style={{
             width: '80px',
             height: '80px',
@@ -639,16 +424,15 @@ export const App: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: '1.25rem',
-            border: '1px solid rgba(0, 242, 254, 0.25)',
-            boxShadow: '0 0 25px rgba(0, 242, 254, 0.15)'
+            border: '1px solid rgba(0, 242, 254, 0.25)'
           }}>
-            <BookOpen size={40} style={{ color: 'var(--primary-cyan)' }} />
+            <BookOpen size={40} style={{ color: 'var(--accent-cyan)' }} />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, marginBottom: '0.5rem' }}>
-            Your Translation Studio is Ready
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>
+            Welcome to TranslateMe
           </h2>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', maxWidth: '480px', lineHeight: 1.6, margin: '0 auto 2rem auto' }}>
-            You have no active novel projects. Create a new novel project or open the library to import Chinese web novels, build custom glossaries, and translate with AI.
+            Explore web novels, read translated chapters with interactive glossary tooltips, or open the Creator Studio to publish your own translations!
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
@@ -656,54 +440,53 @@ export const App: React.FC = () => {
               onClick={() => setIsLibraryOpen(true)}
               style={{ padding: '0.65rem 1.4rem', fontSize: '0.95rem', fontWeight: 700, gap: '0.5rem' }}
             >
-              <Plus size={18} />
-              <span>Create New Novel Project</span>
+              <Layers size={18} />
+              <span>Explore Novel Library</span>
             </button>
             <button
               className="btn btn-secondary"
-              onClick={() => setIsLibraryOpen(true)}
+              onClick={() => {
+                setAuthDefaultTab('creator');
+                setIsAuthOpen(true);
+              }}
               style={{ padding: '0.65rem 1.25rem', fontSize: '0.95rem', gap: '0.5rem' }}
             >
-              <Layers size={18} style={{ color: 'var(--primary-cyan)' }} />
-              <span>Open Novel Library</span>
+              <Upload size={18} />
+              <span>Creator / Uploader Access</span>
             </button>
           </div>
         </div>
       ) : viewMode === 'reader' ? (
+        /* Public Reader Experience */
         <PublicReaderView
           currentNovel={currentNovel}
           chapters={chapters}
           currentChapter={currentChapter}
           glossary={glossary}
           onSelectChapter={setSelectedChapterId}
-          onOpenAdminMode={() => setViewMode('admin')}
+          onOpenAdminMode={handleToggleViewMode}
+          onToggleBookmark={handleToggleBookmark}
+          isBookmarked={isCurrentBookmarked}
         />
       ) : (
+        /* Creator / Uploader Studio */
         <>
-          {/* Studio Header Toolbar */}
           <StudioHeader
             currentNovel={currentNovel}
             chapters={chapters}
             currentChapter={currentChapter}
             onSelectChapter={setSelectedChapterId}
-            onOpenNewChapterModal={() => setIsNewChapterOpen(true)}
+            onOpenUploader={() => setIsUploaderOpen(true)}
             onDeleteChapter={handleDeleteChapter}
             onRunEntityScan={handleRunEntityScan}
-            onRunSelfHealing={handleRunSelfHealingPass}
             onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-            onOpenAISettings={() => setIsAISettingsOpen(true)}
             onSyncSupabaseCloud={handleSyncSupabaseCloud}
             onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
-            onOpenAITrainingModal={() => setIsAITrainingOpen(true)}
-            onOpenBatchModal={() => setIsBatchModalOpen(true)}
-            translationStyle={translationStyle}
-            onSelectTranslationStyle={setTranslationStyle}
             isSidebarOpen={isSidebarOpen}
             glossaryCount={glossary.length}
           />
 
-          {/* Main Studio View */}
           <main className="main-view">
             <DualPaneStudio
               chapter={currentChapter}
@@ -711,13 +494,11 @@ export const App: React.FC = () => {
               healingRecords={healingRecords}
               onSaveContent={handleSaveChapterContent}
               onQuickUpdateGlossary={handleQuickUpdateGlossary}
-              onReTranslateChapter={handleRunSelfHealingPass}
-              onPolishProse={handlePolishProse}
               onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
               translationStyle={translationStyle}
             />
 
-            {/* 2-Tier Glossary Sidebar */}
+            {/* Glossary Sidebar */}
             {isSidebarOpen && (
               <GlossarySidebar
                 glossary={glossary}
@@ -740,7 +521,7 @@ export const App: React.FC = () => {
         </>
       )}
 
-      {/* Modals */}
+      {/* Novel Library Modal */}
       {isLibraryOpen && (
         <NovelLibrary
           novels={novels}
@@ -760,7 +541,6 @@ export const App: React.FC = () => {
             const updated = StorageService.saveNovel(novel);
             setNovels(updated);
 
-            // Auto-seed starter glossary terms if requested
             if (seedStarterGlossary) {
               const starterTerms = getStarterGlossaryForGenre(novel.genre);
               for (const term of starterTerms) {
@@ -789,6 +569,53 @@ export const App: React.FC = () => {
         />
       )}
 
+      {/* Chapter Uploader Modal */}
+      {isUploaderOpen && (
+        <ChapterUploaderModal
+          novels={novels}
+          selectedNovelId={selectedNovelId}
+          existingChapters={chapters}
+          onUploadSingleChapter={handleUploadSingleChapter}
+          onUploadBulkChapters={handleUploadBulkChapters}
+          onClose={() => setIsUploaderOpen(false)}
+        />
+      )}
+
+      {/* Bookmarks Modal */}
+      {isBookmarksOpen && (
+        <BookmarksModal
+          bookmarks={bookmarks}
+          onSelectBookmark={handleSelectBookmark}
+          onRemoveBookmark={handleRemoveBookmark}
+          onClose={() => setIsBookmarksOpen(false)}
+          onOpenLibrary={() => {
+            setIsBookmarksOpen(false);
+            setIsLibraryOpen(true);
+          }}
+        />
+      )}
+
+      {/* Auth / Creator Access Modal */}
+      {isAuthOpen && (
+        <AuthModal
+          currentUser={currentUser}
+          defaultTab={authDefaultTab}
+          onClose={() => setIsAuthOpen(false)}
+          onAuthSuccess={(user) => {
+            setCurrentUser(user);
+            if (user.role === 'creator') {
+              setViewMode('admin');
+            }
+          }}
+          onSignOut={() => {
+            AuthService.signOut();
+            setCurrentUser(null);
+            setViewMode('reader');
+          }}
+        />
+      )}
+
+      {/* Entity Extractor Modal */}
       {isEntityScanOpen && (
         <EntityExtractorModal
           entities={extractedEntities}
@@ -797,6 +624,7 @@ export const App: React.FC = () => {
         />
       )}
 
+      {/* Character Graph Modal */}
       {isCharacterGraphOpen && (
         <CharacterGraphModal
           glossary={glossary}
@@ -805,6 +633,7 @@ export const App: React.FC = () => {
         />
       )}
 
+      {/* Governance Modal */}
       {isGovernanceOpen && (
         <GovernanceModal
           recommendations={recommendations}
@@ -840,6 +669,7 @@ export const App: React.FC = () => {
         />
       )}
 
+      {/* Export Modal */}
       {isExportOpen && currentNovel && (
         <ExportModal
           novel={currentNovel}
@@ -849,156 +679,13 @@ export const App: React.FC = () => {
         />
       )}
 
-      {isAISettingsOpen && (
-        <AISettingsModal
-          onClose={() => setIsAISettingsOpen(false)}
-        />
-      )}
-
-      {isBatchModalOpen && currentNovel && (
-        <BatchTranslateModal
-          novel={currentNovel}
-          chapters={chapters}
-          glossary={glossary}
-          onClose={() => setIsBatchModalOpen(false)}
-          onBatchComplete={() => {
-            setChapters(StorageService.getChapters(selectedNovelId));
-          }}
-        />
-      )}
-
-      {/* Master Chinese-English Dictionary & Pinyin Lookup Modal */}
+      {/* Dictionary Modal */}
       <DictionaryLookupModal
         isOpen={isDictionaryOpen}
         onClose={() => setIsDictionaryOpen(false)}
         onAddTermToGlossary={handleSaveGlossaryEntry}
         existingGlossary={glossary}
       />
-
-      {/* AI Parallel Corpus Trainer & Style Learner Modal */}
-      <AITrainingModal
-        isOpen={isAITrainingOpen}
-        onClose={() => setIsAITrainingOpen(false)}
-        onAddGlossaryTerm={handleSaveGlossaryEntry}
-      />
-
-      {/* New Chapter Import & Paste Modal */}
-      {isNewChapterOpen && (
-        <div className="modal-overlay" style={{ zIndex: 100 }}>
-          <div className="modal-card" style={{ maxWidth: '640px' }}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Sparkles size={18} className="accent-text" />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>
-                  Paste & Import Raw Chinese Chapter
-                </h3>
-              </div>
-              <button className="btn btn-secondary btn-icon" onClick={() => setIsNewChapterOpen(false)}>✕</button>
-            </div>
-            <form onSubmit={handleCreateNewChapter}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
-                    Paste Web Text / Chapter Content (Ctrl + V)
-                  </label>
-                  <textarea
-                    rows={10}
-                    required
-                    autoFocus
-                    placeholder="Just paste raw Chinese text or full JJWXC webpage copy here! Chapter title, novel info, clean story paragraphs, and entity extraction will all happen automatically..."
-                    value={newChapContentZh}
-                    onChange={(e) => setNewChapContentZh(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.8rem',
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: '#fff',
-                      fontFamily: 'var(--font-zh)',
-                      fontSize: '0.95rem',
-                      lineHeight: '1.7'
-                    }}
-                  />
-                </div>
-
-                {newChapContentZh.trim() && (() => {
-                  const cleanedStats = smartCleanWebNovelText(newChapContentZh);
-                  const pCount = cleanedStats.contentZh.split('\n').filter(Boolean).length;
-                  return (
-                    <div style={{ padding: '0.6rem 0.85rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--primary-cyan)', fontWeight: 600 }}>
-                        ✨ Smart Cleaned: {cleanedStats.strippedLinesCount} Noise Lines Stripped | Title: {cleanedStats.chapterTitle}
-                      </span>
-                      <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
-                        {pCount} Story Paragraphs Preserved
-                      </span>
-                    </div>
-                  );
-                })()}
-
-                <div style={{ padding: '0.6rem 0.85rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>
-                      ⚙️ Custom Site Noise Rules
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--primary-cyan)', fontWeight: 500 }}>
-                      {customRules.length} Custom Rules Active
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                    <input
-                      type="text"
-                      placeholder="Type keyword/domain to strip (e.g. www.mysite.com)..."
-                      value={newRuleInput}
-                      onChange={(e) => setNewRuleInput(e.target.value)}
-                      style={{ flex: 1, padding: '0.35rem 0.6rem', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: '#fff' }}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                      onClick={() => {
-                        if (newRuleInput.trim()) {
-                          const updated = addCustomNoiseRule(newRuleInput.trim());
-                          setCustomRules(updated);
-                          setNewRuleInput('');
-                        }
-                      }}
-                    >
-                      + Add Rule
-                    </button>
-                  </div>
-                  {customRules.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                      {customRules.map((rule, rIdx) => (
-                        <span key={rIdx} className="badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', color: '#fff', gap: '0.3rem', padding: '0.15rem 0.45rem' }}>
-                          {rule}
-                          <span style={{ cursor: 'pointer', color: 'var(--accent-red)', fontWeight: 'bold', marginLeft: '0.2rem' }} onClick={() => {
-                            const updated = removeCustomNoiseRule(rule);
-                            setCustomRules(updated);
-                          }}>✕</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                  ✦ Automatically extracts title, strips website headers/footers, removes JJWXC comment numbers, and launches AI translation!
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsNewChapterOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.25rem' }}>
-                  <Sparkles size={16} />
-                  <span>Import, Clean & Translate Chapter</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

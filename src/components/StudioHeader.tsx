@@ -1,29 +1,21 @@
 import React, { useState } from 'react';
 import type { Novel, Chapter } from '../types';
-import { StorageService } from '../services/storage';
 import { cleanAndTranslateChapterTitle } from '../services/translationEngine';
-import type { TranslationStyle } from '../services/translationEngine';
-import { getGenreMeta, WEB_NOVEL_TROPE_TAGS } from '../services/genrePresets';
-import { Sparkles, GitFork, Plus, Sidebar, Trash2, Cpu, BookOpen, Brain, Layers } from 'lucide-react';
+import { getGenreMeta } from '../services/genrePresets';
+import { Sparkles, GitFork, Sidebar, Trash2, BookOpen, Upload, Cloud } from 'lucide-react';
 
 interface StudioHeaderProps {
   currentNovel: Novel;
   chapters: Chapter[];
   currentChapter: Chapter | null;
   onSelectChapter: (chapterId: string) => void;
-  onOpenNewChapterModal: () => void;
+  onOpenUploader: () => void;
   onDeleteChapter?: (chapterId: string) => void;
   onRunEntityScan: () => void;
-  onRunSelfHealing?: () => void;
   onOpenCharacterGraph: () => void;
   onToggleSidebar: () => void;
-  onOpenAISettings?: () => void;
   onSyncSupabaseCloud?: () => void;
   onOpenDictionaryModal?: () => void;
-  onOpenAITrainingModal?: () => void;
-  onOpenBatchModal?: () => void;
-  translationStyle?: TranslationStyle;
-  onSelectTranslationStyle?: (style: TranslationStyle) => void;
   isSidebarOpen: boolean;
   glossaryCount: number;
 }
@@ -33,27 +25,17 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   chapters,
   currentChapter,
   onSelectChapter,
-  onOpenNewChapterModal,
+  onOpenUploader,
   onDeleteChapter,
   onRunEntityScan,
   onOpenCharacterGraph,
   onToggleSidebar,
-  onOpenAISettings,
   onSyncSupabaseCloud,
   onOpenDictionaryModal,
-  onOpenAITrainingModal,
-  onOpenBatchModal,
-  translationStyle = 'xianxia',
-  onSelectTranslationStyle,
   isSidebarOpen,
   glossaryCount
 }) => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const tokenStats = StorageService.getTokenUsage();
-  const formattedTokens = tokenStats.totalTokens > 1000 
-    ? `${(tokenStats.totalTokens / 1000).toFixed(1)}k` 
-    : `${tokenStats.totalTokens}`;
-  const formattedCost = `$${tokenStats.totalCostUsd.toFixed(3)}`;
 
   return (
     <div className="studio-header" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.6rem 1.25rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-color)' }}>
@@ -89,52 +71,9 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             );
           })()}
 
-          {/* Trope Tag Pills */}
-          {currentNovel.tags && currentNovel.tags.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              {currentNovel.tags.slice(0, 2).map(tagId => {
-                const tagMeta = WEB_NOVEL_TROPE_TAGS.find(t => t.id === tagId);
-                return (
-                  <span
-                    key={tagId}
-                    style={{
-                      fontSize: '0.68rem',
-                      padding: '0.1rem 0.4rem',
-                      borderRadius: '4px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid var(--border-color)',
-                      color: tagMeta ? tagMeta.color : 'var(--text-dim)'
-                    }}
-                  >
-                    🏷️ {tagMeta ? tagMeta.nameZh : tagId}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Token Usage & Cost Counter Pill */}
-          <button
-            onClick={onOpenAISettings}
-            title="Click to view AI Token & Cost breakdown / API Settings"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.2rem 0.55rem',
-              borderRadius: '9999px',
-              background: 'rgba(59, 130, 246, 0.12)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              color: '#60a5fa',
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <Cpu size={12} style={{ color: '#60a5fa' }} />
-            <span>⚡ {formattedTokens} Tokens ({formattedCost})</span>
-          </button>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {chapters.length} Chapter{chapters.length === 1 ? '' : 's'} Published
+          </span>
         </div>
 
         {/* Chapter Dropdown & Quick Actions */}
@@ -169,17 +108,23 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             })}
           </select>
 
-          <button className="btn btn-secondary" style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={onOpenNewChapterModal} title="Add New Chapter">
-            <Plus size={14} />
-            <span>New Ch.</span>
+          <button
+            className="btn btn-primary"
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', whiteSpace: 'nowrap', flexShrink: 0, gap: '0.3rem' }}
+            onClick={onOpenUploader}
+            title="Upload single or bulk chapters"
+          >
+            <Upload size={13} />
+            <span>Upload Ch.</span>
           </button>
 
           {currentChapter && onDeleteChapter && (
             <button
               className="btn btn-secondary"
-              style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', color: 'var(--accent-red)', borderColor: 'rgba(239,68,68,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}
+              style={{ padding: '0.35rem 0.55rem', fontSize: '0.75rem', color: '#ff4d4f', borderColor: 'rgba(239,68,68,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}
               onClick={() => setIsDeleteConfirmOpen(true)}
               title="Delete Chapter"
+              aria-label="Delete Chapter"
             >
               <Trash2 size={14} />
             </button>
@@ -187,93 +132,17 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         </div>
       </div>
 
-      {/* Row 2: Studio Action Controls (Mobile Scrollable Row) */}
-      <div className="mobile-scroll-row" style={{ width: '100%', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color)' }}>
-        <button
-          className="btn btn-primary"
-          onClick={onOpenNewChapterModal}
-          title="Paste raw web novel text to clean & translate into English"
-          style={{ fontWeight: 700, gap: '0.35rem', padding: '0.35rem 0.75rem', fontSize: '0.8rem', flexShrink: 0, whiteSpace: 'nowrap' }}
-        >
-          <Plus size={14} />
-          <span>📋 Paste Chapter</span>
-        </button>
-
-        {/* Translation Tone Preset Selector */}
-        {onSelectTranslationStyle && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
-            <select
-              value={translationStyle}
-              onChange={(e) => onSelectTranslationStyle(e.target.value as TranslationStyle)}
-              title="Choose Translation Tone: Xianxia (immersive), Fluent (punchy web novel), or Faithful (direct)"
-              style={{
-                background: 'var(--bg-elevated)',
-                color: 'var(--primary-cyan)',
-                border: '1px solid var(--border-color)',
-                padding: '0.35rem 0.6rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                outline: 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <option value="xianxia">⚔️ Xianxia</option>
-              <option value="fluent">⚡ Fluent</option>
-              <option value="faithful">📖 Faithful</option>
-            </select>
-          </div>
-        )}
-
-        {/* Batch Chapter Translate Modal Trigger */}
-        {onOpenBatchModal && (
-          <button
-            className="btn btn-secondary"
-            onClick={onOpenBatchModal}
-            title="Batch translate multiple chapters in queue with real-time progress"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: 'var(--primary-cyan)', borderColor: 'rgba(0, 242, 254, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
-          >
-            <Layers size={14} />
-            <span>Batch ({chapters.length})</span>
-          </button>
-        )}
-
-        {/* Master Dictionary Lookup Modal Trigger */}
-        {onOpenDictionaryModal && (
-          <button
-            className="btn btn-secondary"
-            onClick={onOpenDictionaryModal}
-            title="Search 5,000+ Chinese-English Xianxia, Wuxia, and Cultivation Terms"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#ec4899', borderColor: 'rgba(236, 72, 153, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
-          >
-            <BookOpen size={14} />
-            <span>Dictionary</span>
-          </button>
-        )}
-
-        {/* AI Parallel Corpus Trainer Modal Trigger */}
-        {onOpenAITrainingModal && (
-          <button
-            className="btn btn-secondary"
-            onClick={onOpenAITrainingModal}
-            title="Open AI Parallel Corpus Trainer, Style Learner & In-Memory Model fine-tuner"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#a855f7', borderColor: 'rgba(168, 85, 247, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
-          >
-            <Brain size={14} />
-            <span>AI Trainer</span>
-          </button>
-        )}
-
+      {/* Row 2: Studio Action Controls */}
+      <div className="mobile-scroll-row" style={{ width: '100%', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         {/* Character Graph Modal Trigger */}
         <button
           className="btn btn-secondary"
           onClick={onOpenCharacterGraph}
-          title="Explore Dynamic Character & Faction Relationship Network Graph"
+          title="Explore Character & Faction Network Graph"
           style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: 'var(--accent-green)', borderColor: 'rgba(16, 185, 129, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
         >
           <GitFork size={14} />
-          <span>Graph</span>
+          <span>Character Graph</span>
         </button>
 
         {/* Glossary Sidebar Toggle */}
@@ -284,27 +153,41 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           style={{
             padding: '0.35rem 0.65rem',
             fontSize: '0.8rem',
-            color: isSidebarOpen ? 'var(--primary-cyan)' : 'var(--text-muted)',
-            borderColor: isSidebarOpen ? 'var(--primary-cyan)' : 'var(--border-color)',
+            color: isSidebarOpen ? 'var(--accent-cyan)' : 'var(--text-muted)',
+            borderColor: isSidebarOpen ? 'var(--accent-cyan)' : 'var(--border-color)',
             flexShrink: 0,
             whiteSpace: 'nowrap'
           }}
         >
           <Sidebar size={14} />
-          <span>Glossary ({glossaryCount})</span>
+          <span>Terms ({glossaryCount})</span>
         </button>
 
         {/* Scan Terms Trigger */}
         <button
           className="btn btn-secondary"
           onClick={onRunEntityScan}
-          title="Run Named Entity Recognition (NER) to discover character names, factions, and items"
+          title="Scan chapter text to discover character names, factions, and items"
           style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', flexShrink: 0, whiteSpace: 'nowrap' }}
         >
-          <Sparkles size={14} style={{ color: 'var(--primary-cyan)' }} />
+          <Sparkles size={14} style={{ color: 'var(--accent-cyan)' }} />
           <span>Scan Terms</span>
         </button>
 
+        {/* Dictionary Lookup */}
+        {onOpenDictionaryModal && (
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenDictionaryModal}
+            title="Search Web Novel Dictionary"
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#ec4899', borderColor: 'rgba(236, 72, 153, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
+          >
+            <BookOpen size={14} />
+            <span>Dictionary</span>
+          </button>
+        )}
+
+        {/* Cloud Sync */}
         {onSyncSupabaseCloud && (
           <button
             className="btn btn-secondary"
@@ -312,53 +195,39 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             title="Sync all chapters & terms to Supabase Cloud Database"
             style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#60a5fa', borderColor: 'rgba(96,165,250,0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
           >
-            <span>☁️ Cloud Sync</span>
+            <Cloud size={14} />
+            <span>Cloud Sync</span>
           </button>
         )}
       </div>
 
-      {/* Custom In-App Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       {isDeleteConfirmOpen && currentChapter && (
         <div className="modal-overlay" style={{ zIndex: 200 }}>
-          <div className="modal-card" style={{ maxWidth: '480px' }}>
+          <div className="modal-card" style={{ maxWidth: '440px' }}>
             <div className="modal-header" style={{ borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-red)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
                 <Trash2 size={20} />
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Delete Chapter Confirmation</h2>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>Delete Chapter</h2>
               </div>
               <button
-                className="icon-button"
+                className="btn btn-secondary btn-icon"
                 onClick={() => setIsDeleteConfirmOpen(false)}
-                style={{ border: 'none', background: 'transparent' }}
               >
                 ✕
               </button>
             </div>
 
-            <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
-                Are you sure you want to permanently delete{' '}
-                <strong style={{ color: 'var(--primary-cyan)' }}>
+            <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--text-main)' }}>
+                Are you sure you want to delete{' '}
+                <strong style={{ color: 'var(--accent-cyan)' }}>
                   Chapter {currentChapter.chapterNumber}: {currentChapter.titleEn || currentChapter.titleZh}
                 </strong>?
               </p>
-
-              <div
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.82rem',
-                  lineHeight: 1.5,
-                  color: '#f87171'
-                }}
-              >
-                ⚠️ <strong>Warning:</strong> This will permanently delete all raw Chinese source text, English translated drafts, and associated paragraph alignments for this chapter. This action cannot be undone.
-              </div>
             </div>
 
-            <div className="modal-footer" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+            <div className="modal-footer" style={{ padding: '0.85rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -370,11 +239,10 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
                 type="button"
                 className="btn"
                 style={{
-                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
                   color: '#fff',
                   fontWeight: 700,
-                  border: 'none',
-                  boxShadow: '0 2px 10px rgba(239, 68, 68, 0.35)'
+                  border: 'none'
                 }}
                 onClick={() => {
                   setIsDeleteConfirmOpen(false);
@@ -383,7 +251,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
                   }
                 }}
               >
-                <Trash2 size={14} /> Delete Chapter
+                <Trash2 size={14} /> Confirm Delete
               </button>
             </div>
           </div>

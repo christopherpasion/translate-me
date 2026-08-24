@@ -834,5 +834,45 @@ export const StorageService = {
       }
     }
     localStorage.setItem(KEY, JSON.stringify({ date: today, count: count + 1 }));
+  },
+
+  // Bookmark Management
+  getBookmarks(): import('../types').Bookmark[] {
+    const BOOKMARKS_KEY = 'trans_me_bookmarks_v1';
+    const data = localStorage.getItem(BOOKMARKS_KEY);
+    if (!data) return [];
+    try {
+      return JSON.parse(data);
+    } catch {
+      return [];
+    }
+  },
+
+  saveBookmark(bookmark: import('../types').Bookmark): import('../types').Bookmark[] {
+    const BOOKMARKS_KEY = 'trans_me_bookmarks_v1';
+    const current = this.getBookmarks();
+    const existingIndex = current.findIndex(b => b.novelId === bookmark.novelId);
+    let updated: import('../types').Bookmark[];
+    if (existingIndex >= 0) {
+      updated = [...current];
+      updated[existingIndex] = bookmark;
+    } else {
+      updated = [bookmark, ...current];
+    }
+    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
+    return updated;
+  },
+
+  removeBookmark(novelId: string): import('../types').Bookmark[] {
+    const BOOKMARKS_KEY = 'trans_me_bookmarks_v1';
+    const current = this.getBookmarks();
+    const filtered = current.filter(b => b.novelId !== novelId);
+    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(filtered));
+    return filtered;
+  },
+
+  getBookmarkForNovel(novelId: string): import('../types').Bookmark | undefined {
+    const current = this.getBookmarks();
+    return current.find(b => b.novelId === novelId);
   }
 };

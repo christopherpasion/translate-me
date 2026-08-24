@@ -147,3 +147,26 @@ export interface CharacterRelation {
   targetId: string;
   relationship: string; // e.g. "Master-Disciple", "Rivals", "Lover", "Sectmate"
 }
+
+export type UserRole = 'reader' | 'creator' | 'admin';
+
+export interface Bookmark {
+  id: string;
+  novelId: string;
+  novelTitle: string;
+  novelCoverGradient?: string;
+  chapterId: string;
+  chapterNumber: number;
+  chapterTitle: string;
+  progressPercent?: number;
+  updatedAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  avatarUrl?: string;
+  createdAt: string;
+}
