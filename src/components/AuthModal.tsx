@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { UserProfile } from '../types';
 import { AuthService } from '../services/authService';
-import { User, Lock, KeyRound, Shield, LogOut, Check, X, Sparkles, BookOpen } from 'lucide-react';
+import { User, Lock, KeyRound, Shield, LogOut, Check, X, BookOpen, AlertCircle } from 'lucide-react';
 
 interface AuthModalProps {
   currentUser: UserProfile | null;
@@ -46,7 +46,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (isSignUp) {
       const res = await AuthService.signUp(email, password, displayName);
       if (res.success && res.user) {
-        setReaderSuccess('Account created! Welcome to Translate-Me.');
+        setReaderSuccess('Account created! Welcome to TranslateMe.');
         setTimeout(() => {
           onAuthSuccess(res.user!);
           onClose();
@@ -95,18 +95,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
         <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{
-              width: '36px',
-              height: '36px',
+              width: '38px',
+              height: '38px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+              background: 'linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff'
+              color: '#ffffff',
+              flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
             }}>
-              {currentUser ? <User size={20} /> : tab === 'creator' ? <Shield size={20} /> : <BookOpen size={20} />}
+              {currentUser ? <User size={20} color="#ffffff" /> : tab === 'creator' ? <Shield size={20} color="#ffffff" /> : <BookOpen size={20} color="#ffffff" />}
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>
@@ -131,11 +133,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   width: '56px',
                   height: '56px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+                  background: 'linear-gradient(135deg, #0284c7, #7c3aed)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#fff',
+                  color: '#ffffff',
                   margin: '0 auto 0.75rem auto',
                   fontSize: '1.4rem',
                   fontWeight: 700
@@ -150,8 +152,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </p>
                 <div style={{ marginTop: '0.75rem' }}>
                   <span className="badge" style={{
-                    background: currentUser.role === 'creator' ? 'rgba(0, 242, 254, 0.15)' : 'rgba(157, 78, 221, 0.15)',
-                    color: currentUser.role === 'creator' ? 'var(--accent-cyan)' : 'var(--accent-purple)',
+                    background: currentUser.role === 'creator' ? 'rgba(2, 132, 199, 0.15)' : 'rgba(124, 58, 237, 0.15)',
+                    color: currentUser.role === 'creator' ? '#0284c7' : '#7c3aed',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '12px',
                     fontSize: '0.75rem',
@@ -169,7 +171,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onSignOut();
                   onClose();
                 }}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#ff4d4f' }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#ff4d4f', borderColor: 'rgba(255, 77, 79, 0.3)' }}
               >
                 <LogOut size={16} /> Sign Out
               </button>
@@ -180,29 +182,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Tab Selector */}
               <div style={{
                 display: 'flex',
-                background: 'rgba(0,0,0,0.06)',
+                background: 'var(--bg-elevated, #f1f5f9)',
                 padding: '4px',
                 borderRadius: '8px',
-                marginBottom: '1.25rem'
+                marginBottom: '1.25rem',
+                border: '1px solid var(--border-color, #e2e8f0)'
               }}>
                 <button
                   type="button"
                   onClick={() => setTab('reader')}
                   style={{
                     flex: 1,
-                    padding: '0.5rem',
+                    padding: '0.55rem',
                     borderRadius: '6px',
                     border: 'none',
-                    background: tab === 'reader' ? 'var(--card-bg)' : 'transparent',
-                    color: tab === 'reader' ? 'var(--text-main)' : 'var(--text-muted)',
-                    fontWeight: tab === 'reader' ? 600 : 400,
+                    background: tab === 'reader' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                    color: tab === 'reader' ? 'var(--primary-cyan, #0284c7)' : 'var(--text-muted)',
+                    fontWeight: tab === 'reader' ? 700 : 500,
                     fontSize: '0.85rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.4rem',
-                    boxShadow: tab === 'reader' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    boxShadow: tab === 'reader' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   <BookOpen size={14} /> Reader Login
@@ -212,19 +216,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onClick={() => setTab('creator')}
                   style={{
                     flex: 1,
-                    padding: '0.5rem',
+                    padding: '0.55rem',
                     borderRadius: '6px',
                     border: 'none',
-                    background: tab === 'creator' ? 'var(--card-bg)' : 'transparent',
-                    color: tab === 'creator' ? 'var(--text-main)' : 'var(--text-muted)',
-                    fontWeight: tab === 'creator' ? 600 : 400,
+                    background: tab === 'creator' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                    color: tab === 'creator' ? 'var(--primary-cyan, #0284c7)' : 'var(--text-muted)',
+                    fontWeight: tab === 'creator' ? 700 : 500,
                     fontSize: '0.85rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.4rem',
-                    boxShadow: tab === 'creator' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    boxShadow: tab === 'creator' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   <KeyRound size={14} /> Creator Portal
@@ -236,7 +241,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <form onSubmit={handleReaderSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                   {isSignUp && (
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
                         Display Name
                       </label>
                       <input
@@ -250,7 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   )}
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
                       Email Address
                     </label>
                     <input
@@ -264,8 +269,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                      Password (Optional for local guest)
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
+                      Password (Optional for guest)
                     </label>
                     <input
                       type="password"
@@ -277,19 +282,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
 
                   {readerError && (
-                    <div style={{ color: '#ff4d4f', fontSize: '0.8rem', padding: '0.4rem', background: 'rgba(255, 77, 79, 0.1)', borderRadius: '6px' }}>
-                      {readerError}
+                    <div style={{ color: '#ff4d4f', fontSize: '0.8rem', padding: '0.5rem', background: 'rgba(255, 77, 79, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <AlertCircle size={14} />
+                      <span>{readerError}</span>
                     </div>
                   )}
 
                   {readerSuccess && (
-                    <div style={{ color: '#52c41a', fontSize: '0.8rem', padding: '0.4rem', background: 'rgba(82, 196, 26, 0.1)', borderRadius: '6px' }}>
-                      <Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
-                      {readerSuccess}
+                    <div style={{ color: '#059669', fontSize: '0.8rem', padding: '0.5rem', background: 'rgba(5, 150, 105, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Check size={14} />
+                      <span>{readerSuccess}</span>
                     </div>
                   )}
 
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', padding: '0.65rem' }}>
                     {isSignUp ? 'Create Reader Account' : 'Sign In'}
                   </button>
 
@@ -297,7 +303,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsSignUp(!isSignUp)}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent-purple)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      style={{ background: 'none', border: 'none', color: 'var(--primary-cyan, #0284c7)', fontSize: '0.82rem', cursor: 'pointer', textDecoration: 'underline' }}
                     >
                       {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
                     </button>
@@ -306,14 +312,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               ) : (
                 /* Creator Passcode Form */
                 <form onSubmit={handleCreatorSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div className="glass-panel" style={{ padding: '0.9rem', borderRadius: '8px', border: '1px dashed var(--accent-cyan)' }}>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                      🔒 <strong>Creator / Uploader Passcode:</strong> Enter your studio passcode to access the chapter uploader and novel manager.
+                  <div style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: '8px',
+                    background: 'rgba(2, 132, 199, 0.08)',
+                    border: '1px dashed var(--primary-cyan, #0284c7)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem'
+                  }}>
+                    <span style={{ fontSize: '1rem' }}>🔒</span>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-main)', lineHeight: '1.45' }}>
+                      <strong>Creator / Uploader Passcode:</strong> Enter your studio passcode to access novel uploads and chapter management.
                     </p>
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
                       Passcode
                     </label>
                     <div style={{ position: 'relative' }}>
@@ -324,30 +339,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         value={creatorPin}
                         onChange={(e) => setCreatorPin(e.target.value)}
                         autoFocus
-                        style={{ paddingLeft: '2.4rem' }}
+                        style={{ paddingLeft: '2.5rem' }}
                       />
-                      <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                      <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-cyan, #0284c7)' }} />
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '5px', display: 'block' }}>
                       Default passcode: <code>creator888</code> or <code>admin</code>
                     </span>
                   </div>
 
                   {creatorError && (
-                    <div style={{ color: '#ff4d4f', fontSize: '0.8rem', padding: '0.4rem', background: 'rgba(255, 77, 79, 0.1)', borderRadius: '6px' }}>
-                      {creatorError}
+                    <div style={{ color: '#ff4d4f', fontSize: '0.8rem', padding: '0.5rem', background: 'rgba(255, 77, 79, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <AlertCircle size={14} />
+                      <span>{creatorError}</span>
                     </div>
                   )}
 
                   {creatorSuccess && (
-                    <div style={{ color: '#52c41a', fontSize: '0.8rem', padding: '0.4rem', background: 'rgba(82, 196, 26, 0.1)', borderRadius: '6px' }}>
-                      <Sparkles size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
-                      {creatorSuccess}
+                    <div style={{ color: '#059669', fontSize: '0.8rem', padding: '0.5rem', background: 'rgba(5, 150, 105, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Check size={14} />
+                      <span>{creatorSuccess}</span>
                     </div>
                   )}
 
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                    <Shield size={16} style={{ marginRight: '6px' }} /> Enter Creator Studio
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                    <Shield size={16} />
+                    <span>Enter Creator Studio</span>
                   </button>
                 </form>
               )}

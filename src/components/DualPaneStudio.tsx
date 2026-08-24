@@ -617,7 +617,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
           className="inline-popover"
           style={{ top: `${editingTerm.y}px`, left: `${editingTerm.x}px` }}
         >
-          <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+          <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-main)' }}>
             Quick Edit: "{editingTerm.zh}" [{getPinyinForText(editingTerm.zh)}]
           </div>
           <input

@@ -2,18 +2,20 @@
 
 :root {
   --bg-dark: #090d16;
-  --bg-card: rgba(17, 24, 39, 0.75);
-  --bg-card-hover: rgba(26, 36, 56, 0.85);
+  --bg-card: rgba(17, 24, 39, 0.95);
+  --bg-card-hover: rgba(26, 36, 56, 0.95);
   --bg-elevated: #151d30;
-  --border-color: rgba(255, 255, 255, 0.08);
+  --border-color: rgba(255, 255, 255, 0.12);
   --border-glow: rgba(0, 242, 254, 0.3);
   
   --primary-cyan: #00f2fe;
+  --accent-cyan: #00f2fe;
   --primary-blue: #4facfe;
   --accent-purple: #9d4edd;
   --accent-pink: #f5576c;
   --accent-green: #10b981;
   --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
 
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
@@ -42,11 +44,13 @@
   --border-glow: rgba(2, 132, 199, 0.4);
   
   --primary-cyan: #0284c7;
+  --accent-cyan: #0284c7;
   --primary-blue: #2563eb;
   --accent-purple: #7c3aed;
   --accent-pink: #e11d48;
   --accent-green: #059669;
   --accent-amber: #d97706;
+  --accent-red: #dc2626;
 
   --text-main: #0f172a;
   --text-muted: #334155;
@@ -688,6 +692,35 @@ body.light-mode .chinese-cell, [data-theme="light"] .chinese-cell {
 
 .search-input:focus {
   border-color: var(--primary-cyan);
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-family: var(--font-main);
+  font-size: 0.88rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+body.light-mode .form-control {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light-mode .form-control:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
 }
 
 .pill-toggle {
