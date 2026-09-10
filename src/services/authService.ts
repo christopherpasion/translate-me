@@ -1,9 +1,10 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import type { UserProfile, UserRole } from '../types';
+import type { UserProfile } from '../types';
 
 const LOCAL_USER_KEY = 'trans_me_current_user_v1';
 const CREATOR_PIN_KEY = 'trans_me_creator_pin_v1';
-export const DEFAULT_CREATOR_PIN = 'creator888';
+export const ADMIN_USERNAME = 'admin';
+export const ADMIN_PASSWORD = 'admind';
 
 export class AuthService {
   /**
@@ -32,10 +33,24 @@ export class AuthService {
   }
 
   /**
-   * Sign In with Email & Password (or Guest Login)
+   * Sign In with Email/Username & Password (or Guest Login)
    */
   static async signIn(email: string, password?: string): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+
+    // Check if logging in as Admin with exclusive admin credentials
+    if ((cleanEmail === ADMIN_USERNAME || cleanEmail === 'admin@translate-me.app') && cleanPass === ADMIN_PASSWORD) {
+      const adminProfile: UserProfile = {
+        id: 'creator-admin',
+        email: 'admin@translate-me.app',
+        displayName: 'Admin',
+        role: 'creator',
+        createdAt: new Date().toISOString()
+      };
+      this.setCurrentUser(adminProfile);
+      return { success: true, user: adminProfile };
+    }
     
     if (isSupabaseConfigured() && password) {
       try {
@@ -49,7 +64,7 @@ export class AuthService {
             id: data.user.id,
             email: data.user.email || cleanEmail,
             displayName: data.user.user_metadata?.display_name || cleanEmail.split('@')[0],
-            role: (data.user.user_metadata?.role as UserRole) || 'reader',
+            role: 'reader', // Regular accounts can only be readers
             createdAt: data.user.created_at
           };
           this.setCurrentUser(profile);
@@ -61,7 +76,7 @@ export class AuthService {
       }
     }
 
-    // Local / Offline Sign In
+    // Local / Offline Reader Sign In
     const profile: UserProfile = {
       id: `user-${Date.now()}`,
       email: cleanEmail,
@@ -120,23 +135,31 @@ export class AuthService {
   }
 
   /**
-   * Authenticate Creator / Admin via Passcode or Secret Key
+   * Authenticate Creator / Admin via exclusive admin / admind credentials
    */
-  static verifyCreatorPasscode(enteredPin: string): boolean {
-    const activePin = localStorage.getItem(CREATOR_PIN_KEY) || DEFAULT_CREATOR_PIN;
-    if (enteredPin.trim() === activePin || enteredPin.trim() === 'admin' || enteredPin.trim() === 'creator') {
-      const current = this.getCurrentUser();
-      const creatorProfile: UserProfile = {
-        id: current?.id || 'creator-admin',
-        email: current?.email || 'creator@translate-me.app',
-        displayName: current?.displayName || 'Lead Creator / Uploader',
+  static verifyAdminCredentials(username: string, password?: string): boolean {
+    const cleanUser = (username || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+
+    if (cleanUser === ADMIN_USERNAME && cleanPass === ADMIN_PASSWORD) {
+      const adminProfile: UserProfile = {
+        id: 'creator-admin',
+        email: 'admin@translate-me.app',
+        displayName: 'Admin',
         role: 'creator',
-        createdAt: current?.createdAt || new Date().toISOString()
+        createdAt: new Date().toISOString()
       };
-      this.setCurrentUser(creatorProfile);
+      this.setCurrentUser(adminProfile);
       return true;
     }
     return false;
+  }
+
+  /**
+   * Legacy Passcode compatibility helper
+   */
+  static verifyCreatorPasscode(enteredPin: string): boolean {
+    return this.verifyAdminCredentials('admin', enteredPin);
   }
 
   /**

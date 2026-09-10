@@ -301,8 +301,23 @@ export const App: React.FC = () => {
   };
 
 
+  // Open Uploader guarded by Admin authentication
+  const handleOpenUploader = () => {
+    if (currentUser?.role !== 'creator') {
+      setAuthDefaultTab('creator');
+      setIsAuthOpen(true);
+      return;
+    }
+    setIsUploaderOpen(true);
+  };
+
   // Upload Single Chapter
   const handleUploadSingleChapter = (novelId: string, chapterData: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>) => {
+    if (currentUser?.role !== 'creator') {
+      setAuthDefaultTab('creator');
+      setIsAuthOpen(true);
+      return;
+    }
     const newChapter: Chapter = {
       ...chapterData,
       id: `chap-${novelId}-${Date.now()}`,
@@ -320,6 +335,11 @@ export const App: React.FC = () => {
 
   // Upload Bulk Chapters
   const handleUploadBulkChapters = (novelId: string, bulkList: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>[]) => {
+    if (currentUser?.role !== 'creator') {
+      setAuthDefaultTab('creator');
+      setIsAuthOpen(true);
+      return;
+    }
     for (let i = 0; i < bulkList.length; i++) {
       const item = bulkList[i];
       const newChapter: Chapter = {
@@ -419,6 +439,11 @@ export const App: React.FC = () => {
 
   // Save manual edits from DualPaneStudio
   const handleSaveChapterContent = (contentZh: string, contentEn: string) => {
+    if (currentUser?.role !== 'creator') {
+      setAuthDefaultTab('creator');
+      setIsAuthOpen(true);
+      return;
+    }
     if (!currentChapter) return;
     const updated: Chapter = {
       ...currentChapter,
@@ -433,6 +458,11 @@ export const App: React.FC = () => {
 
   // Delete chapter permanently
   const handleDeleteChapter = (chapterId: string) => {
+    if (currentUser?.role !== 'creator') {
+      setAuthDefaultTab('creator');
+      setIsAuthOpen(true);
+      return;
+    }
     StorageService.deleteChapter(chapterId);
     const updatedChaps = StorageService.getChapters(selectedNovelId);
     setChapters(updatedChaps);
@@ -444,6 +474,11 @@ export const App: React.FC = () => {
 
   // Delete novel permanently
   const handleDeleteNovel = (novelId: string) => {
+    if (currentUser?.role !== 'creator') {
+      setAuthDefaultTab('creator');
+      setIsAuthOpen(true);
+      return;
+    }
     const updated = StorageService.deleteNovel(novelId);
     setNovels(updated);
     if (selectedNovelId === novelId) {
@@ -477,7 +512,7 @@ export const App: React.FC = () => {
         onOpenGlobalGlossary={() => setIsSidebarOpen(true)}
         onOpenGovernance={() => setIsGovernanceOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
-        onOpenUploader={() => setIsUploaderOpen(true)}
+        onOpenUploader={handleOpenUploader}
         onOpenAuth={(tab = 'reader') => {
           setAuthDefaultTab(tab);
           setIsAuthOpen(true);
@@ -502,6 +537,7 @@ export const App: React.FC = () => {
         /* Dedicated Novel Catalog & Homepage */
         <NovelHomepage
           novels={novels}
+          currentUser={currentUser}
           onSelectNovel={handleSelectNovel}
           onStartReading={(novelId, chapterId) => {
             handleSelectNovel(novelId);
@@ -519,7 +555,7 @@ export const App: React.FC = () => {
               setViewMode('admin');
             }
           }}
-          onOpenUploader={() => setIsUploaderOpen(true)}
+          onOpenUploader={handleOpenUploader}
           onOpenLibrary={() => setIsLibraryOpen(true)}
           onOpenBookmarks={() => setIsBookmarksOpen(true)}
           bookmarks={bookmarks}
@@ -552,7 +588,7 @@ export const App: React.FC = () => {
             chapters={chapters}
             currentChapter={currentChapter}
             onSelectChapter={setSelectedChapterId}
-            onOpenUploader={() => setIsUploaderOpen(true)}
+            onOpenUploader={handleOpenUploader}
             onDeleteChapter={handleDeleteChapter}
             onRunEntityScan={handleRunEntityScan}
             onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
@@ -600,11 +636,17 @@ export const App: React.FC = () => {
       {isLibraryOpen && (
         <NovelLibrary
           novels={novels}
+          currentUser={currentUser}
           onSelectNovel={(id) => {
             handleSelectNovel(id);
             setIsLibraryOpen(false);
           }}
           onCreateNovel={(newNovel, seedStarterGlossary) => {
+            if (currentUser?.role !== 'creator') {
+              setAuthDefaultTab('creator');
+              setIsAuthOpen(true);
+              return;
+            }
             const novel: Novel = {
               ...newNovel,
               id: `novel-${Date.now()}`,
@@ -636,6 +678,11 @@ export const App: React.FC = () => {
             setIsLibraryOpen(false);
           }}
           onUpdateNovel={(updatedNovel) => {
+            if (currentUser?.role !== 'creator') {
+              setAuthDefaultTab('creator');
+              setIsAuthOpen(true);
+              return;
+            }
             const updated = StorageService.saveNovel(updatedNovel);
             setNovels(updated);
           }}
@@ -645,7 +692,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Chapter Uploader Modal */}
-      {isUploaderOpen && (
+      {isUploaderOpen && currentUser?.role === 'creator' && (
         <ChapterUploaderModal
           novels={novels}
           selectedNovelId={selectedNovelId}

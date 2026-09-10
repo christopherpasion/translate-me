@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Novel, Genre } from '../types';
+import type { Novel, Genre, UserProfile } from '../types';
 import { Plus, Search, Layers, ArrowRight, X, Trash2, Edit3, Sparkles, Check, Tag, Download, Upload } from 'lucide-react';
 import { getGenreMeta, getAllGenreCategories, WEB_NOVEL_TROPE_TAGS, GENRE_DEFINITIONS, detectSuggestedGenre } from '../services/genrePresets';
 import { StorageService } from '../services/storage';
 
 interface NovelLibraryProps {
   novels: Novel[];
+  currentUser?: UserProfile | null;
   onSelectNovel: (id: string) => void;
   onCreateNovel: (
     newNovel: Omit<Novel, 'id' | 'chaptersCount' | 'translatedCount' | 'createdAt' | 'updatedAt'>,
@@ -18,12 +19,14 @@ interface NovelLibraryProps {
 
 export const NovelLibrary: React.FC<NovelLibraryProps> = ({
   novels,
+  currentUser,
   onSelectNovel,
   onCreateNovel,
   onUpdateNovel,
   onDeleteNovel,
   onClose
 }) => {
+  const isCreator = currentUser?.role === 'creator';
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -181,6 +184,10 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
   };
 
   const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isCreator) {
+      alert('Admin privileges required to import data.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -229,26 +236,30 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
               <Download size={15} />
               <span>Export Backup</span>
             </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => fileInputRef.current?.click()}
-              title="Import novels and chapters from a JSON backup file"
-              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', gap: '0.35rem' }}
-            >
-              <Upload size={15} />
-              <span>Import Backup</span>
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                openCreateModal();
-              }}
-              style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
-            >
-              <Plus size={16} />
-              <span>Create New Novel</span>
-            </button>
+            {isCreator && (
+              <>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Import novels and chapters from a JSON backup file"
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', gap: '0.35rem' }}
+                >
+                  <Upload size={15} />
+                  <span>Import Backup</span>
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCreateModal();
+                  }}
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
+                >
+                  <Plus size={16} />
+                  <span>Create New Novel</span>
+                </button>
+              </>
+            )}
             <button className="btn btn-secondary btn-icon" onClick={onClose} title="Close Library (Esc)">
               <X size={18} />
             </button>
@@ -378,17 +389,23 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                 ? `No novel projects match "${searchQuery}". Try searching another keyword or select All Genres.`
                 : 'Your novel library is empty. Create your first novel project to start translating with 20+ genre presets & AI!'}
             </p>
-            <button
-              className="btn btn-primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                openCreateModal();
-              }}
-              style={{ padding: '0.6rem 1.25rem', gap: '0.4rem', fontWeight: 700 }}
-            >
-              <Plus size={18} />
-              <span>Create Your First Novel</span>
-            </button>
+            {isCreator ? (
+              <button
+                className="btn btn-primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openCreateModal();
+                }}
+                style={{ padding: '0.6rem 1.25rem', gap: '0.4rem', fontWeight: 700 }}
+              >
+                <Plus size={18} />
+                <span>Create Your First Novel</span>
+              </button>
+            ) : (
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                Admin access required to create novels.
+              </p>
+            )}
           </div>
         ) : (
           <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem', overflowY: 'auto' }}>
@@ -441,39 +458,41 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
                         <span>{genreMeta.nameEn.split(' / ')[0]}</span>
                       </span>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <button
-                          className="btn btn-secondary btn-icon"
-                          onClick={(e) => openEditModal(novel, e)}
-                          title={`Edit ${novel.titleEn || novel.titleZh} details & genre`}
-                          style={{
-                            padding: '0.25rem 0.45rem',
-                            color: 'var(--text-muted)',
-                            borderColor: 'var(--border-color)',
-                            background: 'var(--bg-card)'
-                          }}
-                        >
-                          <Edit3 size={13} />
-                        </button>
-                        {onDeleteNovel && (
+                      {isCreator && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <button
                             className="btn btn-secondary btn-icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setNovelToDelete(novel);
-                            }}
-                            title={`Delete ${novel.titleEn || novel.titleZh}`}
+                            onClick={(e) => openEditModal(novel, e)}
+                            title={`Edit ${novel.titleEn || novel.titleZh} details & genre`}
                             style={{
                               padding: '0.25rem 0.45rem',
-                              color: 'var(--accent-red)',
-                              borderColor: 'rgba(239, 68, 68, 0.3)',
-                              background: 'rgba(239, 68, 68, 0.08)'
+                              color: 'var(--text-muted)',
+                              borderColor: 'var(--border-color)',
+                              background: 'var(--bg-card)'
                             }}
                           >
-                            <Trash2 size={13} />
+                            <Edit3 size={13} />
                           </button>
-                        )}
-                      </div>
+                          {onDeleteNovel && (
+                            <button
+                              className="btn btn-secondary btn-icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNovelToDelete(novel);
+                              }}
+                              title={`Delete ${novel.titleEn || novel.titleZh}`}
+                              style={{
+                                padding: '0.25rem 0.45rem',
+                                color: 'var(--accent-red)',
+                                borderColor: 'rgba(239, 68, 68, 0.3)',
+                                background: 'rgba(239, 68, 68, 0.08)'
+                              }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.2rem' }}>

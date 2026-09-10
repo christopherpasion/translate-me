@@ -28,10 +28,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [readerError, setReaderError] = useState('');
   const [readerSuccess, setReaderSuccess] = useState('');
 
-  // Creator Form State
-  const [creatorPin, setCreatorPin] = useState('');
-  const [creatorError, setCreatorError] = useState('');
-  const [creatorSuccess, setCreatorSuccess] = useState('');
+  // Admin / Creator Form State
+  const [adminUsername, setAdminUsername] = useState('admin');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [adminSuccess, setAdminSuccess] = useState('');
 
   const handleReaderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,24 +71,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleCreatorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setCreatorError('');
-    setCreatorSuccess('');
+    setAdminError('');
+    setAdminSuccess('');
 
-    if (!creatorPin.trim()) {
-      setCreatorError('Please enter the Creator Access Passcode.');
+    if (!adminUsername.trim() || !adminPassword.trim()) {
+      setAdminError('Please enter both Admin Username and Password.');
       return;
     }
 
-    const isAuthorized = AuthService.verifyCreatorPasscode(creatorPin);
+    const isAuthorized = AuthService.verifyAdminCredentials(adminUsername, adminPassword);
     if (isAuthorized) {
-      setCreatorSuccess('Creator access granted! Opening Studio...');
+      setAdminSuccess('Admin credentials verified! Unlocking upload & studio tools...');
       const user = AuthService.getCurrentUser();
       setTimeout(() => {
         if (user) onAuthSuccess(user);
         onClose();
       }, 700);
     } else {
-      setCreatorError('Incorrect passcode. (Default: creator888 or admin)');
+      setAdminError('Access Denied. Only the authorized administrator can upload chapters or access studio tools.');
     }
   };
 
@@ -232,7 +233,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <KeyRound size={14} /> Creator Portal
+                  <KeyRound size={14} /> Admin / Uploader
                 </button>
               </div>
 
@@ -310,7 +311,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 </form>
               ) : (
-                /* Creator Passcode Form */
+                /* Admin Username & Password Form */
                 <form onSubmit={handleCreatorSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{
                     padding: '0.85rem 1rem',
@@ -321,50 +322,66 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     alignItems: 'flex-start',
                     gap: '0.5rem'
                   }}>
-                    <span style={{ fontSize: '1rem' }}>🔒</span>
+                    <span style={{ fontSize: '1rem' }}>🛡️</span>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-main)', lineHeight: '1.45' }}>
-                      <strong>Creator / Uploader Passcode:</strong> Enter your studio passcode to access novel uploads and chapter management.
+                      <strong>Admin & Uploader Authorization:</strong> Sign in with the administrator credentials to manage novels and upload chapters.
                     </p>
                   </div>
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
-                      Passcode
+                      Admin Username
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="admin"
+                        value={adminUsername}
+                        onChange={(e) => setAdminUsername(e.target.value)}
+                        required
+                        autoFocus
+                        style={{ paddingLeft: '2.5rem' }}
+                      />
+                      <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-cyan, #0284c7)' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
+                      Admin Password
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
                         type="password"
                         className="form-control"
-                        placeholder="Enter passcode (e.g. creator888)"
-                        value={creatorPin}
-                        onChange={(e) => setCreatorPin(e.target.value)}
-                        autoFocus
+                        placeholder="••••••••"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        required
                         style={{ paddingLeft: '2.5rem' }}
                       />
                       <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-cyan, #0284c7)' }} />
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '5px', display: 'block' }}>
-                      Default passcode: <code>creator888</code> or <code>admin</code>
-                    </span>
                   </div>
 
-                  {creatorError && (
+                  {adminError && (
                     <div style={{ color: '#ff4d4f', fontSize: '0.8rem', padding: '0.5rem', background: 'rgba(255, 77, 79, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <AlertCircle size={14} />
-                      <span>{creatorError}</span>
+                      <span>{adminError}</span>
                     </div>
                   )}
 
-                  {creatorSuccess && (
+                  {adminSuccess && (
                     <div style={{ color: '#059669', fontSize: '0.8rem', padding: '0.5rem', background: 'rgba(5, 150, 105, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <Check size={14} />
-                      <span>{creatorSuccess}</span>
+                      <span>{adminSuccess}</span>
                     </div>
                   )}
 
                   <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
                     <Shield size={16} />
-                    <span>Enter Creator Studio</span>
+                    <span>Authorize Admin Access</span>
                   </button>
                 </form>
               )}

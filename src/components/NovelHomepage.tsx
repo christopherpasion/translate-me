@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { Novel, Chapter, Bookmark } from '../types';
+import type { Novel, Chapter, Bookmark, UserProfile } from '../types';
 import { BookOpen, Search, Sparkles, Layers, ArrowRight, BookMarked, Upload, ChevronRight, X, Clock } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { getGenreMeta, GENRE_DEFINITIONS } from '../services/genrePresets';
 
 interface NovelHomepageProps {
   novels: Novel[];
+  currentUser?: UserProfile | null;
   onSelectNovel: (novelId: string) => void;
   onStartReading: (novelId: string, chapterId?: string) => void;
   onOpenStudio: (novelId: string) => void;
@@ -17,6 +18,7 @@ interface NovelHomepageProps {
 
 export const NovelHomepage: React.FC<NovelHomepageProps> = ({
   novels,
+  currentUser,
   onSelectNovel,
   onStartReading,
   onOpenStudio,
@@ -161,10 +163,11 @@ export const NovelHomepage: React.FC<NovelHomepageProps> = ({
           <button
             className="btn btn-primary"
             onClick={onOpenUploader}
+            title={currentUser?.role === 'creator' ? "Upload novel or bulk chapters" : "Admin credentials required to upload"}
             style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem', gap: '0.45rem', fontWeight: 700 }}
           >
             <Upload size={16} />
-            <span>Upload Novel / Chapter</span>
+            <span>{currentUser?.role === 'creator' ? 'Upload Novel / Chapter' : 'Upload Chapter (Admin)'}</span>
           </button>
 
           <button
