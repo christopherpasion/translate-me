@@ -13,6 +13,8 @@ interface PublicReaderViewProps {
   onNavigateHome?: () => void;
   onToggleBookmark?: () => void;
   isBookmarked?: boolean;
+  readerTheme?: ReaderTheme;
+  onThemeChange?: (theme: ReaderTheme) => void;
 }
 
 export type ReaderTheme = 'light' | 'sepia' | 'dark' | 'oled';
@@ -26,11 +28,13 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
   onOpenAdminMode,
   onNavigateHome,
   onToggleBookmark,
-  isBookmarked = false
+  isBookmarked = false,
+  readerTheme: controlledReaderTheme,
+  onThemeChange
 }) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans'>('serif');
-  const [readerTheme, setReaderTheme] = useState<ReaderTheme>(() => {
+  const [internalTheme, setInternalTheme] = useState<ReaderTheme>(() => {
     try {
       const saved = localStorage.getItem('trans_me_reader_theme');
       if (saved === 'light' || saved === 'sepia' || saved === 'dark' || saved === 'oled') {
@@ -41,6 +45,18 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
     }
     return 'light';
   });
+
+  const readerTheme = controlledReaderTheme ?? internalTheme;
+
+  const handleSelectTheme = (newTheme: ReaderTheme) => {
+    setInternalTheme(newTheme);
+    try {
+      localStorage.setItem('trans_me_reader_theme', newTheme);
+    } catch {
+      // Ignore
+    }
+    onThemeChange?.(newTheme);
+  };
 
   useEffect(() => {
     try {
@@ -479,7 +495,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
               }}>
                 <button
                   type="button"
-                  onClick={() => setReaderTheme('light')}
+                  onClick={() => handleSelectTheme('light')}
                   style={{
                     width: '28px',
                     height: '28px',
@@ -495,7 +511,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 />
                 <button
                   type="button"
-                  onClick={() => setReaderTheme('sepia')}
+                  onClick={() => handleSelectTheme('sepia')}
                   style={{
                     width: '28px',
                     height: '28px',
@@ -511,7 +527,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 />
                 <button
                   type="button"
-                  onClick={() => setReaderTheme('dark')}
+                  onClick={() => handleSelectTheme('dark')}
                   style={{
                     width: '28px',
                     height: '28px',
@@ -527,7 +543,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 />
                 <button
                   type="button"
-                  onClick={() => setReaderTheme('oled')}
+                  onClick={() => handleSelectTheme('oled')}
                   style={{
                     width: '28px',
                     height: '28px',

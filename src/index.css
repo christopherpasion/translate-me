@@ -181,7 +181,6 @@ body.light-mode {
   transform: translateY(-2px);
 }
 
-/* Navbar */
 .navbar {
   display: flex;
   align-items: center;
@@ -192,6 +191,79 @@ body.light-mode {
   border-bottom: 1px solid var(--border-color);
   z-index: 50;
   height: 64px;
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+/* Theme-specific Navbar Adaptations for Reader & App */
+.navbar.navbar-sepia {
+  background: #fbf0d9 !important;
+  border-bottom-color: #dfd2bc !important;
+  color: #382e21 !important;
+}
+
+.navbar.navbar-sepia .brand-title {
+  background: linear-gradient(135deg, #b45309, #d97706) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.navbar.navbar-sepia .brand-badge {
+  background: rgba(180, 83, 9, 0.12) !important;
+  color: #b45309 !important;
+  border-color: rgba(180, 83, 9, 0.3) !important;
+}
+
+.navbar.navbar-sepia select,
+.navbar.navbar-sepia .btn-secondary {
+  background: #f4ecd8 !important;
+  color: #382e21 !important;
+  border-color: #dfd2bc !important;
+}
+
+.navbar.navbar-sepia select option {
+  background: #fbf0d9 !important;
+  color: #382e21 !important;
+}
+
+.navbar.navbar-sepia .btn-secondary:hover {
+  background: #ebdcc0 !important;
+  border-color: #b45309 !important;
+}
+
+.navbar.navbar-light {
+  background: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.navbar.navbar-light select,
+.navbar.navbar-light .btn-secondary {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+.navbar.navbar-light select option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.navbar.navbar-light .btn-secondary:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.navbar.navbar-oled {
+  background: #000000 !important;
+  border-bottom-color: #1f2937 !important;
+  color: #e5e7eb !important;
+}
+
+.navbar.navbar-oled select,
+.navbar.navbar-oled .btn-secondary {
+  background: #07090e !important;
+  color: #e5e7eb !important;
+  border-color: #1f2937 !important;
 }
 
 .navbar-brand {

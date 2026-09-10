@@ -13,7 +13,7 @@ import { GlossarySidebar } from './components/GlossarySidebar';
 import { CharacterGraphModal } from './components/CharacterGraphModal';
 import { GovernanceModal } from './components/GovernanceModal';
 import { ExportModal } from './components/ExportModal';
-import { PublicReaderView } from './components/PublicReaderView';
+import { PublicReaderView, type ReaderTheme } from './components/PublicReaderView';
 import { BookmarksModal } from './components/BookmarksModal';
 import { AuthModal } from './components/AuthModal';
 import { ChapterUploaderModal } from './components/ChapterUploaderModal';
@@ -83,6 +83,33 @@ export const App: React.FC = () => {
       if (metaTheme) metaTheme.setAttribute('content', '#090d16');
     }
   }, [appTheme]);
+
+  // Reader Theme State ('light' | 'sepia' | 'dark' | 'oled') - Persisted in LocalStorage
+  const [readerTheme, setReaderTheme] = useState<ReaderTheme>(() => {
+    try {
+      const saved = localStorage.getItem('trans_me_reader_theme');
+      if (saved === 'light' || saved === 'sepia' || saved === 'dark' || saved === 'oled') {
+        return saved as ReaderTheme;
+      }
+    } catch {
+      // Fallback
+    }
+    return 'light';
+  });
+
+  const handleReaderThemeChange = (newTheme: ReaderTheme) => {
+    setReaderTheme(newTheme);
+    try {
+      localStorage.setItem('trans_me_reader_theme', newTheme);
+    } catch {
+      // Ignore
+    }
+    if (newTheme === 'dark' || newTheme === 'oled') {
+      setAppTheme('dark');
+    } else {
+      setAppTheme('light');
+    }
+  };
 
   // Prevent iPadOS virtual keyboard dismissal offset & white gap artifact
   useEffect(() => {
@@ -585,7 +612,18 @@ export const App: React.FC = () => {
           setViewMode(mode);
         }}
         appTheme={appTheme}
-        onToggleAppTheme={() => setAppTheme(appTheme === 'dark' ? 'light' : 'dark')}
+        activeReaderTheme={viewMode === 'reader' ? readerTheme : undefined}
+        onToggleAppTheme={() => {
+          if (viewMode === 'reader') {
+            if (readerTheme === 'dark' || readerTheme === 'oled') {
+              handleReaderThemeChange('light');
+            } else {
+              handleReaderThemeChange('dark');
+            }
+          } else {
+            setAppTheme(appTheme === 'dark' ? 'light' : 'dark');
+          }
+        }}
       />
 
       {/* Main View Router */}
@@ -635,6 +673,8 @@ export const App: React.FC = () => {
           onNavigateHome={() => setViewMode('home')}
           onToggleBookmark={handleToggleBookmark}
           isBookmarked={isCurrentBookmarked}
+          readerTheme={readerTheme}
+          onThemeChange={handleReaderThemeChange}
         />
       ) : (
         /* Creator / Uploader Studio */

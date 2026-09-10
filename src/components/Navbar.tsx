@@ -21,6 +21,7 @@ interface NavbarProps {
   onChangeViewMode: (mode: 'home' | 'reader' | 'admin') => void;
   appTheme: 'dark' | 'light';
   onToggleAppTheme: () => void;
+  activeReaderTheme?: 'light' | 'sepia' | 'dark' | 'oled';
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -40,7 +41,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   viewMode,
   onChangeViewMode,
   appTheme,
-  onToggleAppTheme
+  onToggleAppTheme,
+  activeReaderTheme
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<{ isOnline: boolean; checking: boolean }>({
@@ -64,8 +66,23 @@ export const Navbar: React.FC<NavbarProps> = ({
     alert(result.message);
   };
 
+  // Determine effective theme class for Navbar
+  let navbarThemeClass = '';
+  if (viewMode === 'reader' && activeReaderTheme) {
+    navbarThemeClass = `navbar-${activeReaderTheme}`;
+  } else if (appTheme === 'light') {
+    navbarThemeClass = 'navbar-light';
+  } else {
+    navbarThemeClass = 'navbar-dark';
+  }
+
+  // Determine whether current effective theme is dark
+  const isCurrentlyDark = viewMode === 'reader' && activeReaderTheme
+    ? (activeReaderTheme === 'dark' || activeReaderTheme === 'oled')
+    : (appTheme === 'dark');
+
   return (
-    <header className="navbar">
+    <header className={`navbar ${navbarThemeClass}`}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
         <div className="navbar-brand" onClick={() => onChangeViewMode('home')} style={{ flexShrink: 0, cursor: 'pointer' }}>
           <BookOpen size={24} style={{ color: 'var(--accent-cyan, #00f2fe)', flexShrink: 0 }} />
@@ -303,11 +320,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           className="btn btn-secondary btn-icon"
           onClick={onToggleAppTheme}
-          title={appTheme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          title={isCurrentlyDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           style={{ padding: '0.4rem' }}
           aria-label="Toggle App Theme"
         >
-          {appTheme === 'dark' ? <Sun size={16} style={{ color: '#f59e0b' }} /> : <Moon size={16} style={{ color: '#0284c7' }} />}
+          {isCurrentlyDark ? <Sun size={16} style={{ color: '#f59e0b' }} /> : <Moon size={16} style={{ color: '#0284c7' }} />}
         </button>
 
         {/* Mobile Hamburger Toggle Button */}
