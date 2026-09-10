@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ShieldCheck, Download, Database, Sun, Moon, Menu, X, Layers, Bookmark as BookmarkIcon, Upload, User } from 'lucide-react';
+import { BookOpen, ShieldCheck, Download, Database, Sun, Moon, Menu, X, Layers, Bookmark as BookmarkIcon, Upload, User, Home } from 'lucide-react';
 import type { Novel, UserProfile } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 
@@ -17,8 +17,8 @@ interface NavbarProps {
   onOpenAuth: (defaultTab?: 'reader' | 'creator') => void;
   currentUser: UserProfile | null;
   pendingGovernanceCount: number;
-  viewMode: 'admin' | 'reader';
-  onToggleViewMode: () => void;
+  viewMode: 'home' | 'reader' | 'admin';
+  onChangeViewMode: (mode: 'home' | 'reader' | 'admin') => void;
   appTheme: 'dark' | 'light';
   onToggleAppTheme: () => void;
 }
@@ -38,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   pendingGovernanceCount,
   viewMode,
-  onToggleViewMode,
+  onChangeViewMode,
   appTheme,
   onToggleAppTheme
 }) => {
@@ -67,11 +67,26 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="navbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-        <div className="navbar-brand" onClick={onOpenLibrary} style={{ flexShrink: 0, cursor: 'pointer' }}>
+        <div className="navbar-brand" onClick={() => onChangeViewMode('home')} style={{ flexShrink: 0, cursor: 'pointer' }}>
           <BookOpen size={24} style={{ color: 'var(--accent-cyan, #00f2fe)', flexShrink: 0 }} />
           <span className="brand-title">TranslateMe</span>
-          {viewMode === 'admin' && <span className="brand-badge">STUDIO</span>}
+          {viewMode === 'admin' ? (
+            <span className="brand-badge">STUDIO</span>
+          ) : viewMode === 'reader' ? (
+            <span className="brand-badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>READER</span>
+          ) : null}
         </div>
+
+        {/* Home Navigation Button */}
+        <button
+          className={`btn ${viewMode === 'home' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => onChangeViewMode('home')}
+          title="Novel Catalog Homepage"
+          style={{ padding: '0.32rem 0.65rem', fontSize: '0.78rem', gap: '0.35rem' }}
+        >
+          <Home size={13} />
+          <span>Home</span>
+        </button>
 
         {/* Desktop Quick Novel Selector */}
         <div className="desktop-novel-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -217,21 +232,37 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* Creator Portal / Studio Mode Switcher */}
-        <button
-          className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'} desktop-role-btn`}
-          onClick={onToggleViewMode}
-          title={viewMode === 'admin' ? 'Switch to Public Reader Mode' : 'Open Creator Studio'}
-          style={{
-            border: viewMode === 'admin' ? '1px solid var(--accent-cyan)' : '1px solid var(--border-color)',
-            color: viewMode === 'admin' ? '#fff' : 'var(--text-main)',
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            fontSize: '0.8rem',
-            padding: '0.35rem 0.65rem'
-          }}
-        >
-          {viewMode === 'admin' ? '⚡ Creator Studio' : '📖 Reader View'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.35rem' }}>
+          {novels.length > 0 && (
+            <button
+              className={`btn ${viewMode === 'reader' ? 'btn-primary' : 'btn-secondary'} desktop-role-btn`}
+              onClick={() => onChangeViewMode('reader')}
+              title="Open Public Reader Mode"
+              style={{
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                fontSize: '0.78rem',
+                padding: '0.35rem 0.65rem'
+              }}
+            >
+              📖 Reader
+            </button>
+          )}
+
+          <button
+            className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'} desktop-role-btn`}
+            onClick={() => onChangeViewMode(viewMode === 'admin' ? 'home' : 'admin')}
+            title={viewMode === 'admin' ? 'Exit Studio to Homepage' : 'Open Creator Studio'}
+            style={{
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              fontSize: '0.78rem',
+              padding: '0.35rem 0.65rem'
+            }}
+          >
+            ⚡ Studio
+          </button>
+        </div>
 
         {/* User Account / Sign In */}
         <button
@@ -368,17 +399,42 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
 
-              {/* View Switcher */}
-              <div style={{ marginBottom: '1.25rem' }}>
+              {/* View Switcher in mobile */}
+              <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <button
-                  className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ width: '100%', justifyContent: 'center', padding: '0.68rem', fontWeight: 700 }}
+                  className={`btn ${viewMode === 'home' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontWeight: 700, gap: '0.4rem' }}
                   onClick={() => {
-                    onToggleViewMode();
+                    onChangeViewMode('home');
                     setIsMobileMenuOpen(false);
                   }}
                 >
-                  {viewMode === 'admin' ? '⚡ Creator Studio Active' : '📖 Reader View Active'}
+                  <Home size={15} />
+                  <span>Homepage & Novels</span>
+                </button>
+
+                {novels.length > 0 && (
+                  <button
+                    className={`btn ${viewMode === 'reader' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontWeight: 700 }}
+                    onClick={() => {
+                      onChangeViewMode('reader');
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    📖 Read Active Novel
+                  </button>
+                )}
+
+                <button
+                  className={`btn ${viewMode === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontWeight: 700 }}
+                  onClick={() => {
+                    onChangeViewMode('admin');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  ⚡ Creator Studio
                 </button>
               </div>
 

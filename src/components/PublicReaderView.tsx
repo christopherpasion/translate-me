@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Novel, Chapter, GlossaryEntry } from '../types';
 import { StorageService } from '../services/storage';
-import { BookOpen, ChevronLeft, ChevronRight, MessageSquarePlus, Check, Sparkles, Type, Bookmark as BookmarkIcon, ArrowUp } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, MessageSquarePlus, Check, Sparkles, Type, Bookmark as BookmarkIcon, ArrowUp, Home } from 'lucide-react';
 
 interface PublicReaderViewProps {
   currentNovel: Novel;
@@ -10,6 +10,7 @@ interface PublicReaderViewProps {
   glossary: GlossaryEntry[];
   onSelectChapter: (chapterId: string) => void;
   onOpenAdminMode: () => void;
+  onNavigateHome?: () => void;
   onToggleBookmark?: () => void;
   isBookmarked?: boolean;
 }
@@ -23,6 +24,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
   glossary,
   onSelectChapter,
   onOpenAdminMode,
+  onNavigateHome,
   onToggleBookmark,
   isBookmarked = false
 }) => {
@@ -359,6 +361,18 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {onNavigateHome && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={onNavigateHome}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', gap: '0.35rem' }}
+                  title="Return to Novel Catalog Homepage"
+                >
+                  <Home size={14} style={{ color: 'var(--primary-cyan, #00f2fe)' }} />
+                  <span>All Novels</span>
+                </button>
+              )}
+
               {onToggleBookmark && (
                 <button
                   className={`btn ${isBookmarked ? 'btn-primary' : 'btn-secondary'}`}

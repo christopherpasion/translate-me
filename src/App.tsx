@@ -20,8 +20,8 @@ import { PublicReaderView } from './components/PublicReaderView';
 import { BookmarksModal } from './components/BookmarksModal';
 import { AuthModal } from './components/AuthModal';
 import { ChapterUploaderModal } from './components/ChapterUploaderModal';
+import { NovelHomepage } from './components/NovelHomepage';
 import { getStarterGlossaryForGenre } from './services/genrePresets';
-import { BookOpen, Layers, Upload } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Main Data States
@@ -38,8 +38,26 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(AuthService.getCurrentUser());
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
 
-  // Role View Mode ('admin' | 'reader') - Default to Reader
-  const [viewMode, setViewMode] = useState<'admin' | 'reader'>('reader');
+  // View Mode ('home' | 'reader' | 'admin') - Default to Homepage catalog
+  const [viewMode, setViewMode] = useState<'home' | 'reader' | 'admin'>(() => {
+    try {
+      const saved = localStorage.getItem('trans_me_view_mode');
+      if (saved === 'home' || saved === 'reader' || saved === 'admin') {
+        return saved;
+      }
+    } catch {
+      // Ignore
+    }
+    return 'home';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trans_me_view_mode', viewMode);
+    } catch {
+      // Ignore
+    }
+  }, [viewMode]);
 
   // App Theme State ('dark' | 'light') - Persisted in LocalStorage, default to saved or system preference
   const [appTheme, setAppTheme] = useState<'dark' | 'light'>(() => {
@@ -103,11 +121,13 @@ export const App: React.FC = () => {
   const [authDefaultTab, setAuthDefaultTab] = useState<'reader' | 'creator'>('reader');
   const [isUploaderOpen, setIsUploaderOpen] = useState(false);
 
-  // Ref to track active novel ID for realtime callbacks
+  // Refs to track active novel and chapter IDs for realtime callbacks & initial sync
   const selectedNovelIdRef = useRef(selectedNovelId);
+  const selectedChapterIdRef = useRef(selectedChapterId);
   useEffect(() => {
     selectedNovelIdRef.current = selectedNovelId;
-  }, [selectedNovelId]);
+    selectedChapterIdRef.current = selectedChapterId;
+  }, [selectedNovelId, selectedChapterId]);
 
   // Initial Data Load
   useEffect(() => {
@@ -118,13 +138,17 @@ export const App: React.FC = () => {
     setCurrentUser(AuthService.getCurrentUser());
 
     if (loadedNovels.length > 0) {
-      const initialNovelId = loadedNovels[0].id;
+      const savedNovelId = localStorage.getItem('trans_me_last_novel');
+      const initialNovel = loadedNovels.find(n => n.id === savedNovelId) || loadedNovels[0];
+      const initialNovelId = initialNovel.id;
       setSelectedNovelId(initialNovelId);
 
       const chaps = StorageService.getChapters(initialNovelId);
       setChapters(chaps);
       if (chaps.length > 0) {
-        setSelectedChapterId(chaps[0].id);
+        const savedChapId = localStorage.getItem(`trans_me_active_chapter_${initialNovelId}`);
+        const matched = chaps.find(c => c.id === savedChapId);
+        setSelectedChapterId(matched ? matched.id : chaps[0].id);
       }
 
       setGlossary(StorageService.getGlossary(initialNovelId));
@@ -151,7 +175,10 @@ export const App: React.FC = () => {
         SupabaseService.fetchChapters(targetId).then((cloudChaps) => {
           if (cloudChaps && cloudChaps.length > 0) {
             setChapters(cloudChaps);
-            setSelectedChapterId(cloudChaps[0].id);
+            const savedChapId = localStorage.getItem(`trans_me_active_chapter_${targetId}`);
+            const currentOrSavedId = selectedChapterIdRef.current || savedChapId;
+            const matched = cloudChaps.find(c => c.id === currentOrSavedId);
+            setSelectedChapterId(matched ? matched.id : cloudChaps[0].id);
           }
         });
       }
@@ -175,13 +202,32 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Save active novel & chapter reading progress
+  useEffect(() => {
+    if (selectedNovelId && selectedChapterId) {
+      try {
+        localStorage.setItem(`trans_me_active_chapter_${selectedNovelId}`, selectedChapterId);
+        localStorage.setItem('trans_me_last_novel', selectedNovelId);
+      } catch {
+        // Ignore
+      }
+    }
+  }, [selectedNovelId, selectedChapterId]);
+
   // Sync state when novel changes
   const handleSelectNovel = (novelId: string) => {
     setSelectedNovelId(novelId);
+    try {
+      localStorage.setItem('trans_me_last_novel', novelId);
+    } catch {
+      // Ignore
+    }
     const chaps = StorageService.getChapters(novelId);
     setChapters(chaps);
     if (chaps.length > 0) {
-      setSelectedChapterId(chaps[0].id);
+      const savedChapId = localStorage.getItem(`trans_me_active_chapter_${novelId}`);
+      const matched = chaps.find(c => c.id === savedChapId);
+      setSelectedChapterId(matched ? matched.id : chaps[0].id);
     } else {
       setSelectedChapterId('');
     }
@@ -239,21 +285,6 @@ export const App: React.FC = () => {
     setBookmarks(updated);
   };
 
-  // Role Switch with Auth Check
-  const handleToggleViewMode = () => {
-    if (viewMode === 'reader') {
-      // Switching to Creator Studio
-      if (currentUser?.role === 'creator') {
-        setViewMode('admin');
-      } else {
-        setAuthDefaultTab('creator');
-        setIsAuthOpen(true);
-      }
-    } else {
-      // Switching to Reader Mode
-      setViewMode('reader');
-    }
-  };
 
   // Upload Single Chapter
   const handleUploadSingleChapter = (novelId: string, chapterData: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>) => {
@@ -439,55 +470,45 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         pendingGovernanceCount={pendingGovCount}
         viewMode={viewMode}
-        onToggleViewMode={handleToggleViewMode}
+        onChangeViewMode={(mode) => {
+          if (mode === 'admin' && currentUser?.role !== 'creator') {
+            setAuthDefaultTab('creator');
+            setIsAuthOpen(true);
+            return;
+          }
+          setViewMode(mode);
+        }}
         appTheme={appTheme}
         onToggleAppTheme={() => setAppTheme(appTheme === 'dark' ? 'light' : 'dark')}
       />
 
       {/* Main View Router */}
-      {!currentNovel ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem', textAlign: 'center' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: 'rgba(0, 242, 254, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '1.25rem',
-            border: '1px solid rgba(0, 242, 254, 0.25)'
-          }}>
-            <BookOpen size={40} style={{ color: 'var(--accent-cyan)' }} />
-          </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>
-            Welcome to TranslateMe
-          </h2>
-          <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', maxWidth: '480px', lineHeight: 1.6, margin: '0 auto 2rem auto' }}>
-            Explore web novels, read translated chapters with interactive glossary tooltips, or open the Creator Studio to publish your own translations!
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => setIsLibraryOpen(true)}
-              style={{ padding: '0.65rem 1.4rem', fontSize: '0.95rem', fontWeight: 700, gap: '0.5rem' }}
-            >
-              <Layers size={18} />
-              <span>Explore Novel Library</span>
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setAuthDefaultTab('creator');
-                setIsAuthOpen(true);
-              }}
-              style={{ padding: '0.65rem 1.25rem', fontSize: '0.95rem', gap: '0.5rem' }}
-            >
-              <Upload size={18} />
-              <span>Creator / Uploader Access</span>
-            </button>
-          </div>
-        </div>
+      {viewMode === 'home' || !currentNovel ? (
+        /* Dedicated Novel Catalog & Homepage */
+        <NovelHomepage
+          novels={novels}
+          onSelectNovel={handleSelectNovel}
+          onStartReading={(novelId, chapterId) => {
+            handleSelectNovel(novelId);
+            if (chapterId) {
+              setSelectedChapterId(chapterId);
+            }
+            setViewMode('reader');
+          }}
+          onOpenStudio={(novelId) => {
+            handleSelectNovel(novelId);
+            if (currentUser?.role !== 'creator') {
+              setAuthDefaultTab('creator');
+              setIsAuthOpen(true);
+            } else {
+              setViewMode('admin');
+            }
+          }}
+          onOpenUploader={() => setIsUploaderOpen(true)}
+          onOpenLibrary={() => setIsLibraryOpen(true)}
+          onOpenBookmarks={() => setIsBookmarksOpen(true)}
+          bookmarks={bookmarks}
+        />
       ) : viewMode === 'reader' ? (
         /* Public Reader Experience */
         <PublicReaderView
@@ -496,7 +517,15 @@ export const App: React.FC = () => {
           currentChapter={currentChapter}
           glossary={glossary}
           onSelectChapter={setSelectedChapterId}
-          onOpenAdminMode={handleToggleViewMode}
+          onOpenAdminMode={() => {
+            if (currentUser?.role !== 'creator') {
+              setAuthDefaultTab('creator');
+              setIsAuthOpen(true);
+            } else {
+              setViewMode('admin');
+            }
+          }}
+          onNavigateHome={() => setViewMode('home')}
           onToggleBookmark={handleToggleBookmark}
           isBookmarked={isCurrentBookmarked}
         />

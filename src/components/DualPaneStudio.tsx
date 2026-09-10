@@ -53,6 +53,8 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   // Mobile Active Tab State ('all' | 'zh' | 'en')
   const [mobileTab, setMobileTab] = useState<'all' | 'zh' | 'en'>('all');
 
+  const hasZhSource = Boolean(rawZhText.trim());
+
   // Synchronize raw text state when chapter props change
   useEffect(() => {
     if (chapter) {
@@ -214,49 +216,68 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      {/* Mobile Touch Tab Bar (< 768px) */}
-      <div className="mobile-tab-bar">
-        <button
-          className={`mobile-tab-btn ${mobileTab === 'all' ? 'active' : ''}`}
-          onClick={() => setMobileTab('all')}
-        >
-          Both
-        </button>
-        <button
-          className={`mobile-tab-btn ${mobileTab === 'zh' ? 'active' : ''}`}
-          onClick={() => setMobileTab('zh')}
-        >
-          Chinese
-        </button>
-        <button
-          className={`mobile-tab-btn ${mobileTab === 'en' ? 'active' : ''}`}
-          onClick={() => setMobileTab('en')}
-        >
-          English
-        </button>
-      </div>
+      {/* Mobile Tab Selector (Visible only on small mobile screens if Chinese text exists) */}
+      {hasZhSource && (
+        <div className="mobile-tab-bar">
+          <button
+            className={`mobile-tab-btn ${mobileTab === 'all' ? 'active' : ''}`}
+            onClick={() => setMobileTab('all')}
+          >
+            All
+          </button>
+          <button
+            className={`mobile-tab-btn ${mobileTab === 'zh' ? 'active' : ''}`}
+            onClick={() => setMobileTab('zh')}
+          >
+            Chinese
+          </button>
+          <button
+            className={`mobile-tab-btn ${mobileTab === 'en' ? 'active' : ''}`}
+            onClick={() => setMobileTab('en')}
+          >
+            English
+          </button>
+        </div>
+      )}
 
       {/* Main Studio Toolbar & Subheader */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Script Mode:</span>
-          <div style={{ display: 'flex', background: 'var(--bg-tertiary)', borderRadius: '6px', padding: '2px' }}>
+        {hasZhSource ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Script Mode:</span>
+            <div style={{ display: 'flex', background: 'var(--bg-tertiary)', borderRadius: '6px', padding: '2px' }}>
+              <button
+                className={`pill-toggle ${scriptMode === 'simplified' ? 'active' : ''}`}
+                onClick={() => setScriptMode('simplified')}
+                style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+              >
+                简体 (Simplified)
+              </button>
+              <button
+                className={`pill-toggle ${scriptMode === 'traditional' ? 'active' : ''}`}
+                onClick={() => setScriptMode('traditional')}
+                style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+              >
+                繁體 (Traditional)
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              📖 English Novel Mode (Full-Width)
+            </span>
             <button
-              className={`pill-toggle ${scriptMode === 'simplified' ? 'active' : ''}`}
-              onClick={() => setScriptMode('simplified')}
-              style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+              className="btn btn-secondary"
+              onClick={() => setIsEditingZh(true)}
+              style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', gap: '0.3rem' }}
+              title="Add original Chinese raw text to this chapter"
             >
-              简体 (Simplified)
-            </button>
-            <button
-              className={`pill-toggle ${scriptMode === 'traditional' ? 'active' : ''}`}
-              onClick={() => setScriptMode('traditional')}
-              style={{ fontSize: '0.75rem', padding: '2px 8px' }}
-            >
-              繁體 (Traditional)
+              <Plus size={13} />
+              <span>Add Chinese Source</span>
             </button>
           </div>
-        </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {onOpenDictionaryModal && (
@@ -345,19 +366,21 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
         /* Unified Row-Aligned Translation Grid */
         <div className="aligned-translation-grid" ref={gridRef}>
           {/* Sticky Column Headers */}
-          <div className="aligned-grid-sticky-header">
-            <div className={`header-col ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>
-              <h3 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-                Chinese Source ({scriptMode === 'traditional' ? '繁體' : '简体'})
-              </h3>
-              <button className="icon-button" onClick={() => setIsEditingZh(true)} title="Edit Raw Chinese Text">
-                <Edit2 size={14} />
-              </button>
-            </div>
+          <div className="aligned-grid-sticky-header" style={{ gridTemplateColumns: hasZhSource ? '1fr 1fr' : '1fr' }}>
+            {hasZhSource && (
+              <div className={`header-col ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>
+                <h3 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                  Chinese Source ({scriptMode === 'traditional' ? '繁體' : '简体'})
+                </h3>
+                <button className="icon-button" onClick={() => setIsEditingZh(true)} title="Edit Raw Chinese Text">
+                  <Edit2 size={14} />
+                </button>
+              </div>
+            )}
 
             <div className={`header-col ${mobileTab === 'zh' ? 'hidden-mobile' : ''}`}>
               <h3 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-                English Translation Draft
+                {hasZhSource ? 'English Translation Draft' : 'English Chapter Content'}
               </h3>
               <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                 <button className="icon-button" onClick={() => setIsEditingEn(true)} title="Edit English Text">
@@ -375,35 +398,38 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
               <div
                 key={row.idx}
                 className={`translation-row ${isHovered ? 'row-active' : ''}`}
+                style={{ gridTemplateColumns: hasZhSource ? '1fr 1fr' : '1fr' }}
                 onMouseEnter={() => setHoveredParaIdx(row.idx)}
                 onMouseLeave={() => setHoveredParaIdx(null)}
                 onClick={() => setHoveredParaIdx(hoveredParaIdx === row.idx ? null : row.idx)}
               >
-                {/* Left Cell: Chinese Paragraph */}
-                <div className={`translation-cell chinese-cell ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>
-                  {isHovered && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '-8px',
-                        left: '0px',
-                        background: 'var(--primary-cyan)',
-                        color: '#000',
-                        fontSize: '0.65rem',
-                        fontWeight: 800,
-                        padding: '1px 6px',
-                        borderRadius: '9999px',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                        zIndex: 10
-                      }}
-                    >
-                      ¶ {row.idx + 1}
-                    </span>
-                  )}
-                  <p className="chinese-text" style={{ margin: 0, paddingTop: '0.25rem' }}>
-                    {renderHighlightedZhParagraph(row.zh)}
-                  </p>
-                </div>
+                {/* Left Cell: Chinese Paragraph (only when Chinese text exists) */}
+                {hasZhSource && (
+                  <div className={`translation-cell chinese-cell ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>
+                    {isHovered && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          left: '0px',
+                          background: 'var(--primary-cyan)',
+                          color: '#000',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          padding: '1px 6px',
+                          borderRadius: '9999px',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          zIndex: 10
+                        }}
+                      >
+                        ¶ {row.idx + 1}
+                      </span>
+                    )}
+                    <p className="chinese-text" style={{ margin: 0, paddingTop: '0.25rem' }}>
+                      {renderHighlightedZhParagraph(row.zh)}
+                    </p>
+                  </div>
+                )}
 
                 {/* Right Cell: English Paragraph */}
                 <div className={`translation-cell english-cell ${mobileTab === 'zh' ? 'hidden-mobile' : ''}`}>
