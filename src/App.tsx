@@ -179,7 +179,7 @@ export const App: React.FC = () => {
     };
     window.addEventListener('auth-changed', handleAuthChange);
 
-    // 3. Supabase Cloud Sync
+    // 3. Supabase Cloud Sync: Fetch novels and all cloud chapters
     SupabaseService.fetchNovels().then((cloudNovels) => {
       if (cloudNovels && Array.isArray(cloudNovels) && cloudNovels.length > 0) {
         setNovels(cloudNovels);
@@ -187,13 +187,25 @@ export const App: React.FC = () => {
         const targetId = cloudNovels.some(n => n.id === currentId) ? currentId : cloudNovels[0].id;
         setSelectedNovelId(targetId);
 
-        SupabaseService.fetchChapters(targetId).then((cloudChaps) => {
-          if (cloudChaps && cloudChaps.length > 0) {
-            setChapters(cloudChaps);
+        // Fetch all chapters across all novels in one quick batch to populate local cache
+        SupabaseService.fetchAllChapters().then((allCloudChaps) => {
+          const novelChaps = allCloudChaps.filter(c => c.novelId === targetId);
+          if (novelChaps.length > 0) {
+            setChapters(novelChaps);
             const savedChapId = localStorage.getItem(`trans_me_active_chapter_${targetId}`);
             const currentOrSavedId = selectedChapterIdRef.current || savedChapId;
-            const matched = cloudChaps.find(c => c.id === currentOrSavedId);
-            setSelectedChapterId(matched ? matched.id : cloudChaps[0].id);
+            const matched = novelChaps.find(c => c.id === currentOrSavedId);
+            setSelectedChapterId(matched ? matched.id : novelChaps[0].id);
+          } else {
+            SupabaseService.fetchChapters(targetId).then((cloudChaps) => {
+              if (cloudChaps && cloudChaps.length > 0) {
+                setChapters(cloudChaps);
+                const savedChapId = localStorage.getItem(`trans_me_active_chapter_${targetId}`);
+                const currentOrSavedId = selectedChapterIdRef.current || savedChapId;
+                const matched = cloudChaps.find(c => c.id === currentOrSavedId);
+                setSelectedChapterId(matched ? matched.id : cloudChaps[0].id);
+              }
+            });
           }
         });
       }
@@ -237,15 +249,27 @@ export const App: React.FC = () => {
     } catch {
       // Ignore
     }
-    const chaps = StorageService.getChapters(novelId);
-    setChapters(chaps);
-    if (chaps.length > 0) {
+    const localChaps = StorageService.getChapters(novelId);
+    setChapters(localChaps);
+    if (localChaps.length > 0) {
       const savedChapId = localStorage.getItem(`trans_me_active_chapter_${novelId}`);
-      const matched = chaps.find(c => c.id === savedChapId);
-      setSelectedChapterId(matched ? matched.id : chaps[0].id);
+      const matched = localChaps.find(c => c.id === savedChapId);
+      setSelectedChapterId(matched ? matched.id : localChaps[0].id);
     } else {
       setSelectedChapterId('');
     }
+
+    // Always fetch fresh chapters for the selected novel from Supabase Cloud
+    SupabaseService.fetchChapters(novelId).then((cloudChaps) => {
+      if (cloudChaps && cloudChaps.length > 0) {
+        setChapters(cloudChaps);
+        const savedChapId = localStorage.getItem(`trans_me_active_chapter_${novelId}`);
+        const currentOrSavedId = selectedChapterIdRef.current || savedChapId;
+        const matched = cloudChaps.find(c => c.id === currentOrSavedId);
+        setSelectedChapterId(matched ? matched.id : cloudChaps[0].id);
+      }
+    });
+
     setGlossary(StorageService.getGlossary(novelId));
     setRecommendations(StorageService.getAIRecommendations(novelId));
     setSuggestions(StorageService.getReaderSuggestions(novelId));

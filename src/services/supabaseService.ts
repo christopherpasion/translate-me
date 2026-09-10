@@ -298,9 +298,49 @@ export class SupabaseService {
         updatedAt: ch.updated_at
       }));
 
+      // Cache cloud chapters locally for instant offline and dropdown display
+      StorageService.cacheChapters(cloudChapters);
+
       return cloudChapters;
     } catch {
       return StorageService.getChapters(novelId);
+    }
+  }
+
+  /**
+   * Fetch All Chapters across all novels from Supabase Cloud and cache them locally
+   */
+  static async fetchAllChapters(): Promise<Chapter[]> {
+    try {
+      const { data, error } = await supabase
+        .from('chapters')
+        .select('*')
+        .order('chapter_number', { ascending: true });
+
+      if (error || !data || data.length === 0) {
+        return [];
+      }
+
+      const cloudChapters: Chapter[] = data.map(ch => ({
+        id: ch.id,
+        novelId: ch.novel_id,
+        chapterNumber: ch.chapter_number,
+        titleZh: ch.title_zh,
+        titleEn: ch.title_en,
+        contentZh: ch.content_zh,
+        contentEn: ch.content_en,
+        status: ch.status,
+        summary: ch.summary,
+        extractedTermsCount: ch.extracted_terms_count || 0,
+        selfHealedCount: ch.self_healed_count || 0,
+        updatedAt: ch.updated_at
+      }));
+
+      StorageService.cacheChapters(cloudChapters);
+      return cloudChapters;
+    } catch (err) {
+      console.warn('[SupabaseService] fetchAllChapters notice:', err);
+      return [];
     }
   }
 

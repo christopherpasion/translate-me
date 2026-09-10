@@ -99,7 +99,9 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
     }
   };
 
-  const publishedChapters = chapters.filter(c => c.contentEn && c.contentEn.length > 0);
+  const publishedChapters = chapters.length > 0 && chapters.some(c => c.contentEn && c.contentEn.length > 0)
+    ? chapters.filter(c => c.contentEn && c.contentEn.length > 0)
+    : chapters;
   const currentIndex = publishedChapters.findIndex(c => c.id === currentChapter?.id);
 
   const handlePrev = () => {
@@ -441,11 +443,15 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                   textOverflow: 'ellipsis'
                 }}
               >
-                {publishedChapters.map(ch => (
-                  <option key={ch.id} value={ch.id}>
-                    {ch.titleEn}
-                  </option>
-                ))}
+                {publishedChapters.length === 0 ? (
+                  <option value="">(Loading chapters...)</option>
+                ) : (
+                  publishedChapters.map(ch => (
+                    <option key={ch.id} value={ch.id}>
+                      {ch.titleEn}
+                    </option>
+                  ))
+                )}
               </select>
 
               <button

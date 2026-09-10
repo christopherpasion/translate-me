@@ -553,6 +553,34 @@ export const StorageService = {
     return all.filter(c => c.novelId === novelId).sort((a, b) => a.chapterNumber - b.chapterNumber);
   },
 
+  /**
+   * Cache chapters fetched from Supabase Cloud into localStorage for instant offline access
+   */
+  cacheChapters(chapters: Chapter[]): void {
+    if (!chapters || !Array.isArray(chapters) || chapters.length === 0) return;
+    const data = localStorage.getItem(CHAPTERS_KEY);
+    let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
+    const deletedData = localStorage.getItem(DELETED_CHAPTERS_KEY);
+    const deletedIds: string[] = deletedData ? JSON.parse(deletedData) : [];
+
+    let modified = false;
+    for (const ch of chapters) {
+      if (deletedIds.includes(ch.id)) continue;
+      const idx = all.findIndex(c => c.id === ch.id);
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], ...ch };
+        modified = true;
+      } else {
+        all.push(ch);
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
+    }
+  },
+
   saveChapter(chapter: Chapter): Chapter {
     const data = localStorage.getItem(CHAPTERS_KEY);
     let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;

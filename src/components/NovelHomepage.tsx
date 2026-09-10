@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type { Novel, Chapter, Bookmark, UserProfile } from '../types';
-import { BookOpen, Search, Sparkles, Layers, ArrowRight, BookMarked, Upload, ChevronRight, X, Clock } from 'lucide-react';
+import { BookOpen, Search, Sparkles, Layers, ArrowRight, BookMarked, Upload, ChevronRight, X, Clock, Loader2 } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import { SupabaseService } from '../services/supabaseService';
 import { getGenreMeta, GENRE_DEFINITIONS } from '../services/genrePresets';
 
 interface NovelHomepageProps {
@@ -32,6 +33,7 @@ export const NovelHomepage: React.FC<NovelHomepageProps> = ({
   const [activeTocNovel, setActiveTocNovel] = useState<Novel | null>(null);
   const [tocChapters, setTocChapters] = useState<Chapter[]>([]);
   const [tocSearch, setTocSearch] = useState('');
+  const [loadingToc, setLoadingToc] = useState(false);
 
   const genres = useMemo(() => ['all', ...Object.keys(GENRE_DEFINITIONS)], []);
 
@@ -50,12 +52,24 @@ export const NovelHomepage: React.FC<NovelHomepageProps> = ({
     });
   }, [novels, searchQuery, selectedGenre]);
 
-  // Open Table of Contents for a novel
-  const handleOpenToc = (novel: Novel) => {
-    const chaps = StorageService.getChapters(novel.id);
-    setTocChapters(chaps);
+  // Open Table of Contents for a novel (syncs with Supabase Cloud)
+  const handleOpenToc = async (novel: Novel) => {
     setActiveTocNovel(novel);
     setTocSearch('');
+    const localChaps = StorageService.getChapters(novel.id);
+    setTocChapters(localChaps);
+
+    setLoadingToc(true);
+    try {
+      const cloudChaps = await SupabaseService.fetchChapters(novel.id);
+      if (cloudChaps && cloudChaps.length > 0) {
+        setTocChapters(cloudChaps);
+      }
+    } catch {
+      // Local fallback in place
+    } finally {
+      setLoadingToc(false);
+    }
   };
 
   // Get saved reading progress chapter ID for a novel
@@ -507,8 +521,9 @@ export const NovelHomepage: React.FC<NovelHomepageProps> = ({
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>
                     {activeTocNovel.titleEn || activeTocNovel.titleZh}
                   </h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Table of Contents • {tocChapters.length} Chapter{tocChapters.length === 1 ? '' : 's'}
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    Table of Contents • {loadingToc ? 'Syncing chapters...' : `${tocChapters.length} Chapter${tocChapters.length === 1 ? '' : 's'}`}
+                    {loadingToc && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--primary-cyan)' }} />}
                   </span>
                 </div>
               </div>
@@ -529,9 +544,14 @@ export const NovelHomepage: React.FC<NovelHomepageProps> = ({
             </div>
 
             <div className="modal-body" style={{ padding: '0.75rem 1.25rem', overflowY: 'auto', flex: 1 }}>
-              {filteredTocChapters.length === 0 ? (
+              {loadingToc && filteredTocChapters.length === 0 ? (
+                <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--primary-cyan)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                  <Loader2 size={28} className="animate-spin" />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Syncing chapters from cloud...</span>
+                </div>
+              ) : filteredTocChapters.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No chapters found matching "{tocSearch}".
+                  {tocSearch ? `No chapters found matching "${tocSearch}".` : 'No chapters uploaded yet for this novel.'}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
