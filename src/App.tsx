@@ -22,6 +22,7 @@ import { AuthModal } from './components/AuthModal';
 import { ChapterUploaderModal } from './components/ChapterUploaderModal';
 import { NovelHomepage } from './components/NovelHomepage';
 import { getStarterGlossaryForGenre } from './services/genrePresets';
+import { parseCurrentRoute, buildChapterUrl, buildStudioUrl, findNovelBySlug, slugify } from './services/routeHelper';
 
 export const App: React.FC = () => {
   // Main Data States
@@ -38,41 +39,19 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(AuthService.getCurrentUser());
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
 
-  // View Mode ('home' | 'reader' | 'admin') - Guaranteed Homepage on root URL, with ?view= URL sync
+  // View Mode ('home' | 'reader' | 'admin') - URL path & query driven
   const [viewMode, setViewMode] = useState<'home' | 'reader' | 'admin'>(() => {
     try {
-      // Clear legacy cached viewMode so existing sessions aren't locked into the reader
       localStorage.removeItem('trans_me_view_mode');
-
       if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        const urlView = params.get('view');
-        if (urlView === 'reader' || urlView === 'admin') {
-          return urlView;
-        }
+        const route = parseCurrentRoute(window.location.pathname, window.location.search);
+        return route.viewMode;
       }
     } catch {
       // Ignore
     }
     return 'home';
   });
-
-  // Sync active viewMode to URL query parameter without page reload
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const currentUrl = new URL(window.location.href);
-        if (viewMode === 'home') {
-          currentUrl.searchParams.delete('view');
-        } else {
-          currentUrl.searchParams.set('view', viewMode);
-        }
-        window.history.replaceState({}, '', currentUrl.pathname + (currentUrl.search ? currentUrl.search : ''));
-      }
-    } catch {
-      // Ignore
-    }
-  }, [viewMode]);
 
   // App Theme State ('dark' | 'light') - Persisted in LocalStorage, default to saved or system preference
   const [appTheme, setAppTheme] = useState<'dark' | 'light'>(() => {
@@ -277,6 +256,89 @@ export const App: React.FC = () => {
 
   const currentNovel = novels.find(n => n.id === selectedNovelId) || null;
   const currentChapter = chapters.find(c => c.id === selectedChapterId) || null;
+
+  // Sync URL and Document Title dynamically based on current novel & chapter
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (viewMode === 'reader' && currentNovel && currentChapter) {
+      // 1. Chapter Title: e.g. "Chapter 1 - Daily Life of Imperial Examinations | TranslateMe"
+      const chapTitle = currentChapter.titleEn || `Chapter ${currentChapter.chapterNumber}`;
+      const novelTitle = currentNovel.titleEn || currentNovel.titleZh;
+      document.title = `${chapTitle} - ${novelTitle} | TranslateMe`;
+
+      // 2. URL Path: /novel/daily-life-of-imperial-examinations/chapter-1
+      const targetUrl = buildChapterUrl(currentNovel, currentChapter.chapterNumber);
+      if (window.location.pathname !== targetUrl) {
+        window.history.replaceState({}, '', targetUrl);
+      }
+    } else if (viewMode === 'reader' && currentNovel) {
+      const novelTitle = currentNovel.titleEn || currentNovel.titleZh;
+      document.title = `${novelTitle} | TranslateMe`;
+      const targetUrl = `/novel/${slugify(novelTitle)}`;
+      if (window.location.pathname !== targetUrl) {
+        window.history.replaceState({}, '', targetUrl);
+      }
+    } else if (viewMode === 'admin' && currentNovel) {
+      const novelTitle = currentNovel.titleEn || currentNovel.titleZh;
+      document.title = `Creator Studio - ${novelTitle} | TranslateMe`;
+      const targetUrl = buildStudioUrl(currentNovel);
+      if (window.location.pathname !== targetUrl) {
+        window.history.replaceState({}, '', targetUrl);
+      }
+    } else if (viewMode === 'admin') {
+      document.title = 'Creator Studio | TranslateMe';
+      if (window.location.pathname !== '/studio') {
+        window.history.replaceState({}, '', '/studio');
+      }
+    } else {
+      // Homepage
+      document.title = 'TranslateMe - Chinese Web Novel Translation & Reader';
+      if (window.location.pathname !== '/' || window.location.search) {
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  }, [viewMode, currentNovel, currentChapter]);
+
+  // Deep-link initial route resolution & browser popstate (back/forward) listener
+  useEffect(() => {
+    if (typeof window === 'undefined' || novels.length === 0) return;
+
+    const resolveRoute = () => {
+      const route = parseCurrentRoute(window.location.pathname, window.location.search);
+      if (route.viewMode) {
+        setViewMode(route.viewMode);
+      }
+      if (route.novelSlug) {
+        const matchedNovel = findNovelBySlug(novels, route.novelSlug);
+        if (matchedNovel) {
+          setSelectedNovelId(matchedNovel.id);
+          const chaps = StorageService.getChapters(matchedNovel.id);
+          if (chaps.length > 0) {
+            setChapters(chaps);
+            if (route.chapterNumber) {
+              const matchedCh = chaps.find(c => c.chapterNumber === route.chapterNumber);
+              if (matchedCh) setSelectedChapterId(matchedCh.id);
+            }
+          } else {
+            SupabaseService.fetchChapters(matchedNovel.id).then((cloudChaps) => {
+              if (cloudChaps && cloudChaps.length > 0) {
+                setChapters(cloudChaps);
+                if (route.chapterNumber) {
+                  const matchedCh = cloudChaps.find(c => c.chapterNumber === route.chapterNumber);
+                  if (matchedCh) setSelectedChapterId(matchedCh.id);
+                }
+              }
+            });
+          }
+        }
+      }
+    };
+
+    resolveRoute();
+    window.addEventListener('popstate', resolveRoute);
+    return () => window.removeEventListener('popstate', resolveRoute);
+  }, [novels]);
 
   // Active pending suggestions count
   const pendingGovCount = recommendations.filter(r => r.status === 'pending').length +
