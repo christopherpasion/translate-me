@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import type { GlossaryEntry, EntityCategory, TermScope } from '../types';
-import { getPinyinForText } from '../services/pinyinService';
-import { convertToTraditional } from '../services/scriptConverter';
-import { Search, Plus, Trash2, Globe, Bookmark, Edit2, X } from 'lucide-react';
+import type { GlossaryEntry, EntityCategory, Gender } from '../types';
+import { Search, Plus, Trash2, Bookmark, Edit2, X, User } from 'lucide-react';
 
 interface GlossarySidebarProps {
   glossary: GlossaryEntry[];
@@ -21,36 +19,57 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedScope, setSelectedScope] = useState<string>('all');
-  const [editingEntry, setEditingEntry] = useState<Partial<GlossaryEntry> | null>(null);
+  const [editingEntry, setEditingEntry] = useState<Partial<GlossaryEntry> & { aliasesInput?: string } | null>(null);
 
   const filtered = glossary.filter(entry => {
-    const matchesSearch = entry.originalZh.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          entry.translatedEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (entry.pinyin && entry.pinyin.toLowerCase().includes(searchQuery.toLowerCase()));
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      entry.translatedEn.toLowerCase().includes(q) ||
+      (entry.notes && entry.notes.toLowerCase().includes(q)) ||
+      (entry.originalZh && entry.originalZh.toLowerCase().includes(q)) ||
+      (entry.aliases && entry.aliases.some(a => a.toLowerCase().includes(q)));
     const matchesCategory = selectedCategory === 'all' || entry.category === selectedCategory;
-    const matchesScope = selectedScope === 'all' || entry.scope === selectedScope;
-    return matchesSearch && matchesCategory && matchesScope;
+    return matchesSearch && matchesCategory;
   });
+
+  const handleOpenAddForm = () => {
+    setEditingEntry({
+      category: 'character',
+      scope: 'local',
+      translatedEn: '',
+      originalZh: '',
+      notes: '',
+      gender: 'male',
+      aliasesInput: ''
+    });
+  };
+
+  const handleOpenEditForm = (entry: GlossaryEntry) => {
+    setEditingEntry({
+      ...entry,
+      aliasesInput: entry.aliases ? entry.aliases.join(', ') : ''
+    });
+  };
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingEntry?.originalZh || !editingEntry?.translatedEn) return;
+    const termName = (editingEntry?.translatedEn || '').trim();
+    if (!termName) return;
 
-    const pinyinText = editingEntry.pinyin || getPinyinForText(editingEntry.originalZh);
-    const tradZh = editingEntry.traditionalZh || convertToTraditional(editingEntry.originalZh);
+    const parsedAliases = editingEntry?.aliasesInput
+      ? editingEntry.aliasesInput.split(',').map(a => a.trim()).filter(Boolean)
+      : (editingEntry?.aliases || []);
 
     const newEntry: GlossaryEntry = {
-      id: editingEntry.id || `g-${novelId}-${Date.now()}`,
-      originalZh: editingEntry.originalZh,
-      translatedEn: editingEntry.translatedEn,
-      category: (editingEntry.category as EntityCategory) || 'character',
-      scope: (editingEntry.scope as TermScope) || 'local',
-      gender: editingEntry.gender,
-      pinyin: pinyinText,
-      traditionalZh: tradZh,
-      notes: editingEntry.notes || '',
-      occurrences: editingEntry.occurrences || 1,
+      id: editingEntry?.id || `g-${novelId}-${Date.now()}`,
+      originalZh: (editingEntry?.originalZh || '').trim() || termName,
+      translatedEn: termName,
+      category: (editingEntry?.category as EntityCategory) || 'character',
+      scope: 'local',
+      gender: editingEntry?.gender,
+      aliases: parsedAliases,
+      notes: (editingEntry?.notes || '').trim(),
+      occurrences: editingEntry?.occurrences || 1,
       updatedAt: new Date().toISOString()
     };
 
@@ -62,16 +81,18 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
     <aside className="glossary-sidebar">
       {/* Header */}
       <div className="sidebar-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>2-Tier Glossary Map</h3>
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Novel Glossary</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Characters, factions & lore for this novel</span>
         </div>
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
           <button
             className="btn btn-primary"
-            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
-            onClick={() => setEditingEntry({ category: 'character', scope: 'local', originalZh: '', translatedEn: '' })}
+            style={{ padding: '0.3rem 0.65rem', fontSize: '0.75rem', gap: '0.3rem' }}
+            onClick={handleOpenAddForm}
           >
-            <Plus size={14} /> Add Term
+            <Plus size={14} />
+            <span>Add Term</span>
           </button>
           <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close sidebar">
             <X size={16} />
@@ -85,7 +106,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
           <input
             type="text"
-            placeholder="Search terms (ZH / Pinyin / EN)..."
+            placeholder="Search characters & terms..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -103,54 +124,36 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
 
         {/* Category Pill Filters */}
         <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
-          {['all', 'character', 'faction', 'realm', 'location', 'item', 'idiom'].map(cat => (
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'character', label: 'Characters' },
+            { id: 'faction', label: 'Factions' },
+            { id: 'location', label: 'Locations' },
+            { id: 'item', label: 'Items' },
+            { id: 'idiom', label: 'Terms / Lore' }
+          ].map(cat => (
             <button
-              key={cat}
-              className={`pill-toggle ${selectedCategory === cat ? 'active' : ''}`}
-              onClick={() => setSelectedCategory(cat)}
+              key={cat.id}
+              type="button"
+              className={`pill-toggle ${selectedCategory === cat.id ? 'active' : ''}`}
+              onClick={() => setSelectedCategory(cat.id)}
               style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
-        </div>
-
-        {/* Scope Filters */}
-        <div style={{ display: 'flex', gap: '0.35rem' }}>
-          <button
-            className={`pill-toggle ${selectedScope === 'all' ? 'active' : ''}`}
-            onClick={() => setSelectedScope('all')}
-            style={{ flex: 1, fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
-          >
-            All Scopes
-          </button>
-          <button
-            className={`pill-toggle ${selectedScope === 'local' ? 'active' : ''}`}
-            onClick={() => setSelectedScope('local')}
-            style={{ flex: 1, fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
-          >
-            Local Novel
-          </button>
-          <button
-            className={`pill-toggle ${selectedScope === 'global' ? 'active' : ''}`}
-            onClick={() => setSelectedScope('global')}
-            style={{ flex: 1, fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
-          >
-            Global Master
-          </button>
         </div>
       </div>
 
       {/* Glossary List */}
       <div className="sidebar-content scrollable" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            No glossary terms found.
+          <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            {searchQuery ? `No terms match "${searchQuery}".` : 'No glossary terms added yet for this novel. Click "+ Add Term" above to add characters, factions, and terms.'}
           </div>
         ) : (
           filtered.map(entry => {
-            const pinyinText = entry.pinyin || getPinyinForText(entry.originalZh);
-            const tradZh = entry.traditionalZh || convertToTraditional(entry.originalZh);
+            const hasRawZh = entry.originalZh && entry.originalZh !== entry.translatedEn && /[\u4e00-\u9fa5]/.test(entry.originalZh);
 
             return (
               <div
@@ -158,29 +161,30 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                 className="glass-panel"
                 style={{
                   padding: '0.75rem',
-                  borderLeft: entry.scope === 'global' ? '3px solid var(--accent-purple)' : '3px solid var(--primary-cyan)',
+                  borderLeft: '3px solid var(--primary-cyan)',
                   position: 'relative'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}>
-                      {entry.originalZh}
+                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary-cyan)' }}>
+                      {entry.translatedEn}
                     </span>
-                    {tradZh && tradZh !== entry.originalZh && (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', opacity: 0.8 }}>
-                        ({tradZh})
+                    {hasRawZh && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', opacity: 0.85 }}>
+                        ({entry.originalZh})
                       </span>
                     )}
-                    <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: 'rgba(0, 242, 254, 0.1)', color: 'var(--primary-cyan)', fontWeight: 600 }}>
                       {entry.category}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.2rem' }}>
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
                     <button
                       className="btn btn-secondary btn-icon"
                       style={{ padding: '0.2rem' }}
-                      onClick={() => setEditingEntry(entry)}
+                      onClick={() => handleOpenEditForm(entry)}
+                      title="Edit Term"
                     >
                       <Edit2 size={12} />
                     </button>
@@ -188,32 +192,38 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
                       className="btn btn-secondary btn-icon"
                       style={{ padding: '0.2rem', color: 'var(--accent-pink)' }}
                       onClick={() => onDeleteEntry(entry.id)}
+                      title="Delete Term"
                     >
                       <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
 
-                <div style={{ fontSize: '0.78rem', color: '#ec4899', fontWeight: 600, marginBottom: '0.2rem' }}>
-                  [{pinyinText}]
-                </div>
-
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-cyan)' }}>
-                  {entry.translatedEn}
-                </div>
+                {entry.gender && entry.category === 'character' && (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.25rem' }}>
+                    <User size={11} />
+                    <span>{entry.gender === 'male' ? 'Male' : entry.gender === 'female' ? 'Female' : entry.gender}</span>
+                  </div>
+                )}
 
                 {entry.notes && (
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.3rem' }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', margin: '0.25rem 0', lineHeight: 1.4 }}>
                     {entry.notes}
                   </p>
                 )}
 
+                {entry.aliases && entry.aliases.length > 0 && (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+                    <span style={{ fontWeight: 600 }}>Aliases: </span>
+                    <span>{entry.aliases.join(', ')}</span>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                    {entry.scope === 'global' ? <Globe size={10} style={{ color: 'var(--accent-purple)' }} /> : <Bookmark size={10} style={{ color: 'var(--primary-cyan)' }} />}
-                    {entry.scope === 'global' ? 'Global Master' : 'Local Novel'}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Bookmark size={10} style={{ color: 'var(--primary-cyan)' }} />
+                    <span>Novel Term</span>
                   </span>
-                  <span>{entry.occurrences} matches</span>
                 </div>
               </div>
             );
@@ -224,80 +234,102 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
       {/* Add / Edit Entry Modal */}
       {editingEntry && (
         <div className="modal-overlay" onClick={() => setEditingEntry(null)} style={{ zIndex: 120, background: 'rgba(5, 8, 16, 0.85)' }}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
             <div className="modal-header">
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-                {editingEntry.id ? 'Edit Glossary Term' : 'Add New Glossary Term'}
+                {editingEntry.id ? 'Edit Novel Term' : 'Add Novel Term'}
               </h3>
               <button className="btn btn-secondary btn-icon" onClick={() => setEditingEntry(null)}>✕</button>
             </div>
             <form onSubmit={handleSaveForm}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Chinese Term (原文)</label>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '0.25rem' }}>
+                    Term / Name *
+                  </label>
                   <input
                     type="text"
                     required
-                    value={editingEntry.originalZh || ''}
-                    onChange={(e) => setEditingEntry({ ...editingEntry, originalZh: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>English Translation</label>
-                  <input
-                    type="text"
-                    required
+                    placeholder="e.g. Yang Ye or Imperial Academy"
                     value={editingEntry.translatedEn || ''}
                     onChange={(e) => setEditingEntry({ ...editingEntry, translatedEn: e.target.value })}
                     style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
+                    autoFocus
                   />
                 </div>
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Pinyin (Optional)</label>
-                  <input
-                    type="text"
-                    value={editingEntry.pinyin || ''}
-                    onChange={(e) => setEditingEntry({ ...editingEntry, pinyin: e.target.value })}
-                    placeholder="e.g. Xiāo Yán"
-                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
-                  />
-                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Category</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '0.25rem' }}>
+                      Category
+                    </label>
                     <select
                       value={editingEntry.category || 'character'}
                       onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value as EntityCategory })}
                       style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                     >
-                      <option value="character">Character (人名)</option>
-                      <option value="faction">Sect / Faction (宗门)</option>
-                      <option value="realm">Cultivation Realm (境界)</option>
-                      <option value="location">Location (地名)</option>
-                      <option value="item">Item / Skill (功法/法宝)</option>
-                      <option value="idiom">Idiom / Term (成语/术语)</option>
+                      <option value="character">Character</option>
+                      <option value="faction">Sect / Faction</option>
+                      <option value="location">Location</option>
+                      <option value="item">Item / Artifact</option>
+                      <option value="idiom">Term / Lore</option>
                     </select>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Scope</label>
-                    <select
-                      value={editingEntry.scope || 'local'}
-                      onChange={(e) => setEditingEntry({ ...editingEntry, scope: e.target.value as TermScope })}
-                      style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
-                    >
-                      <option value="local">Local (This Novel)</option>
-                      <option value="global">Global (All Novels)</option>
-                    </select>
-                  </div>
+
+                  {editingEntry.category === 'character' ? (
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '0.25rem' }}>
+                        Gender
+                      </label>
+                      <select
+                        value={editingEntry.gender || 'male'}
+                        onChange={(e) => setEditingEntry({ ...editingEntry, gender: e.target.value as Gender })}
+                        style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="non-binary">Non-Binary</option>
+                        <option value="unknown">Unknown</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
+                        Original Raw (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Optional raw name"
+                        value={editingEntry.originalZh || ''}
+                        onChange={(e) => setEditingEntry({ ...editingEntry, originalZh: e.target.value })}
+                        style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
+                      />
+                    </div>
+                  )}
                 </div>
+
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Notes / Context</label>
-                  <input
-                    type="text"
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '0.25rem' }}>
+                    Description / Notes (Shown on hover in reader)
+                  </label>
+                  <textarea
+                    rows={3}
                     value={editingEntry.notes || ''}
                     onChange={(e) => setEditingEntry({ ...editingEntry, notes: e.target.value })}
-                    placeholder="e.g. Protagonist / Rival"
+                    placeholder="e.g. Protagonist, reincarnated scholar preparing for provincial examinations."
+                    style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)', resize: 'vertical' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '0.25rem' }}>
+                    Aliases / Nicknames (Optional, comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingEntry.aliasesInput || ''}
+                    onChange={(e) => setEditingEntry({ ...editingEntry, aliasesInput: e.target.value })}
+                    placeholder="e.g. Master Yang, Brother Ye"
                     style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)' }}
                   />
                 </div>

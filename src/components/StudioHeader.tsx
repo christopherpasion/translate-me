@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { Novel, Chapter } from '../types';
 import { cleanAndTranslateChapterTitle } from '../services/translationEngine';
 import { getGenreMeta } from '../services/genrePresets';
-import { Sparkles, GitFork, Sidebar, Trash2, BookOpen, Upload, Cloud } from 'lucide-react';
+import { GitFork, Sidebar, Trash2, Upload, Cloud } from 'lucide-react';
 
 interface StudioHeaderProps {
   currentNovel: Novel;
@@ -11,11 +11,9 @@ interface StudioHeaderProps {
   onSelectChapter: (chapterId: string) => void;
   onOpenUploader: () => void;
   onDeleteChapter?: (chapterId: string) => void;
-  onRunEntityScan: () => void;
   onOpenCharacterGraph: () => void;
   onToggleSidebar: () => void;
   onSyncSupabaseCloud?: () => void;
-  onOpenDictionaryModal?: () => void;
   isSidebarOpen: boolean;
   glossaryCount: number;
 }
@@ -27,11 +25,9 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   onSelectChapter,
   onOpenUploader,
   onDeleteChapter,
-  onRunEntityScan,
   onOpenCharacterGraph,
   onToggleSidebar,
   onSyncSupabaseCloud,
-  onOpenDictionaryModal,
   isSidebarOpen,
   glossaryCount
 }) => {
@@ -162,30 +158,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <Sidebar size={14} />
           <span>Terms ({glossaryCount})</span>
         </button>
-
-        {/* Scan Terms Trigger */}
-        <button
-          className="btn btn-secondary"
-          onClick={onRunEntityScan}
-          title="Scan chapter text to discover character names, factions, and items"
-          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', flexShrink: 0, whiteSpace: 'nowrap' }}
-        >
-          <Sparkles size={14} style={{ color: 'var(--accent-cyan)' }} />
-          <span>Scan Terms</span>
-        </button>
-
-        {/* Dictionary Lookup */}
-        {onOpenDictionaryModal && (
-          <button
-            className="btn btn-secondary"
-            onClick={onOpenDictionaryModal}
-            title="Search Web Novel Dictionary"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#ec4899', borderColor: 'rgba(236, 72, 153, 0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
-          >
-            <BookOpen size={14} />
-            <span>Dictionary</span>
-          </button>
-        )}
 
         {/* Cloud Sync */}
         {onSyncSupabaseCloud && (

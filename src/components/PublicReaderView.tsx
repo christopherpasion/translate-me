@@ -650,9 +650,11 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                   </button>
                 </div>
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 500 }}>
-                Original: <span style={{ fontFamily: 'var(--font-zh)' }}>{hoveredTerm.originalZh}</span> {hoveredTerm.pinyin && `[${hoveredTerm.pinyin}]`}
-              </div>
+              {hoveredTerm.originalZh && hoveredTerm.originalZh !== hoveredTerm.translatedEn && (
+                <div style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 500 }}>
+                  Raw: <span style={{ fontFamily: 'var(--font-zh)' }}>{hoveredTerm.originalZh}</span> {hoveredTerm.pinyin && `[${hoveredTerm.pinyin}]`}
+                </div>
+              )}
               {hoveredTerm.notes && (
                 <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.3rem', lineHeight: 1.4 }}>
                   {hoveredTerm.notes}

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation, ReaderSuggestion, Bookmark, UserProfile } from './types';
 import { StorageService } from './services/storage';
 import { AuthService } from './services/authService';
-import { extractEntitiesFromChinese, type ExtractedEntity } from './services/nerExtractor';
 import { cascadeTermReplacement } from './services/translationEngine';
 import { SupabaseService } from './services/supabaseService';
 
@@ -11,11 +10,9 @@ import { NovelLibrary } from './components/NovelLibrary';
 import { StudioHeader } from './components/StudioHeader';
 import { DualPaneStudio } from './components/DualPaneStudio';
 import { GlossarySidebar } from './components/GlossarySidebar';
-import { EntityExtractorModal } from './components/EntityExtractorModal';
 import { CharacterGraphModal } from './components/CharacterGraphModal';
 import { GovernanceModal } from './components/GovernanceModal';
 import { ExportModal } from './components/ExportModal';
-import { DictionaryLookupModal } from './components/DictionaryLookupModal';
 import { PublicReaderView } from './components/PublicReaderView';
 import { BookmarksModal } from './components/BookmarksModal';
 import { AuthModal } from './components/AuthModal';
@@ -104,12 +101,9 @@ export const App: React.FC = () => {
   // Modals State
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isEntityScanOpen, setIsEntityScanOpen] = useState(false);
-  const [extractedEntities, setExtractedEntities] = useState<ExtractedEntity[]>([]);
   const [isCharacterGraphOpen, setIsCharacterGraphOpen] = useState(false);
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authDefaultTab, setAuthDefaultTab] = useState<'reader' | 'creator'>('reader');
@@ -448,11 +442,13 @@ export const App: React.FC = () => {
 
   // Save / update Glossary Entry
   const handleSaveGlossaryEntry = (entry: Partial<GlossaryEntry>) => {
-    if (!entry.originalZh || !entry.translatedEn) return;
+    const termEn = entry.translatedEn?.trim() || '';
+    const rawZh = entry.originalZh?.trim() || termEn;
+    if (!termEn) return;
     const fullEntry: GlossaryEntry = {
       id: entry.id || `g-${selectedNovelId}-${Date.now()}`,
-      originalZh: entry.originalZh,
-      translatedEn: entry.translatedEn,
+      originalZh: rawZh,
+      translatedEn: termEn,
       category: entry.category || 'character',
       scope: entry.scope || 'local',
       gender: entry.gender,
@@ -495,33 +491,7 @@ export const App: React.FC = () => {
     setHealingRecords(StorageService.getHealingRecords());
   };
 
-  // Entity Scan Modal Trigger
-  const handleRunEntityScan = () => {
-    if (!currentChapter || !currentChapter.contentZh) return;
-    const extracted = extractEntitiesFromChinese(currentChapter.contentZh, glossary);
-    setExtractedEntities(extracted);
-    setIsEntityScanOpen(true);
-  };
 
-  // Batch Add Extracted Entities to Glossary
-  const handleAcceptExtractedEntities = (acceptedEntities: ExtractedEntity[]) => {
-    for (const ent of acceptedEntities) {
-      const entry: GlossaryEntry = {
-        id: `g-${selectedNovelId}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        originalZh: ent.originalZh,
-        translatedEn: ent.suggestedEn,
-        category: ent.category,
-        scope: 'local',
-        gender: ent.gender,
-        notes: `Auto-extracted from NER Scan (${Math.round(ent.confidence * 100)}% confidence)`,
-        occurrences: ent.count,
-        updatedAt: new Date().toISOString()
-      };
-      StorageService.saveGlossaryEntry(entry);
-    }
-    setGlossary(StorageService.getGlossary(selectedNovelId));
-    setIsEntityScanOpen(false);
-  };
 
   // Save manual edits from DualPaneStudio
   const handleSaveChapterContent = (contentZh: string, contentEn: string) => {
@@ -676,11 +646,9 @@ export const App: React.FC = () => {
             onSelectChapter={setSelectedChapterId}
             onOpenUploader={handleOpenUploader}
             onDeleteChapter={handleDeleteChapter}
-            onRunEntityScan={handleRunEntityScan}
             onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             onSyncSupabaseCloud={handleSyncSupabaseCloud}
-            onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
             isSidebarOpen={isSidebarOpen}
             glossaryCount={glossary.length}
           />
@@ -692,7 +660,6 @@ export const App: React.FC = () => {
               healingRecords={healingRecords}
               onSaveContent={handleSaveChapterContent}
               onQuickUpdateGlossary={handleQuickUpdateGlossary}
-              onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
             />
 
             {/* Glossary Sidebar */}
@@ -823,14 +790,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Entity Extractor Modal */}
-      {isEntityScanOpen && (
-        <EntityExtractorModal
-          entities={extractedEntities}
-          onConfirmAndTranslate={handleAcceptExtractedEntities}
-          onClose={() => setIsEntityScanOpen(false)}
-        />
-      )}
+
 
       {/* Character Graph Modal */}
       {isCharacterGraphOpen && (
@@ -887,13 +847,6 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Dictionary Modal */}
-      <DictionaryLookupModal
-        isOpen={isDictionaryOpen}
-        onClose={() => setIsDictionaryOpen(false)}
-        onAddTermToGlossary={handleSaveGlossaryEntry}
-        existingGlossary={glossary}
-      />
     </div>
   );
 };

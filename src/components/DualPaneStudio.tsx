@@ -3,7 +3,7 @@ import type { Chapter, GlossaryEntry, SelfHealingRecord, ChineseScript } from '.
 import { getPinyinForText } from '../services/pinyinService';
 import { convertToTraditional, convertToSimplified } from '../services/scriptConverter';
 import { extractEntitiesFromChinese, type ExtractedEntity } from '../services/nerExtractor';
-import { ShieldCheck, Edit2, Check, Sparkles, BookOpen, Plus } from 'lucide-react';
+import { ShieldCheck, Edit2, Check, Sparkles, Plus } from 'lucide-react';
 
 interface DualPaneStudioProps {
   chapter: Chapter | null;
@@ -11,7 +11,6 @@ interface DualPaneStudioProps {
   healingRecords: SelfHealingRecord[];
   onSaveContent: (contentZh: string, contentEn: string) => void;
   onQuickUpdateGlossary: (originalZh: string, newEn: string) => void;
-  onOpenDictionaryModal?: () => void;
 }
 
 export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
@@ -19,8 +18,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   glossary,
   healingRecords,
   onSaveContent,
-  onQuickUpdateGlossary,
-  onOpenDictionaryModal
+  onQuickUpdateGlossary
 }) => {
   // Inline editing popover state
   const [editingTerm, setEditingTerm] = useState<{ zh: string; en: string; x: number; y: number } | null>(null);
@@ -279,13 +277,6 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {onOpenDictionaryModal && (
-            <button className="btn-action secondary" onClick={onOpenDictionaryModal} style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
-              <BookOpen size={14} /> Master Dictionary
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Discovered Entities Quick-Add Banner */}

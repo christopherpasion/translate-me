@@ -668,11 +668,11 @@ export const StorageService = {
     }
 
     if (!novelId) {
-      return all; // Return all entries (Global + all Locals)
+      return all;
     }
 
-    // 2-Tier Priority: Local novel entries + Global entries
-    return all.filter(g => g.scope === 'global' || g.id.startsWith(`g-${novelId}`) || g.id.includes(novelId));
+    // Strictly per-novel glossary: only entries tied to this novel ID
+    return all.filter(g => g.id.startsWith(`g-${novelId}`) || g.id.includes(novelId) || (g as any).novelId === novelId);
   },
 
   saveGlossaryEntry(entry: GlossaryEntry): GlossaryEntry[] {
@@ -687,9 +687,14 @@ export const StorageService = {
         return py ? ` ${py} ` : '';
       }).replace(/\s+/g, ' ').trim();
     }
-    const sanitizedEntry = { ...entry, translatedEn: cleanEn || 'Term' };
+    const sanitizedEntry: GlossaryEntry = {
+      ...entry,
+      originalZh: entry.originalZh || entry.translatedEn,
+      translatedEn: cleanEn || 'Term',
+      scope: 'local'
+    };
 
-    const idx = all.findIndex(g => g.id === sanitizedEntry.id || g.originalZh === sanitizedEntry.originalZh);
+    const idx = all.findIndex(g => g.id === sanitizedEntry.id);
     if (idx >= 0) {
       all[idx] = { ...all[idx], ...sanitizedEntry, updatedAt: new Date().toISOString() };
     } else {
