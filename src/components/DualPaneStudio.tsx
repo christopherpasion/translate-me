@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Chapter, GlossaryEntry, SelfHealingRecord, ChineseScript } from '../types';
 import { getPinyinForText } from '../services/pinyinService';
 import { convertToTraditional, convertToSimplified } from '../services/scriptConverter';
@@ -29,6 +29,15 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   // Synchronous Cross-Highlighting State across Chinese and English panes
   const [hoveredTermZh, setHoveredTermZh] = useState<string | null>(null);
   const [hoveredParaIdx, setHoveredParaIdx] = useState<number | null>(null);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top of translation grid when chapter changes
+  useEffect(() => {
+    if (gridRef.current) {
+      gridRef.current.scrollTop = 0;
+    }
+  }, [chapter?.id]);
 
 
 
@@ -334,7 +343,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
         </div>
       ) : (
         /* Unified Row-Aligned Translation Grid */
-        <div className="aligned-translation-grid">
+        <div className="aligned-translation-grid" ref={gridRef}>
           {/* Sticky Column Headers */}
           <div className="aligned-grid-sticky-header">
             <div className={`header-col ${mobileTab === 'en' ? 'hidden-mobile' : ''}`}>

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Novel, Chapter, GlossaryEntry } from '../types';
 import { StorageService } from '../services/storage';
-import { BookOpen, ChevronLeft, ChevronRight, MessageSquarePlus, Check, Sparkles, Type, Bookmark as BookmarkIcon } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, MessageSquarePlus, Check, Sparkles, Type, Bookmark as BookmarkIcon, ArrowUp } from 'lucide-react';
 
 interface PublicReaderViewProps {
   currentNovel: Novel;
@@ -53,18 +53,63 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
   const [suggestedFixEn, setSuggestedFixEn] = useState('');
   const [suggestReason, setSuggestReason] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Helper to force scroll back to the very top of the chapter immediately
+  const scrollToTop = (smooth = false) => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+      containerRef.current.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior)
+      });
+    }
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior)
+    });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  };
+
+  // Automatically reset scroll to top whenever chapter changes (Next, Prev, Dropdown)
+  useEffect(() => {
+    scrollToTop(false);
+    const rafId = requestAnimationFrame(() => scrollToTop(false));
+    const timerId = setTimeout(() => scrollToTop(false), 40);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timerId);
+    };
+  }, [currentChapter?.id]);
+
+  // Track scroll position to show/hide "Back to Top" floating button
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop;
+    if (top > 350 && !showScrollTop) {
+      setShowScrollTop(true);
+    } else if (top <= 350 && showScrollTop) {
+      setShowScrollTop(false);
+    }
+  };
 
   const publishedChapters = chapters.filter(c => c.contentEn && c.contentEn.length > 0);
   const currentIndex = publishedChapters.findIndex(c => c.id === currentChapter?.id);
 
   const handlePrev = () => {
     if (currentIndex > 0) {
+      scrollToTop(false);
       onSelectChapter(publishedChapters[currentIndex - 1].id);
     }
   };
 
   const handleNext = () => {
     if (currentIndex < publishedChapters.length - 1) {
+      scrollToTop(false);
       onSelectChapter(publishedChapters[currentIndex + 1].id);
     }
   };
@@ -266,6 +311,8 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
 
   return (
     <div
+      ref={containerRef}
+      onScroll={handleScroll}
       className="reader-container"
       onClick={() => setHoveredTerm(null)}
       style={{
@@ -777,6 +824,39 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Floating "Back to Top" Action */}
+      {showScrollTop && (
+        <button
+          onClick={() => scrollToTop(true)}
+          style={{
+            position: 'fixed',
+            bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+            right: '1.5rem',
+            zIndex: 40,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            padding: '0.5rem 0.9rem',
+            borderRadius: '9999px',
+            border: `1px solid ${currentTheme.border}`,
+            background: currentTheme.cardBg,
+            color: currentTheme.text,
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            transition: 'all 0.2s ease',
+            touchAction: 'manipulation'
+          }}
+          title="Scroll to Top"
+        >
+          <ArrowUp size={15} style={{ color: 'var(--primary-cyan, #00f2fe)' }} />
+          <span>Top</span>
+        </button>
+      )}
     </div>
   );
 };
