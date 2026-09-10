@@ -63,7 +63,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
       {/* Header */}
       <div className="sidebar-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>2-Tier Glossary Map</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>2-Tier Glossary Map</h3>
         </div>
         <div style={{ display: 'flex', gap: '0.4rem' }}>
           <button
@@ -73,7 +73,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
           >
             <Plus size={14} /> Add Term
           </button>
-          <button className="btn btn-secondary btn-icon" onClick={onClose}>
+          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close sidebar">
             <X size={16} />
           </button>
         </div>
@@ -91,10 +91,10 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
             style={{
               width: '100%',
               padding: '0.4rem 0.6rem 0.4rem 2rem',
-              background: 'rgba(255, 255, 255, 0.05)',
+              background: 'var(--bg-elevated)',
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-sm)',
-              color: '#fff',
+              color: 'var(--text-main)',
               fontSize: '0.8rem',
               outline: 'none'
             }}
@@ -164,7 +164,7 @@ export const GlossarySidebar: React.FC<GlossarySidebarProps> = ({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-zh)' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-zh)' }}>
                       {entry.originalZh}
                     </span>
                     {tradZh && tradZh !== entry.originalZh && (

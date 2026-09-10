@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Novel, Genre } from '../types';
-import { Plus, Search, Layers, ArrowRight, X, Trash2, Edit3, Sparkles, Check, Tag } from 'lucide-react';
+import { Plus, Search, Layers, ArrowRight, X, Trash2, Edit3, Sparkles, Check, Tag, Download, Upload } from 'lucide-react';
 import { getGenreMeta, getAllGenreCategories, WEB_NOVEL_TROPE_TAGS, GENRE_DEFINITIONS, detectSuggestedGenre } from '../services/genrePresets';
+import { StorageService } from '../services/storage';
 
 interface NovelLibraryProps {
   novels: Novel[];
@@ -28,6 +29,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNovel, setEditingNovel] = useState<Novel | null>(null);
   const [novelToDelete, setNovelToDelete] = useState<Novel | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Close on Escape key press
   useEffect(() => {
@@ -165,6 +167,37 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
     setEditingNovel(null);
   };
 
+  const handleExportBackup = () => {
+    const json = StorageService.exportFullBackup();
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `translateme_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        const result = StorageService.importFullBackup(text);
+        alert(result.message);
+        if (result.success) {
+          window.location.reload();
+        }
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(5, 8, 16, 0.85)' }}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '980px', height: '88vh' }}>
@@ -179,7 +212,32 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json,application/json"
+              onChange={handleImportBackup}
+              style={{ display: 'none' }}
+            />
+            <button
+              className="btn btn-secondary"
+              onClick={handleExportBackup}
+              title="Export all novels and chapters to a JSON backup file"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', gap: '0.35rem' }}
+            >
+              <Download size={15} />
+              <span>Export Backup</span>
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => fileInputRef.current?.click()}
+              title="Import novels and chapters from a JSON backup file"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', gap: '0.35rem' }}
+            >
+              <Upload size={15} />
+              <span>Import Backup</span>
+            </button>
             <button
               className="btn btn-primary"
               onClick={(e) => {
@@ -333,7 +391,7 @@ export const NovelLibrary: React.FC<NovelLibraryProps> = ({
             </button>
           </div>
         ) : (
-          <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1rem', overflowY: 'auto' }}>
+          <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem', overflowY: 'auto' }}>
             {filteredNovels.map(novel => {
               const genreMeta = getGenreMeta(novel.genre);
 

@@ -3,7 +3,7 @@ import type { Novel, Chapter, GlossaryEntry, SelfHealingRecord, AIRecommendation
 import { StorageService } from './services/storage';
 import { AuthService } from './services/authService';
 import { extractEntitiesFromChinese, type ExtractedEntity } from './services/nerExtractor';
-import { cascadeTermReplacement, type TranslationStyle } from './services/translationEngine';
+import { cascadeTermReplacement } from './services/translationEngine';
 import { SupabaseService } from './services/supabaseService';
 
 import { Navbar } from './components/Navbar';
@@ -41,21 +41,53 @@ export const App: React.FC = () => {
   // Role View Mode ('admin' | 'reader') - Default to Reader
   const [viewMode, setViewMode] = useState<'admin' | 'reader'>('reader');
 
-  // App Theme State ('dark' | 'light') - Default to Light Theme
-  const [appTheme, setAppTheme] = useState<'dark' | 'light'>('light');
-
-  // Translation Prose Style ('xianxia' | 'fluent' | 'faithful')
-  const [translationStyle] = useState<TranslationStyle>('xianxia');
+  // App Theme State ('dark' | 'light') - Persisted in LocalStorage, default to saved or system preference
+  const [appTheme, setAppTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('trans_me_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
+    } catch {
+      // Fallback
+    }
+    return 'dark';
+  });
 
   useEffect(() => {
+    try {
+      localStorage.setItem('trans_me_theme', appTheme);
+    } catch {
+      // Ignore
+    }
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (appTheme === 'light') {
       document.body.classList.add('light-mode');
+      document.documentElement.classList.add('light-mode');
       document.documentElement.setAttribute('data-theme', 'light');
+      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
     } else {
       document.body.classList.remove('light-mode');
+      document.documentElement.classList.remove('light-mode');
       document.documentElement.setAttribute('data-theme', 'dark');
+      if (metaTheme) metaTheme.setAttribute('content', '#090d16');
     }
   }, [appTheme]);
+
+  // Prevent iPadOS virtual keyboard dismissal offset & white gap artifact
+  useEffect(() => {
+    const handleFocusOut = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+        setTimeout(() => {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+        }, 60);
+      }
+    };
+    window.addEventListener('focusout', handleFocusOut);
+    return () => window.removeEventListener('focusout', handleFocusOut);
+  }, []);
 
   // Modals State
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -495,7 +527,6 @@ export const App: React.FC = () => {
               onSaveContent={handleSaveChapterContent}
               onQuickUpdateGlossary={handleQuickUpdateGlossary}
               onOpenDictionaryModal={() => setIsDictionaryOpen(true)}
-              translationStyle={translationStyle}
             />
 
             {/* Glossary Sidebar */}

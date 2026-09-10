@@ -874,5 +874,119 @@ export const StorageService = {
   getBookmarkForNovel(novelId: string): import('../types').Bookmark | undefined {
     const current = this.getBookmarks();
     return current.find(b => b.novelId === novelId);
+  },
+
+  // Full Library Backup Export & Import (Guarantees 0 data loss between iPad & PC)
+  exportFullBackup(): string {
+    const backupData = {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      novels: this.getNovels(),
+      chapters: (() => {
+        try {
+          const raw = localStorage.getItem(CHAPTERS_KEY);
+          return raw ? JSON.parse(raw) : INITIAL_CHAPTERS;
+        } catch {
+          return INITIAL_CHAPTERS;
+        }
+      })(),
+      glossary: (() => {
+        try {
+          const raw = localStorage.getItem(GLOSSARY_KEY);
+          return raw ? JSON.parse(raw) : INITIAL_GLOBAL_GLOSSARY;
+        } catch {
+          return INITIAL_GLOBAL_GLOSSARY;
+        }
+      })(),
+      bookmarks: this.getBookmarks()
+    };
+    return JSON.stringify(backupData, null, 2);
+  },
+
+  importFullBackup(jsonString: string): { success: boolean; novelsCount: number; chaptersCount: number; message: string } {
+    try {
+      const data = JSON.parse(jsonString);
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid JSON backup file format');
+      }
+
+      let importedNovels = 0;
+      let importedChapters = 0;
+
+      if (Array.isArray(data.novels)) {
+        const existingNovels = this.getNovels();
+        for (const n of data.novels) {
+          if (!n.id) continue;
+          const idx = existingNovels.findIndex(en => en.id === n.id);
+          if (idx >= 0) {
+            existingNovels[idx] = n;
+          } else {
+            existingNovels.push(n);
+          }
+          importedNovels++;
+        }
+        localStorage.setItem(NOVELS_KEY, JSON.stringify(existingNovels));
+      }
+
+      if (Array.isArray(data.chapters)) {
+        const rawChaps = localStorage.getItem(CHAPTERS_KEY);
+        const existingChaps: Chapter[] = rawChaps ? JSON.parse(rawChaps) : [];
+        for (const ch of data.chapters) {
+          if (!ch.id) continue;
+          const idx = existingChaps.findIndex(ec => ec.id === ch.id);
+          if (idx >= 0) {
+            existingChaps[idx] = ch;
+          } else {
+            existingChaps.push(ch);
+          }
+          importedChapters++;
+        }
+        localStorage.setItem(CHAPTERS_KEY, JSON.stringify(existingChaps));
+      }
+
+      if (Array.isArray(data.glossary)) {
+        const rawGlossary = localStorage.getItem(GLOSSARY_KEY);
+        const existingGlossary: GlossaryEntry[] = rawGlossary ? JSON.parse(rawGlossary) : [];
+        for (const g of data.glossary) {
+          if (!g.id) continue;
+          const idx = existingGlossary.findIndex(eg => eg.id === g.id);
+          if (idx >= 0) {
+            existingGlossary[idx] = g;
+          } else {
+            existingGlossary.push(g);
+          }
+        }
+        localStorage.setItem(GLOSSARY_KEY, JSON.stringify(existingGlossary));
+      }
+
+      if (Array.isArray(data.bookmarks)) {
+        const existingBookmarks = this.getBookmarks();
+        for (const bm of data.bookmarks) {
+          if (!bm.id) continue;
+          const idx = existingBookmarks.findIndex(eb => eb.novelId === bm.novelId);
+          if (idx >= 0) {
+            existingBookmarks[idx] = bm;
+          } else {
+            existingBookmarks.push(bm);
+          }
+        }
+        localStorage.setItem('trans_me_bookmarks_v1', JSON.stringify(existingBookmarks));
+      }
+
+      return {
+        success: true,
+        novelsCount: importedNovels,
+        chaptersCount: importedChapters,
+        message: `Successfully imported ${importedNovels} novels and ${importedChapters} chapters!`
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        success: false,
+        novelsCount: 0,
+        chaptersCount: 0,
+        message: `Import failed: ${msg}`
+      };
+    }
   }
 };

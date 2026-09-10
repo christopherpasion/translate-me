@@ -2,9 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { Chapter, GlossaryEntry, SelfHealingRecord, ChineseScript } from '../types';
 import { getPinyinForText } from '../services/pinyinService';
 import { convertToTraditional, convertToSimplified } from '../services/scriptConverter';
-import { retranslateParagraph, getParagraphAlternatives, type TranslationStyle } from '../services/translationEngine';
 import { extractEntitiesFromChinese, type ExtractedEntity } from '../services/nerExtractor';
-import { ShieldCheck, Edit2, Check, Sparkles, BookOpen, RefreshCw, Wand2, Plus } from 'lucide-react';
+import { ShieldCheck, Edit2, Check, Sparkles, BookOpen, Plus } from 'lucide-react';
 
 interface DualPaneStudioProps {
   chapter: Chapter | null;
@@ -12,10 +11,7 @@ interface DualPaneStudioProps {
   healingRecords: SelfHealingRecord[];
   onSaveContent: (contentZh: string, contentEn: string) => void;
   onQuickUpdateGlossary: (originalZh: string, newEn: string) => void;
-  onReTranslateChapter?: () => void;
-  onPolishProse?: () => void;
   onOpenDictionaryModal?: () => void;
-  translationStyle?: TranslationStyle;
 }
 
 export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
@@ -24,10 +20,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   healingRecords,
   onSaveContent,
   onQuickUpdateGlossary,
-  onReTranslateChapter,
-  onPolishProse,
-  onOpenDictionaryModal,
-  translationStyle = 'xianxia'
+  onOpenDictionaryModal
 }) => {
   // Inline editing popover state
   const [editingTerm, setEditingTerm] = useState<{ zh: string; en: string; x: number; y: number } | null>(null);
@@ -37,8 +30,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
   const [hoveredTermZh, setHoveredTermZh] = useState<string | null>(null);
   const [hoveredParaIdx, setHoveredParaIdx] = useState<number | null>(null);
 
-  // Paragraph alternatives state
-  const [alternativesState, setAlternativesState] = useState<{ paraIdx: number; alts: string[] } | null>(null);
+
 
   // Editable raw text states
   const [isEditingZh, setIsEditingZh] = useState(false);
@@ -94,48 +86,7 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
     );
   }
 
-  const handleRetranslateSinglePara = (pIdx: number) => {
-    if (!chapter) return;
-    const zhParas = (chapter.contentZh || '').split('\n').map(p => p.trim()).filter(Boolean);
-    const enParas = (chapter.contentEn || '').split('\n').map(p => p.trim()).filter(Boolean);
-    const targetZh = zhParas[pIdx] || '';
-    if (!targetZh.trim()) return;
 
-    const newEnDraft = retranslateParagraph(targetZh, glossary, translationStyle);
-    
-    // Replace paragraph in English content
-    const updatedEnParas = [...enParas];
-    while (updatedEnParas.length <= pIdx) updatedEnParas.push('');
-    updatedEnParas[pIdx] = newEnDraft;
-
-    const newEnContent = updatedEnParas.join('\n\n');
-    setRawEnText(newEnContent);
-    onSaveContent(chapter.contentZh, newEnContent);
-  };
-
-  const handleShowAlternatives = (pIdx: number) => {
-    if (!chapter) return;
-    const zhParas = (chapter.contentZh || '').split('\n').map(p => p.trim()).filter(Boolean);
-    const enParas = (chapter.contentEn || '').split('\n').map(p => p.trim()).filter(Boolean);
-    const targetZh = zhParas[pIdx] || '';
-    const currentEn = enParas[pIdx] || '';
-
-    const alts = getParagraphAlternatives(targetZh, currentEn, glossary);
-    setAlternativesState({ paraIdx: pIdx, alts });
-  };
-
-  const handleApplyAlternative = (pIdx: number, selectedEn: string) => {
-    if (!chapter) return;
-    const enParas = (chapter.contentEn || '').split('\n').map(p => p.trim()).filter(Boolean);
-    const updatedEnParas = [...enParas];
-    while (updatedEnParas.length <= pIdx) updatedEnParas.push('');
-    updatedEnParas[pIdx] = selectedEn;
-
-    const newEnContent = updatedEnParas.join('\n\n');
-    setRawEnText(newEnContent);
-    onSaveContent(chapter.contentZh, newEnContent);
-    setAlternativesState(null);
-  };
 
   const renderHighlightedZhParagraph = (para: string) => {
     if (!para) return null;
@@ -400,26 +351,6 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
                 English Translation Draft
               </h3>
               <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                {onReTranslateChapter && (
-                  <button
-                    className="btn-action secondary"
-                    onClick={onReTranslateChapter}
-                    title="Re-run full AI translation on this chapter"
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem' }}
-                  >
-                    🔄 Retranslate
-                  </button>
-                )}
-                {onPolishProse && (
-                  <button
-                    className="btn-action secondary"
-                    onClick={onPolishProse}
-                    title="Polish English prose style"
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem' }}
-                  >
-                    <Sparkles size={11} /> Polish Prose
-                  </button>
-                )}
                 <button className="icon-button" onClick={() => setIsEditingEn(true)} title="Edit English Text">
                   <Edit2 size={14} />
                 </button>
@@ -430,7 +361,6 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
           {/* Aligned Paragraph Rows */}
           {alignedRows.map((row) => {
             const isHovered = hoveredParaIdx === row.idx;
-            const isShowingAlternatives = alternativesState?.paraIdx === row.idx;
 
             return (
               <div
@@ -488,122 +418,13 @@ export const DualPaneStudio: React.FC<DualPaneStudioProps> = ({
                     </span>
                   )}
 
-                  {/* Paragraph Action Bar on Hover */}
-                  {isHovered && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '-10px',
-                        right: '0px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.3rem',
-                        background: 'var(--bg-elevated)',
-                        border: '1px solid var(--border-color)',
-                        padding: '0.15rem 0.4rem',
-                        borderRadius: '9999px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        zIndex: 10
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleRetranslateSinglePara(row.idx)}
-                        title="Re-translate only this paragraph with current style & glossary"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--primary-cyan)',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.2rem',
-                          padding: '2px 4px'
-                        }}
-                      >
-                        <RefreshCw size={11} />
-                        <span>Re-translate</span>
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={() => handleShowAlternatives(row.idx)}
-                        title="View alternate phrasing suggestions"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--accent-purple)',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.2rem',
-                          padding: '2px 4px'
-                        }}
-                      >
-                        <Wand2 size={11} />
-                        <span>Phrasings</span>
-                      </button>
-                    </div>
-                  )}
 
-                  <p style={{ margin: 0, lineHeight: 1.8, paddingTop: '0.25rem' }}>
+                  <p className="english-text" style={{ margin: 0, lineHeight: 1.8, paddingTop: '0.25rem' }}>
                     {renderHighlightedEnParagraph(row.en)}
                   </p>
 
-                  {/* Alternate Phrasings Dropdown */}
-                  {isShowingAlternatives && alternativesState && (
-                    <div
-                      style={{
-                        marginTop: '0.5rem',
-                        padding: '0.5rem 0.75rem',
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border-glow)',
-                        borderRadius: 'var(--radius-sm)',
-                        boxShadow: 'var(--shadow-card)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-cyan)' }}>
-                          💡 Select Alternate Phrasing:
-                        </span>
-                        <button
-                          onClick={() => setAlternativesState(null)}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem' }}
-                        >
-                          ✕
-                        </button>
-                      </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                        {alternativesState.alts.map((alt, aIdx) => (
-                          <button
-                            key={aIdx}
-                            onClick={() => handleApplyAlternative(row.idx, alt)}
-                            style={{
-                              textAlign: 'left',
-                              padding: '0.35rem 0.5rem',
-                              borderRadius: '4px',
-                              background: 'var(--bg-elevated)',
-                              border: '1px solid var(--border-color)',
-                              color: 'var(--text-main)',
-                              fontSize: '0.78rem',
-                              lineHeight: '1.4',
-                              cursor: 'pointer',
-                              transition: 'border-color 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary-cyan)')}
-                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-color)')}
-                          >
-                            "{alt}"
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             );

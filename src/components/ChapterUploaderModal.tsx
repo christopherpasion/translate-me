@@ -260,44 +260,48 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
               onClick={() => setActiveTab('single')}
               style={{
                 flex: 1,
-                padding: '0.5rem',
+                padding: '0.55rem',
+                minHeight: '42px',
                 borderRadius: '6px',
                 border: 'none',
-                background: activeTab === 'single' ? 'var(--card-bg)' : 'transparent',
+                background: activeTab === 'single' ? 'var(--bg-card, #1e293b)' : 'transparent',
                 color: activeTab === 'single' ? 'var(--text-main)' : 'var(--text-muted)',
-                fontWeight: activeTab === 'single' ? 600 : 400,
+                fontWeight: activeTab === 'single' ? 700 : 500,
                 fontSize: '0.85rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.4rem',
-                boxShadow: activeTab === 'single' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                touchAction: 'manipulation',
+                boxShadow: activeTab === 'single' ? '0 1px 3px rgba(0,0,0,0.2)' : 'none'
               }}
             >
-              <FileText size={14} /> Single Chapter Paste
+              <FileText size={15} /> Single Chapter Paste
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('bulk')}
               style={{
                 flex: 1,
-                padding: '0.5rem',
+                padding: '0.55rem',
+                minHeight: '42px',
                 borderRadius: '6px',
                 border: 'none',
-                background: activeTab === 'bulk' ? 'var(--card-bg)' : 'transparent',
+                background: activeTab === 'bulk' ? 'var(--bg-card, #1e293b)' : 'transparent',
                 color: activeTab === 'bulk' ? 'var(--text-main)' : 'var(--text-muted)',
-                fontWeight: activeTab === 'bulk' ? 600 : 400,
+                fontWeight: activeTab === 'bulk' ? 700 : 500,
                 fontSize: '0.85rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.4rem',
-                boxShadow: activeTab === 'bulk' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                touchAction: 'manipulation',
+                boxShadow: activeTab === 'bulk' ? '0 1px 3px rgba(0,0,0,0.2)' : 'none'
               }}
             >
-              <Layers size={14} /> Bulk File Drop & Auto-Splitter
+              <Layers size={15} /> Bulk File Drop & Auto-Splitter
             </button>
           </div>
 

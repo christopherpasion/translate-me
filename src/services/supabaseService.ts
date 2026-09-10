@@ -3,6 +3,38 @@ import { StorageService } from './storage';
 import type { Novel, Chapter, GlossaryEntry } from '../types';
 
 export class SupabaseService {
+  static isOnline: boolean = false;
+  static lastError: string | null = null;
+
+  static notifyStatus(online: boolean, error: string | null = null): void {
+    this.isOnline = online;
+    this.lastError = error;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('supabase-status-change', {
+        detail: { isOnline: online, error }
+      }));
+    }
+  }
+
+  /**
+   * Test direct connectivity to the Supabase Cloud database
+   */
+  static async testConnection(): Promise<{ ok: boolean; message: string }> {
+    try {
+      const { error } = await supabase.from('novels').select('id').limit(1);
+      if (error) {
+        this.notifyStatus(false, error.message);
+        return { ok: false, message: `Database error: ${error.message}` };
+      }
+      this.notifyStatus(true);
+      return { ok: true, message: 'Supabase Cloud Database connected and healthy.' };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.notifyStatus(false, msg);
+      return { ok: false, message: `Connection unreachable: ${msg}` };
+    }
+  }
+
   /**
    * Push all local novels, chapters, glossary entries, and token stats to Supabase Cloud
    */
@@ -186,10 +218,23 @@ export class SupabaseService {
     try {
       const { data, error } = await supabase.from('novels').select('*').order('updated_at', { ascending: false });
       if (error) {
+        this.notifyStatus(false, error.message);
         console.warn('[SupabaseService] fetchNovels error:', error.message);
         return StorageService.getNovels();
       }
       if (!data) return [];
+
+      this.notifyStatus(true);
+      if (data.length === 0) {
+        // Cloud is freshly initialized. Do NOT wipe local storage; auto-populate cloud from local data!
+        const localNovels = StorageService.getNovels();
+        if (localNovels.length > 0) {
+          for (const n of localNovels) {
+            this.saveNovelCloud(n);
+          }
+        }
+        return localNovels;
+      }
 
       const cloudNovels: Novel[] = data.map(n => ({
         id: n.id,
@@ -209,7 +254,9 @@ export class SupabaseService {
       // Cache cloud novels into localStorage for instant offline load
       localStorage.setItem('trans_me_novels_v2', JSON.stringify(cloudNovels));
       return cloudNovels;
-    } catch {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.notifyStatus(false, msg);
       return StorageService.getNovels();
     }
   }
@@ -225,7 +272,16 @@ export class SupabaseService {
         .eq('novel_id', novelId)
         .order('chapter_number', { ascending: true });
 
-      if (error || !data || data.length === 0) return StorageService.getChapters(novelId);
+      if (error || !data || data.length === 0) {
+        const localChapters = StorageService.getChapters(novelId);
+        // If cloud has 0 chapters for this novel but local device has chapters, sync local up to cloud!
+        if (localChapters.length > 0) {
+          for (const ch of localChapters) {
+            this.saveChapterCloud(ch);
+          }
+        }
+        return localChapters;
+      }
 
       const cloudChapters: Chapter[] = data.map(ch => ({
         id: ch.id,

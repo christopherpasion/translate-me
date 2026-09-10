@@ -20,7 +20,7 @@ export const CharacterGraphModal: React.FC<CharacterGraphModalProps> = ({
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(5, 8, 16, 0.85)' }}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', height: '85vh' }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90dvh' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <GitFork size={24} style={{ color: 'var(--accent-purple)' }} />
@@ -29,12 +29,12 @@ export const CharacterGraphModal: React.FC<CharacterGraphModalProps> = ({
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>Visual knowledge map auto-generated for {novelTitle}</p>
             </div>
           </div>
-          <button className="btn btn-secondary btn-icon" onClick={onClose}>
+          <button className="btn btn-secondary btn-icon" onClick={onClose} aria-label="Close modal">
             <X size={16} />
           </button>
         </div>
 
-        <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '1.25rem', padding: '1rem' }}>
+        <div className="modal-body graph-modal-body">
           {/* Interactive Graph Canvas */}
           <div
             className="glass-panel"

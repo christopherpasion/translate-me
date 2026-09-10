@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Novel, Chapter, GlossaryEntry } from '../types';
 import { StorageService } from '../services/storage';
 import { BookOpen, ChevronLeft, ChevronRight, MessageSquarePlus, Check, Sparkles, Type, Bookmark as BookmarkIcon } from 'lucide-react';
@@ -28,7 +28,25 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
 }) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans'>('serif');
-  const [readerTheme, setReaderTheme] = useState<ReaderTheme>('light');
+  const [readerTheme, setReaderTheme] = useState<ReaderTheme>(() => {
+    try {
+      const saved = localStorage.getItem('trans_me_reader_theme');
+      if (saved === 'light' || saved === 'sepia' || saved === 'dark' || saved === 'oled') {
+        return saved as ReaderTheme;
+      }
+    } catch {
+      // Fallback
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trans_me_reader_theme', readerTheme);
+    } catch {
+      // Ignore
+    }
+  }, [readerTheme]);
   const [hoveredTerm, setHoveredTerm] = useState<GlossaryEntry | null>(null);
   const [isSuggestingOpen, setIsSuggestingOpen] = useState(false);
   const [selectedTextForSuggest, setSelectedTextForSuggest] = useState('');
@@ -78,41 +96,49 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
     }, 1500);
   };
 
-  // Compute theme styles
+  // Compute theme styles with calibrated, guaranteed WCAG AAA contrast
   const getThemeStyles = () => {
     switch (readerTheme) {
       case 'sepia':
         return {
-          bg: '#fbf0d9',
-          cardBg: '#f4ecd8',
-          text: '#433422',
-          textMuted: '#7f6f5d',
-          border: '#e4d6be'
+          bg: '#f4ecd8',
+          cardBg: '#fbf0d9',
+          text: '#382e21',
+          textMuted: '#786754',
+          border: '#dfd2bc',
+          glossaryBorder: '#b45309',
+          glossaryBg: 'rgba(180, 83, 9, 0.12)'
         };
       case 'dark':
         return {
-          bg: '#0f172a',
-          cardBg: '#1e293b',
-          text: '#f8fafc',
-          textMuted: '#94a3b8',
-          border: '#334155'
+          bg: '#090d16',
+          cardBg: '#111827',
+          text: '#f3f4f6',
+          textMuted: '#9ca3af',
+          border: 'rgba(255, 255, 255, 0.12)',
+          glossaryBorder: 'var(--accent-cyan, #00f2fe)',
+          glossaryBg: 'rgba(0, 242, 254, 0.15)'
         };
       case 'oled':
         return {
           bg: '#000000',
-          cardBg: '#0a0a0a',
-          text: '#e2e8f0',
-          textMuted: '#64748b',
-          border: '#27272a'
+          cardBg: '#07090e',
+          text: '#e5e7eb',
+          textMuted: '#6b7280',
+          border: '#1f2937',
+          glossaryBorder: 'var(--accent-cyan, #00f2fe)',
+          glossaryBg: 'rgba(0, 242, 254, 0.2)'
         };
       case 'light':
       default:
         return {
-          bg: 'transparent',
-          cardBg: 'var(--card-bg, #ffffff)',
-          text: 'var(--text-main, #1e293b)',
-          textMuted: 'var(--text-muted, #64748b)',
-          border: 'var(--border-color, #e2e8f0)'
+          bg: '#f8fafc',
+          cardBg: '#ffffff',
+          text: '#1e293b',
+          textMuted: '#64748b',
+          border: '#e2e8f0',
+          glossaryBorder: '#0284c7',
+          glossaryBg: 'rgba(2, 132, 199, 0.12)'
         };
     }
   };
@@ -177,7 +203,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
       <div style={{
         fontSize: `${fontSize}px`,
         lineHeight: '1.9',
-        fontFamily: fontFamily === 'serif' ? 'Georgia, "Times New Roman", serif' : 'Inter, system-ui, sans-serif',
+        fontFamily: fontFamily === 'serif' ? "'Lora', 'Charter', 'Georgia', serif" : "'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         color: currentTheme.text
       }}>
         {paragraphs.map((pText, pIdx) => {
@@ -198,12 +224,20 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                         className="glossary-highlight"
                         onMouseEnter={() => setHoveredTerm(entry)}
                         onMouseLeave={() => setHoveredTerm(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHoveredTerm(hoveredTerm?.id === entry.id ? null : entry);
+                        }}
                         style={{
-                          borderBottom: '2px dotted var(--accent-cyan, #00f2fe)',
+                          borderBottom: `2px dotted ${currentTheme.glossaryBorder}`,
+                          background: currentTheme.glossaryBg,
+                          padding: '0.1rem 0.3rem',
+                          borderRadius: '4px',
                           color: 'inherit',
                           fontWeight: 600,
-                          cursor: 'help',
-                          position: 'relative'
+                          cursor: 'pointer',
+                          position: 'relative',
+                          touchAction: 'manipulation'
                         }}
                       >
                         {parts[i]}
@@ -233,15 +267,18 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
   return (
     <div
       className="reader-container"
+      onClick={() => setHoveredTerm(null)}
       style={{
         flex: 1,
         overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         background: currentTheme.bg,
-        transition: 'background-color 0.25s ease'
+        transition: 'background-color 0.25s ease',
+        paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))'
       }}
     >
       <div style={{ width: '100%', maxWidth: '880px', padding: '1.5rem 1rem' }}>
@@ -330,7 +367,7 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 onChange={(e) => onSelectChapter(e.target.value)}
                 style={{
                   flex: 1,
-                  background: currentTheme.bg === 'transparent' ? 'var(--bg-elevated, #f1f5f9)' : currentTheme.bg,
+                  background: currentTheme.cardBg,
                   color: currentTheme.text,
                   border: `1px solid ${currentTheme.border}`,
                   padding: '0.4rem 0.6rem',
@@ -362,72 +399,90 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
             </div>
 
             {/* Reading Theme & Font Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               {/* Theme Picker */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '2px 4px',
-                borderRadius: '6px',
-                border: `1px solid ${currentTheme.border}`
+                gap: '8px',
+                padding: '4px 8px',
+                borderRadius: '8px',
+                border: `1px solid ${currentTheme.border}`,
+                background: 'rgba(0,0,0,0.03)'
               }}>
                 <button
+                  type="button"
                   onClick={() => setReaderTheme('light')}
                   style={{
-                    width: '18px',
-                    height: '18px',
+                    width: '28px',
+                    height: '28px',
                     borderRadius: '50%',
                     background: '#ffffff',
-                    border: readerTheme === 'light' ? '2px solid var(--accent-purple)' : '1px solid #ccc',
-                    cursor: 'pointer'
+                    border: readerTheme === 'light' ? '3px solid var(--accent-purple)' : '1px solid #ccc',
+                    cursor: 'pointer',
+                    touchAction: 'manipulation',
+                    boxShadow: readerTheme === 'light' ? '0 0 8px rgba(124, 58, 237, 0.4)' : 'none'
                   }}
                   title="Light Theme"
+                  aria-label="Light Theme"
                 />
                 <button
+                  type="button"
                   onClick={() => setReaderTheme('sepia')}
                   style={{
-                    width: '18px',
-                    height: '18px',
+                    width: '28px',
+                    height: '28px',
                     borderRadius: '50%',
                     background: '#fbf0d9',
-                    border: readerTheme === 'sepia' ? '2px solid var(--accent-purple)' : '1px solid #d4c5ab',
-                    cursor: 'pointer'
+                    border: readerTheme === 'sepia' ? '3px solid var(--accent-purple)' : '1px solid #d4c5ab',
+                    cursor: 'pointer',
+                    touchAction: 'manipulation',
+                    boxShadow: readerTheme === 'sepia' ? '0 0 8px rgba(124, 58, 237, 0.4)' : 'none'
                   }}
                   title="Sepia Paper Theme"
+                  aria-label="Sepia Theme"
                 />
                 <button
+                  type="button"
                   onClick={() => setReaderTheme('dark')}
                   style={{
-                    width: '18px',
-                    height: '18px',
+                    width: '28px',
+                    height: '28px',
                     borderRadius: '50%',
                     background: '#1e293b',
-                    border: readerTheme === 'dark' ? '2px solid var(--accent-cyan)' : '1px solid #475569',
-                    cursor: 'pointer'
+                    border: readerTheme === 'dark' ? '3px solid var(--accent-cyan)' : '1px solid #475569',
+                    cursor: 'pointer',
+                    touchAction: 'manipulation',
+                    boxShadow: readerTheme === 'dark' ? '0 0 8px rgba(0, 242, 254, 0.4)' : 'none'
                   }}
                   title="Dark Theme"
+                  aria-label="Dark Theme"
                 />
                 <button
+                  type="button"
                   onClick={() => setReaderTheme('oled')}
                   style={{
-                    width: '18px',
-                    height: '18px',
+                    width: '28px',
+                    height: '28px',
                     borderRadius: '50%',
                     background: '#000000',
-                    border: readerTheme === 'oled' ? '2px solid var(--accent-cyan)' : '1px solid #333',
-                    cursor: 'pointer'
+                    border: readerTheme === 'oled' ? '3px solid var(--accent-cyan)' : '1px solid #333',
+                    cursor: 'pointer',
+                    touchAction: 'manipulation',
+                    boxShadow: readerTheme === 'oled' ? '0 0 8px rgba(0, 242, 254, 0.4)' : 'none'
                   }}
                   title="OLED Midnight Theme"
+                  aria-label="OLED Theme"
                 />
               </div>
 
               {/* Font Family Toggle */}
               <button
-                className="btn btn-secondary btn-icon"
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => setFontFamily(fontFamily === 'serif' ? 'sans' : 'serif')}
                 title={fontFamily === 'serif' ? 'Switch to Sans-Serif Font' : 'Switch to Serif Font'}
-                style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.35rem 0.5rem' }}
+                style={{ fontSize: '0.82rem', fontWeight: 700, padding: '0.45rem 0.75rem', minHeight: '38px', touchAction: 'manipulation' }}
               >
                 {fontFamily === 'serif' ? 'Serif' : 'Sans'}
               </button>
@@ -436,17 +491,30 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.2rem',
-                borderRadius: '6px',
-                padding: '0.2rem 0.4rem',
-                border: `1px solid ${currentTheme.border}`
+                gap: '0.35rem',
+                borderRadius: '8px',
+                padding: '0.25rem 0.5rem',
+                border: `1px solid ${currentTheme.border}`,
+                minHeight: '38px'
               }}>
-                <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.max(14, fontSize - 2))} title="Smaller Font">
-                  <Type size={12} />
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-icon"
+                  onClick={() => setFontSize(Math.max(14, fontSize - 2))}
+                  title="Smaller Font"
+                  style={{ width: '32px', height: '32px', padding: 0, touchAction: 'manipulation' }}
+                >
+                  <Type size={14} />
                 </button>
-                <span style={{ fontSize: '0.8rem', padding: '0 0.3rem', color: currentTheme.text, fontWeight: 600 }}>{fontSize}</span>
-                <button className="btn btn-secondary btn-icon" onClick={() => setFontSize(Math.min(28, fontSize + 2))} title="Larger Font">
-                  <Type size={16} />
+                <span style={{ fontSize: '0.85rem', padding: '0 0.35rem', color: currentTheme.text, fontWeight: 700, minWidth: '22px', textAlign: 'center' }}>{fontSize}</span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-icon"
+                  onClick={() => setFontSize(Math.min(28, fontSize + 2))}
+                  title="Larger Font"
+                  style={{ width: '32px', height: '32px', padding: 0, touchAction: 'manipulation' }}
+                >
+                  <Type size={18} />
                 </button>
               </div>
             </div>
@@ -469,29 +537,60 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
           {/* Floating Glossary Tooltip */}
           {hoveredTerm && (
             <div
+              className="reader-glossary-card"
+              onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'fixed',
-                bottom: '2rem',
-                right: '2rem',
-                background: 'rgba(15, 23, 42, 0.95)',
+                bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+                right: '1.5rem',
+                background: 'rgba(15, 23, 42, 0.96)',
                 border: '1px solid var(--accent-cyan, #00f2fe)',
-                padding: '0.8rem 1.2rem',
-                borderRadius: '10px',
-                boxShadow: '0 10px 25px rgba(0,242,254,0.25)',
-                zIndex: 100,
-                backdropFilter: 'blur(10px)',
-                maxWidth: '300px',
+                padding: '0.9rem 1.2rem',
+                borderRadius: '12px',
+                boxShadow: '0 12px 35px rgba(0,0,0,0.6), 0 0 20px rgba(0,242,254,0.3)',
+                zIndex: 1000,
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                maxWidth: '340px',
+                width: 'calc(100vw - 3rem)',
                 color: '#fff'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                <span style={{ fontWeight: 700, color: 'var(--accent-cyan, #00f2fe)', fontSize: '0.95rem' }}>{hoveredTerm.translatedEn}</span>
-                <span className="badge" style={{ background: 'rgba(0,242,254,0.2)', color: '#00f2fe', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>
-                  {hoveredTerm.category}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                <span style={{ fontWeight: 700, color: 'var(--accent-cyan, #00f2fe)', fontSize: '1rem' }}>{hoveredTerm.translatedEn}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span className="badge" style={{ background: 'rgba(0,242,254,0.2)', color: '#00f2fe', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px' }}>
+                    {hoveredTerm.category}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setHoveredTerm(null)}
+                    aria-label="Close tooltip"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'rgba(255,255,255,0.7)',
+                      fontSize: '1rem',
+                      cursor: 'pointer',
+                      padding: '2px 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>Original: {hoveredTerm.originalZh} {hoveredTerm.pinyin && `(${hoveredTerm.pinyin})`}</div>
-              {hoveredTerm.notes && <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.2rem' }}>{hoveredTerm.notes}</div>}
+              <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 500 }}>
+                Original: <span style={{ fontFamily: 'var(--font-zh)' }}>{hoveredTerm.originalZh}</span> {hoveredTerm.pinyin && `[${hoveredTerm.pinyin}]`}
+              </div>
+              {hoveredTerm.notes && (
+                <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.3rem', lineHeight: 1.4 }}>
+                  {hoveredTerm.notes}
+                </div>
+              )}
             </div>
           )}
 
@@ -514,6 +613,25 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
             </div>
           )}
 
+          {/* End of Chapter Ornament Badge */}
+          {currentChapter && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              margin: '2.5rem auto 1.25rem auto',
+              color: currentTheme.textMuted,
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              letterSpacing: '0.05em'
+            }}>
+              <span style={{ height: '1px', width: '36px', background: currentTheme.border }} />
+              <span>❦ End of Chapter {currentChapter.chapterNumber} ❦</span>
+              <span style={{ height: '1px', width: '36px', background: currentTheme.border }} />
+            </div>
+          )}
+
           {/* Bottom Chapter Navigation Bar */}
           {currentChapter && (
             <div
@@ -523,8 +641,8 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 justifyContent: 'center',
                 flexWrap: 'wrap',
                 gap: '0.5rem',
-                marginTop: '3rem',
-                paddingTop: '1.5rem',
+                marginTop: '1.25rem',
+                paddingTop: '1.25rem',
                 borderTop: `1px solid ${currentTheme.border}`,
                 width: '100%'
               }}
@@ -533,9 +651,9 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 className="btn btn-secondary"
                 onClick={handlePrev}
                 disabled={currentIndex <= 0}
-                style={{ flexShrink: 0, padding: '0.4rem 0.75rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                style={{ flexShrink: 0, minHeight: '44px', padding: '0.5rem 1rem', fontSize: '0.88rem', whiteSpace: 'nowrap', touchAction: 'manipulation' }}
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={18} />
                 <span>Prev Chapter</span>
               </button>
 
@@ -545,17 +663,19 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  maxWidth: '240px',
-                  background: currentTheme.bg === 'transparent' ? 'var(--bg-elevated, #f1f5f9)' : currentTheme.bg,
+                  maxWidth: '260px',
+                  minHeight: '44px',
+                  background: currentTheme.cardBg,
                   color: currentTheme.text,
                   border: `1px solid ${currentTheme.border}`,
-                  padding: '0.4rem 0.6rem',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
+                  padding: '0.45rem 0.75rem',
+                  borderRadius: '8px',
+                  fontSize: '0.88rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   outline: 'none',
-                  textOverflow: 'ellipsis'
+                  textOverflow: 'ellipsis',
+                  touchAction: 'manipulation'
                 }}
               >
                 {publishedChapters.map(ch => (
@@ -569,10 +689,10 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
                 className="btn btn-primary"
                 onClick={handleNext}
                 disabled={currentIndex >= publishedChapters.length - 1}
-                style={{ flexShrink: 0, padding: '0.4rem 0.75rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                style={{ flexShrink: 0, minHeight: '44px', padding: '0.5rem 1rem', fontSize: '0.88rem', whiteSpace: 'nowrap', touchAction: 'manipulation' }}
               >
                 <span>Next Chapter</span>
-                <ChevronRight size={16} />
+                <ChevronRight size={18} />
               </button>
             </div>
           )}

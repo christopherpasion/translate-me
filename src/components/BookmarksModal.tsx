@@ -123,27 +123,27 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                     <button
                       className="btn btn-primary"
                       onClick={() => {
                         onSelectBookmark(bm.novelId, bm.chapterId);
                         onClose();
                       }}
-                      style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      style={{ padding: '0.5rem 0.9rem', minHeight: '42px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem', touchAction: 'manipulation' }}
                       title="Continue Reading"
                     >
                       <span>Continue</span>
-                      <ArrowRight size={14} />
+                      <ArrowRight size={15} />
                     </button>
                     <button
                       className="btn btn-secondary btn-icon"
                       onClick={() => onRemoveBookmark(bm.novelId)}
-                      style={{ padding: '0.45rem', color: '#ff4d4f' }}
+                      style={{ padding: '0.5rem', minHeight: '42px', minWidth: '42px', color: '#ff4d4f', touchAction: 'manipulation' }}
                       title="Remove Bookmark"
                       aria-label="Remove Bookmark"
                     >
-                      <Trash2 size={15} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>

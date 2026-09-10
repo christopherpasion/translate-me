@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, ShieldCheck, Download, Database, Sun, Moon, Menu, X, Layers, Bookmark as BookmarkIcon, Upload, User } from 'lucide-react';
 import type { Novel, UserProfile } from '../types';
+import { SupabaseService } from '../services/supabaseService';
 
 interface NavbarProps {
   novels: Novel[];
@@ -42,6 +43,26 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleAppTheme
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<{ isOnline: boolean; checking: boolean }>({
+    isOnline: SupabaseService.isOnline,
+    checking: false
+  });
+
+  useEffect(() => {
+    const handleStatus = (e: Event) => {
+      const customEvent = e as CustomEvent<{ isOnline: boolean }>;
+      setCloudStatus({ isOnline: customEvent.detail.isOnline, checking: false });
+    };
+    window.addEventListener('supabase-status-change', handleStatus);
+    return () => window.removeEventListener('supabase-status-change', handleStatus);
+  }, []);
+
+  const handleCheckConnection = async () => {
+    setCloudStatus(prev => ({ ...prev, checking: true }));
+    const result = await SupabaseService.testConnection();
+    setCloudStatus({ isOnline: result.ok, checking: false });
+    alert(result.message);
+  };
 
   return (
     <header className="navbar">
@@ -96,6 +117,30 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div className="navbar-actions">
+        {/* Cloud Status Indicator */}
+        <button
+          className="btn btn-secondary"
+          onClick={handleCheckConnection}
+          title={cloudStatus.isOnline ? "Supabase Cloud Database: Online & Synced" : "Supabase Cloud Database: Offline / Paused. Click to test connection."}
+          style={{
+            padding: '0.3rem 0.6rem',
+            fontSize: '0.75rem',
+            gap: '0.35rem',
+            borderColor: cloudStatus.isOnline ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)',
+            background: cloudStatus.isOnline ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+            color: cloudStatus.isOnline ? '#10b981' : '#f59e0b'
+          }}
+        >
+          <span style={{
+            width: '7px',
+            height: '7px',
+            borderRadius: '50%',
+            background: cloudStatus.isOnline ? '#10b981' : '#f59e0b',
+            boxShadow: cloudStatus.isOnline ? '0 0 6px #10b981' : '0 0 6px #f59e0b'
+          }} />
+          <span>{cloudStatus.checking ? 'Checking...' : cloudStatus.isOnline ? 'Cloud Synced' : 'Cloud Offline'}</span>
+        </button>
+
         {/* Bookmarks Button (Always accessible) */}
         <button
           className="btn btn-secondary"
@@ -123,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Uploader / Upload Chapter Shortcut for Creator */}
         {viewMode === 'admin' && (
           <button
-            className="btn btn-primary"
+            className="btn btn-primary desktop-uploader-btn"
             onClick={onOpenUploader}
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', gap: '0.35rem' }}
           >

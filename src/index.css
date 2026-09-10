@@ -1,12 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600&display=swap');
 
 :root {
   --bg-dark: #090d16;
   --bg-card: rgba(17, 24, 39, 0.95);
+  --card-bg: var(--bg-card);
   --bg-card-hover: rgba(26, 36, 56, 0.95);
   --bg-elevated: #151d30;
   --border-color: rgba(255, 255, 255, 0.12);
   --border-glow: rgba(0, 242, 254, 0.3);
+  color-scheme: dark;
   
   --primary-cyan: #00f2fe;
   --accent-cyan: #00f2fe;
@@ -22,6 +24,7 @@
   --text-dim: #6b7280;
 
   --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Lora', 'Charter', 'Georgia', serif;
   --font-zh: 'Noto Serif SC', 'PingFang SC', serif;
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -32,16 +35,23 @@
 
   --shadow-glow: 0 0 25px rgba(0, 242, 254, 0.15);
   --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 /* ☀️ Clean White Light Theme */
 [data-theme="light"], .light-mode {
   --bg-dark: #ffffff;
   --bg-card: #ffffff;
+  --card-bg: #ffffff;
   --bg-card-hover: #f8fafc;
   --bg-elevated: #f1f5f9;
   --border-color: #cbd5e1;
   --border-glow: rgba(2, 132, 199, 0.4);
+  color-scheme: light;
   
   --primary-cyan: #0284c7;
   --accent-cyan: #0284c7;
@@ -66,11 +76,29 @@
   padding: 0;
 }
 
+html {
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  background-color: var(--bg-dark);
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+html[data-theme="light"],
+html.light-mode {
+  background-color: #ffffff !important;
+}
+
 body {
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   background-color: var(--bg-dark);
   color: var(--text-main);
   font-family: var(--font-main);
-  min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.5;
   background-image: 
@@ -82,6 +110,21 @@ body.light-mode {
   background-color: #ffffff !important;
   color: #0f172a !important;
   background-image: none !important;
+}
+
+#root {
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-dark);
+}
+
+[data-theme="light"] #root,
+.light-mode #root {
+  background-color: #ffffff !important;
 }
 
 /* Custom Scrollbar */
@@ -104,8 +147,17 @@ body.light-mode {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  flex: 1;
+  background-color: var(--bg-dark);
   overflow: hidden;
+}
+
+[data-theme="light"] .app-container,
+.light-mode .app-container {
+  background-color: #ffffff !important;
 }
 
 /* Glassmorphism Card Utility */
@@ -220,6 +272,20 @@ button {
   color: var(--text-main);
   box-shadow: 0 0 10px rgba(0, 242, 254, 0.12);
   transform: translateY(-1px);
+}
+
+[data-theme="light"] .btn-secondary,
+.light-mode .btn-secondary {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .btn-secondary:hover,
+.light-mode .btn-secondary:hover {
+  background: #e2e8f0 !important;
+  color: #0284c7 !important;
+  border-color: #94a3b8 !important;
 }
 
 .btn-accent {
@@ -430,6 +496,13 @@ body.light-mode .badge-xianxia, [data-theme="light"] .badge-xianxia { background
   color: var(--text-main);
 }
 
+.english-text {
+  font-family: var(--font-main);
+  font-size: 1.02rem;
+  line-height: 1.85;
+  color: var(--text-main);
+}
+
 
 /* Aligned Translation Grid System (Row-by-Row Aligned CAT Layout) */
 .aligned-translation-grid {
@@ -561,6 +634,9 @@ body.light-mode .chinese-cell, [data-theme="light"] .chinese-cell {
 .modal-overlay {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
   background: rgba(4, 7, 14, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -569,12 +645,14 @@ body.light-mode .chinese-cell, [data-theme="light"] .chinese-cell {
   justify-content: center;
   z-index: 100;
   padding: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .modal-card {
   width: 100%;
   max-width: 650px;
   max-height: 85vh;
+  max-height: 85dvh;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -584,11 +662,13 @@ body.light-mode .chinese-cell, [data-theme="light"] .chinese-cell {
   overflow: hidden;
   color: var(--text-main);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .modal-card-lg {
   max-width: 880px;
   max-height: 90vh;
+  max-height: 90dvh;
 }
 
 .modal-header {
@@ -692,6 +772,18 @@ body.light-mode .chinese-cell, [data-theme="light"] .chinese-cell {
 
 .search-input:focus {
   border-color: var(--primary-cyan);
+}
+
+[data-theme="light"] .search-input,
+.light-mode .search-input {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .search-input:focus,
+.light-mode .search-input:focus {
+  border-color: #0284c7 !important;
 }
 
 .form-control {
@@ -871,8 +963,9 @@ body.light-mode .search-input {
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  min-width: 36px;
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
 }
 
 .mobile-nav-backdrop {
@@ -883,6 +976,7 @@ body.light-mode .search-input {
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   background: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
@@ -895,6 +989,7 @@ body.light-mode .search-input {
   width: 320px !important;
   max-width: 85vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   background: var(--bg-card) !important;
   border-left: 1px solid var(--border-color) !important;
   box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8) !important;
@@ -936,12 +1031,58 @@ body.light-mode .search-input {
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
   flex: 1 !important;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Character graph modal responsive body */
+.graph-modal-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.25rem;
+  padding: 1rem;
+}
+
+@media (max-width: 820px) {
+  .graph-modal-body {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Ensure desktop always displays both panels cleanly */
+@media (min-width: 1025px) {
+  .hidden-mobile {
+    display: block !important;
+  }
 }
 
 /* ========================================================================= */
-/* 📱 Universal Mobile Responsiveness (< 768px)                              */
+/* 📱 Tablet & Mobile Universal Baseline (<= 1024px)                          */
 /* ========================================================================= */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  /* Prevent iOS Safari from auto-zooming on focus when font-size < 16px */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Hamburger navigation visible on all tablet portrait and mobile screens */
+  .mobile-hamburger-btn {
+    display: flex !important;
+  }
+
+  /* Hide overflowing desktop navbar tools on tablet portrait & mobile */
+  .desktop-admin-tools,
+  .desktop-novel-selector,
+  .desktop-uploader-btn,
+  .desktop-role-btn,
+  .desktop-theme-text,
+  .pane-btn-text {
+    display: none !important;
+  }
+
+  /* Show mobile/tablet tab bar for Chinese/English toggle in DualPaneStudio */
   .mobile-tab-bar {
     display: flex !important;
     gap: 0.35rem !important;
@@ -956,33 +1097,54 @@ body.light-mode .search-input {
     font-size: 0.8rem !important;
     border-radius: var(--radius-sm) !important;
     font-weight: 600 !important;
+    min-height: 40px !important;
+    touch-action: manipulation !important;
   }
 
-  .mobile-hamburger-btn {
-    display: flex !important;
+  /* Universal Modal Overhaul for Mobile & Tablet */
+  .modal-overlay {
+    padding: 0.5rem !important;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  .desktop-admin-tools {
-    display: none !important;
+  .modal-card {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 90dvh !important;
+    border-radius: var(--radius-md) !important;
   }
 
-  .desktop-novel-selector {
-    display: none !important;
+  .modal-card-lg {
+    max-width: 96vw !important;
+    max-height: 92dvh !important;
   }
 
-  .desktop-role-btn {
-    display: none !important;
+  /* Touch targets HIG (minimum 42-44px) */
+  .btn {
+    min-height: 42px !important;
+    touch-action: manipulation !important;
   }
 
-  .desktop-theme-text {
-    display: none !important;
+  /* Floating glossary tooltip card with safe area support */
+  .reader-glossary-card {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)) !important;
+    right: 1rem !important;
+    left: 1rem !important;
+    max-width: 400px !important;
+    margin: 0 auto !important;
   }
 
-  .pane-btn-text {
-    display: none !important;
+  /* Responsive Form Grids */
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
   }
+}
 
-  /* Dual Pane Grid System Mobile Overhaul */
+/* ========================================================================= */
+/* 📱 Compact Mobile Screens (< 768px)                                       */
+/* ========================================================================= */
+@media (max-width: 768px) {
+  /* Dual Pane Grid System Mobile Overhaul: Stacked rows */
   .aligned-translation-grid {
     padding: 0 0.5rem 3rem 0.5rem !important;
   }
@@ -1000,7 +1162,6 @@ body.light-mode .search-input {
     justify-content: space-between !important;
   }
 
-  /* Translation Row behavior on mobile: Stacked when both visible, 100% width when single tab */
   .translation-row {
     display: flex !important;
     flex-direction: column !important;
@@ -1040,27 +1201,7 @@ body.light-mode .search-input {
     line-height: 1.6 !important;
   }
 
-  /* Universal Modal Overhaul for Mobile Devices */
-  .modal-overlay {
-    padding: 0.4rem !important;
-  }
-
-  .modal-card {
-    width: 96vw !important;
-    max-width: 96vw !important;
-    max-height: 92vh !important;
-    border-radius: var(--radius-md) !important;
-  }
-
-  .modal-card-lg {
-    max-width: 96vw !important;
-    max-height: 94vh !important;
-  }
-
-  .modal-header {
-    padding: 0.85rem 1rem !important;
-  }
-
+  .modal-header,
   .modal-body {
     padding: 0.85rem 1rem !important;
   }
@@ -1096,7 +1237,7 @@ body.light-mode .search-input {
     width: 320px !important;
     max-width: 90vw !important;
     z-index: 9999 !important;
-    box-shadow: -10px 0 30px rgba(0,0,0,0.6) !important;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.6) !important;
   }
 
   .reader-toolbar {
@@ -1104,15 +1245,6 @@ body.light-mode .search-input {
     align-items: stretch !important;
     gap: 0.5rem !important;
     padding: 0.5rem 0.75rem !important;
-  }
-
-  .btn {
-    min-height: 38px !important;
-  }
-
-  /* Responsive Form Grids */
-  .form-grid-2 {
-    grid-template-columns: 1fr !important;
   }
 }
 
@@ -1140,32 +1272,11 @@ body.light-mode .search-input {
 /* ========================================================================= */
 @media (min-width: 769px) and (max-width: 1024px) {
   .navbar {
-    padding: 0.5rem 0.85rem !important;
+    padding: 0.5rem 1rem !important;
   }
 
   .brand-title {
-    font-size: 1.1rem !important;
-  }
-
-  .desktop-novel-selector select {
-    max-width: 150px !important;
-    font-size: 0.76rem !important;
-    padding: 0.3rem 0.45rem !important;
-  }
-
-  .desktop-admin-tools {
-    gap: 0.35rem !important;
-  }
-
-  .desktop-admin-tools .btn {
-    padding: 0.32rem 0.5rem !important;
-    font-size: 0.75rem !important;
-    gap: 0.25rem !important;
-  }
-
-  .desktop-role-btn {
-    padding: 0.32rem 0.55rem !important;
-    font-size: 0.75rem !important;
+    font-size: 1.15rem !important;
   }
 
   /* Dual-Pane CAT Side-by-Side on Tablet */
@@ -1186,6 +1297,12 @@ body.light-mode .search-input {
     grid-template-columns: 1fr 1fr !important;
     gap: 1.25rem !important;
     padding: 0.8rem 1rem !important;
+  }
+
+  /* When single pane selected via mobileTab, expand to 100% width */
+  .aligned-grid-sticky-header:has(.hidden-mobile),
+  .translation-row:has(.hidden-mobile) {
+    grid-template-columns: 1fr !important;
   }
 
   .chinese-cell {
@@ -1228,12 +1345,6 @@ body.light-mode .search-input {
     padding: 2.25rem 2rem !important;
     max-width: 820px !important;
     margin: 0 auto !important;
-  }
-
-  /* Modal Dialogs on Tablet */
-  .modal-card {
-    max-width: 85vw !important;
-    max-height: 85vh !important;
   }
 }
 
