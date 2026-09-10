@@ -38,12 +38,18 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(AuthService.getCurrentUser());
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
 
-  // View Mode ('home' | 'reader' | 'admin') - Default to Homepage catalog
+  // View Mode ('home' | 'reader' | 'admin') - Guaranteed Homepage on root URL, with ?view= URL sync
   const [viewMode, setViewMode] = useState<'home' | 'reader' | 'admin'>(() => {
     try {
-      const saved = localStorage.getItem('trans_me_view_mode');
-      if (saved === 'home' || saved === 'reader' || saved === 'admin') {
-        return saved;
+      // Clear legacy cached viewMode so existing sessions aren't locked into the reader
+      localStorage.removeItem('trans_me_view_mode');
+
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlView = params.get('view');
+        if (urlView === 'reader' || urlView === 'admin') {
+          return urlView;
+        }
       }
     } catch {
       // Ignore
@@ -51,9 +57,18 @@ export const App: React.FC = () => {
     return 'home';
   });
 
+  // Sync active viewMode to URL query parameter without page reload
   useEffect(() => {
     try {
-      localStorage.setItem('trans_me_view_mode', viewMode);
+      if (typeof window !== 'undefined') {
+        const currentUrl = new URL(window.location.href);
+        if (viewMode === 'home') {
+          currentUrl.searchParams.delete('view');
+        } else {
+          currentUrl.searchParams.set('view', viewMode);
+        }
+        window.history.replaceState({}, '', currentUrl.pathname + (currentUrl.search ? currentUrl.search : ''));
+      }
     } catch {
       // Ignore
     }
