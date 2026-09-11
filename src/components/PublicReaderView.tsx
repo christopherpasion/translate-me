@@ -32,8 +32,49 @@ export const PublicReaderView: React.FC<PublicReaderViewProps> = ({
   readerTheme: controlledReaderTheme,
   onThemeChange
 }) => {
-  const [fontSize, setFontSize] = useState<number>(18);
-  const [fontFamily, setFontFamily] = useState<'serif' | 'sans'>('serif');
+  const [fontSize, setFontSize] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('trans_me_font_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 14 && parsed <= 28) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    return 18;
+  });
+
+  const [fontFamily, setFontFamily] = useState<'serif' | 'sans'>(() => {
+    try {
+      const saved = localStorage.getItem('trans_me_font_family');
+      if (saved === 'serif' || saved === 'sans') {
+        return saved;
+      }
+    } catch {
+      // Fallback
+    }
+    return 'serif';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trans_me_font_size', fontSize.toString());
+    } catch {
+      // Ignore
+    }
+  }, [fontSize]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trans_me_font_family', fontFamily);
+    } catch {
+      // Ignore
+    }
+  }, [fontFamily]);
+
   const [internalTheme, setInternalTheme] = useState<ReaderTheme>(() => {
     try {
       const saved = localStorage.getItem('trans_me_reader_theme');
