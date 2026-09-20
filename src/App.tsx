@@ -609,13 +609,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Sync with Supabase Cloud
-  const handleSyncSupabaseCloud = async () => {
-    if (!selectedNovelId) return;
-    const result = await SupabaseService.syncAllLocalToCloud(selectedNovelId);
-    alert(result.message);
-  };
-
   return (
     <div className="app-container">
       {/* Top Navbar */}
@@ -722,7 +715,6 @@ export const App: React.FC = () => {
             onDeleteChapter={handleDeleteChapter}
             onOpenCharacterGraph={() => setIsCharacterGraphOpen(true)}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-            onSyncSupabaseCloud={handleSyncSupabaseCloud}
             isSidebarOpen={isSidebarOpen}
             glossaryCount={glossary.length}
           />

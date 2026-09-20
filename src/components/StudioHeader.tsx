@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { Novel, Chapter } from '../types';
 import { cleanAndTranslateChapterTitle } from '../services/translationEngine';
 import { getGenreMeta } from '../services/genrePresets';
-import { GitFork, Sidebar, Trash2, Upload, Cloud } from 'lucide-react';
+import { GitFork, Sidebar, Trash2, Upload } from 'lucide-react';
 
 interface StudioHeaderProps {
   currentNovel: Novel;
@@ -13,7 +13,6 @@ interface StudioHeaderProps {
   onDeleteChapter?: (chapterId: string) => void;
   onOpenCharacterGraph: () => void;
   onToggleSidebar: () => void;
-  onSyncSupabaseCloud?: () => void;
   isSidebarOpen: boolean;
   glossaryCount: number;
 }
@@ -27,7 +26,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   onDeleteChapter,
   onOpenCharacterGraph,
   onToggleSidebar,
-  onSyncSupabaseCloud,
   isSidebarOpen,
   glossaryCount
 }) => {
@@ -159,18 +157,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <span>Terms ({glossaryCount})</span>
         </button>
 
-        {/* Cloud Sync */}
-        {onSyncSupabaseCloud && (
-          <button
-            className="btn btn-secondary"
-            onClick={onSyncSupabaseCloud}
-            title="Sync all chapters & terms to Supabase Cloud Database"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', color: '#60a5fa', borderColor: 'rgba(96,165,250,0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}
-          >
-            <Cloud size={14} />
-            <span>Cloud Sync</span>
-          </button>
-        )}
+
       </div>
 
       {/* Delete Confirmation Modal */}
