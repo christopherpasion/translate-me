@@ -3,11 +3,18 @@ import { getPinyinForText } from './pinyinService';
 import { SupabaseService } from './supabaseService';
 
 const NOVELS_KEY = 'trans_me_novels_v2';
-const CHAPTERS_KEY = 'trans_me_chapters_v2';
 const GLOSSARY_KEY = 'trans_me_glossary_v2';
 const HEALING_KEY = 'trans_me_healing_v2';
 const RECOMMENDATIONS_KEY = 'trans_me_recommendations_v2';
 const SUGGESTIONS_KEY = 'trans_me_suggestions_v2';
+
+// Purge legacy chapter storage keys to free browser quota (Supabase is single source of truth)
+try {
+  localStorage.removeItem('trans_me_chapters_v1');
+  localStorage.removeItem('trans_me_chapters_v2');
+} catch {
+  // Ignore in environments without localStorage
+}
 
 // Initial Sample Novels
 const INITIAL_NOVELS: Novel[] = [
@@ -436,6 +443,9 @@ const INITIAL_SUGGESTIONS: ReaderSuggestion[] = [
 const DELETED_CHAPTERS_KEY = 'trans_me_deleted_chapters_v2';
 const DELETED_NOVELS_KEY = 'trans_me_deleted_novels_v2';
 
+// In-memory runtime store for chapters (Supabase Database is the primary persistent store)
+let inMemoryChapters: Chapter[] = [...INITIAL_CHAPTERS];
+
 export const StorageService = {
   getNovels(): Novel[] {
     const data = localStorage.getItem(NOVELS_KEY);
@@ -445,17 +455,18 @@ export const StorageService = {
     let rawList: Novel[] = data ? JSON.parse(data) : INITIAL_NOVELS;
     rawList = rawList.filter(n => !deletedNovelIds.includes(n.id));
 
-    // Dynamically calculate accurate chaptersCount & translatedCount for each novel from real stored chapters
-    const chaptersData = localStorage.getItem(CHAPTERS_KEY);
+    // Dynamically calculate accurate chaptersCount & translatedCount for each novel from in-memory chapters
     const deletedChapData = localStorage.getItem(DELETED_CHAPTERS_KEY);
     const deletedChapIds: string[] = deletedChapData ? JSON.parse(deletedChapData) : [];
-    let allChapters: Chapter[] = chaptersData ? JSON.parse(chaptersData) : INITIAL_CHAPTERS;
-    allChapters = allChapters.filter(c => !deletedChapIds.includes(c.id));
+    const activeChapters = inMemoryChapters.filter(c => !deletedChapIds.includes(c.id));
 
     const updatedList = rawList.map(novel => {
-      const novelChapters = allChapters.filter(c => c.novelId === novel.id);
-      const chaptersCount = novelChapters.length;
-      const translatedCount = novelChapters.filter(c => c.contentEn && c.contentEn.trim().length > 0).length;
+      const novelChapters = activeChapters.filter(c => c.novelId === novel.id);
+      const chaptersCount = Math.max(novel.chaptersCount || 0, novelChapters.length);
+      const translatedCount = Math.max(
+        novel.translatedCount || 0,
+        novelChapters.filter(c => c.contentEn && c.contentEn.trim().length > 0).length
+      );
       return {
         ...novel,
         chaptersCount,
@@ -493,13 +504,8 @@ export const StorageService = {
     const currentNovels = this.getNovels().filter(n => n.id !== id);
     localStorage.setItem(NOVELS_KEY, JSON.stringify(currentNovels));
 
-    // Cascade delete chapters associated with this novel
-    const chaptersData = localStorage.getItem(CHAPTERS_KEY);
-    if (chaptersData) {
-      const allChapters: Chapter[] = JSON.parse(chaptersData);
-      const remainingChapters = allChapters.filter(c => c.novelId !== id);
-      localStorage.setItem(CHAPTERS_KEY, JSON.stringify(remainingChapters));
-    }
+    // Cascade delete chapters associated with this novel from in-memory store
+    inMemoryChapters = inMemoryChapters.filter(c => c.novelId !== id);
 
     // Cascade delete local glossary terms associated with this novel
     const glossaryData = localStorage.getItem(GLOSSARY_KEY);
@@ -516,105 +522,87 @@ export const StorageService = {
   },
 
   getChapters(novelId: string): Chapter[] {
-    const data = localStorage.getItem(CHAPTERS_KEY);
-    let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
     const deletedData = localStorage.getItem(DELETED_CHAPTERS_KEY);
     const deletedIds: string[] = deletedData ? JSON.parse(deletedData) : [];
 
-    if (!data) {
-      localStorage.setItem(CHAPTERS_KEY, JSON.stringify(INITIAL_CHAPTERS));
-    } else {
-      let changed = false;
-      for (const initCh of INITIAL_CHAPTERS) {
-        if (deletedIds.includes(initCh.id)) continue;
-        const idx = all.findIndex(c => c.id === initCh.id);
-        if (idx === -1) {
-          all.push(initCh);
-          changed = true;
-        } else if (all[idx].id === 'chap-1-3' && all[idx].contentEn && (all[idx].contentEn.includes('The Chinese Man sighed') || all[idx].contentEn.includes('spine of vehicles'))) {
-          all[idx] = { ...initCh };
-          changed = true;
-        }
-      }
-
-      // Auto-repair any stored chapter with noise titles like '佳向' or '-性向-'
-      for (const ch of all) {
-        if (ch.titleZh.includes('佳向') || ch.titleZh.includes('性向') || ch.titleEn.includes('佳向') || ch.titleEn.includes('性向')) {
-          ch.titleZh = `第${ch.chapterNumber}章 狂暴龙（${ch.chapterNumber}）`;
-          ch.titleEn = `Chapter ${ch.chapterNumber}: Indominus Dragon (${ch.chapterNumber})`;
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
+    for (const initCh of INITIAL_CHAPTERS) {
+      if (deletedIds.includes(initCh.id)) continue;
+      const idx = inMemoryChapters.findIndex(c => c.id === initCh.id);
+      if (idx === -1) {
+        inMemoryChapters.push(initCh);
+      } else if (inMemoryChapters[idx].id === 'chap-1-3' && inMemoryChapters[idx].contentEn && (inMemoryChapters[idx].contentEn.includes('The Chinese Man sighed') || inMemoryChapters[idx].contentEn.includes('spine of vehicles'))) {
+        inMemoryChapters[idx] = { ...initCh };
       }
     }
-    return all.filter(c => c.novelId === novelId).sort((a, b) => a.chapterNumber - b.chapterNumber);
+
+    // Auto-repair any stored chapter with noise titles like '佳向' or '-性向-'
+    for (const ch of inMemoryChapters) {
+      if (ch.titleZh && (ch.titleZh.includes('佳向') || ch.titleZh.includes('性向') || ch.titleEn.includes('佳向') || ch.titleEn.includes('性向'))) {
+        ch.titleZh = `第${ch.chapterNumber}章 狂暴龙（${ch.chapterNumber}）`;
+        ch.titleEn = `Chapter ${ch.chapterNumber}: Indominus Dragon (${ch.chapterNumber})`;
+      }
+    }
+
+    return inMemoryChapters
+      .filter(c => c.novelId === novelId && !deletedIds.includes(c.id))
+      .sort((a, b) => a.chapterNumber - b.chapterNumber);
   },
 
   /**
-   * Cache chapters fetched from Supabase Cloud into localStorage for instant offline access
+   * Cache chapters fetched from Supabase Cloud into memory
    */
   cacheChapters(chapters: Chapter[]): void {
     if (!chapters || !Array.isArray(chapters) || chapters.length === 0) return;
-    const data = localStorage.getItem(CHAPTERS_KEY);
-    let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
     const deletedData = localStorage.getItem(DELETED_CHAPTERS_KEY);
     const deletedIds: string[] = deletedData ? JSON.parse(deletedData) : [];
 
-    let modified = false;
     for (const ch of chapters) {
       if (deletedIds.includes(ch.id)) continue;
-      const idx = all.findIndex(c => c.id === ch.id);
+      const idx = inMemoryChapters.findIndex(c => c.id === ch.id);
       if (idx >= 0) {
-        all[idx] = { ...all[idx], ...ch };
-        modified = true;
+        inMemoryChapters[idx] = {
+          ...inMemoryChapters[idx],
+          ...ch,
+          // Preserve existing content if the incoming update doesn't have it (e.g. metadata-only fetch)
+          contentZh: ch.contentZh || inMemoryChapters[idx].contentZh,
+          contentEn: ch.contentEn || inMemoryChapters[idx].contentEn
+        };
       } else {
-        all.push(ch);
-        modified = true;
+        inMemoryChapters.push(ch);
       }
-    }
-
-    if (modified) {
-      localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
     }
   },
 
   saveChapter(chapter: Chapter): Chapter {
-    const data = localStorage.getItem(CHAPTERS_KEY);
-    let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
-    const idx = all.findIndex(c => c.id === chapter.id);
+    const idx = inMemoryChapters.findIndex(c => c.id === chapter.id);
     if (idx >= 0) {
-      all[idx] = chapter;
+      inMemoryChapters[idx] = chapter;
     } else {
-      all.push(chapter);
+      inMemoryChapters.push(chapter);
     }
-    localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
 
-    // Update novel counters
+    // Update novel counters in localStorage
     const novels = this.getNovels();
     const novel = novels.find(n => n.id === chapter.novelId);
     if (novel) {
-      const novelChaps = all.filter(c => c.novelId === chapter.novelId);
+      const novelChaps = inMemoryChapters.filter(c => c.novelId === chapter.novelId);
       novel.chaptersCount = novelChaps.length;
       novel.translatedCount = novelChaps.filter(c => c.status === 'translated' || c.status === 'edited').length;
       novel.updatedAt = new Date().toISOString();
       this.saveNovel(novel);
     }
 
-    // Asynchronously upsert chapter to Supabase Cloud Database for cross-device sync
-    SupabaseService.saveChapterCloud(chapter);
+    // Directly persist to Supabase Cloud Database (Primary persistent store)
+    SupabaseService.saveChapterCloud(chapter).catch(err => {
+      console.warn('[StorageService] Background saveChapterCloud failed:', err);
+    });
 
     return chapter;
   },
 
   deleteChapter(chapterId: string): Chapter[] {
-    const data = localStorage.getItem(CHAPTERS_KEY);
-    let all: Chapter[] = data ? JSON.parse(data) : INITIAL_CHAPTERS;
-    const target = all.find(c => c.id === chapterId);
-    all = all.filter(c => c.id !== chapterId);
-    localStorage.setItem(CHAPTERS_KEY, JSON.stringify(all));
+    const target = inMemoryChapters.find(c => c.id === chapterId);
+    inMemoryChapters = inMemoryChapters.filter(c => c.id !== chapterId);
 
     // Track deleted ID so it is never re-inserted
     const deletedData = localStorage.getItem(DELETED_CHAPTERS_KEY);
@@ -631,15 +619,15 @@ export const StorageService = {
       const novels = this.getNovels();
       const novel = novels.find(n => n.id === target.novelId);
       if (novel) {
-        const novelChaps = all.filter(c => c.novelId === target.novelId);
+        const novelChaps = inMemoryChapters.filter(c => c.novelId === target.novelId);
         novel.chaptersCount = novelChaps.length;
         novel.translatedCount = novelChaps.filter(c => c.status === 'translated' || c.status === 'edited').length;
         novel.updatedAt = new Date().toISOString();
         this.saveNovel(novel);
       }
-      return all.filter(c => c.novelId === target.novelId);
+      return inMemoryChapters.filter(c => c.novelId === target.novelId);
     }
-    return all;
+    return inMemoryChapters;
   },
 
   getGlossary(novelId?: string): GlossaryEntry[] {
@@ -915,14 +903,7 @@ export const StorageService = {
       version: 2,
       exportedAt: new Date().toISOString(),
       novels: this.getNovels(),
-      chapters: (() => {
-        try {
-          const raw = localStorage.getItem(CHAPTERS_KEY);
-          return raw ? JSON.parse(raw) : INITIAL_CHAPTERS;
-        } catch {
-          return INITIAL_CHAPTERS;
-        }
-      })(),
+      chapters: inMemoryChapters,
       glossary: (() => {
         try {
           const raw = localStorage.getItem(GLOSSARY_KEY);
@@ -962,19 +943,17 @@ export const StorageService = {
       }
 
       if (Array.isArray(data.chapters)) {
-        const rawChaps = localStorage.getItem(CHAPTERS_KEY);
-        const existingChaps: Chapter[] = rawChaps ? JSON.parse(rawChaps) : [];
         for (const ch of data.chapters) {
           if (!ch.id) continue;
-          const idx = existingChaps.findIndex(ec => ec.id === ch.id);
+          const idx = inMemoryChapters.findIndex(ec => ec.id === ch.id);
           if (idx >= 0) {
-            existingChaps[idx] = ch;
+            inMemoryChapters[idx] = ch;
           } else {
-            existingChaps.push(ch);
+            inMemoryChapters.push(ch);
           }
           importedChapters++;
+          SupabaseService.saveChapterCloud(ch);
         }
-        localStorage.setItem(CHAPTERS_KEY, JSON.stringify(existingChaps));
       }
 
       if (Array.isArray(data.glossary)) {

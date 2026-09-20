@@ -363,6 +363,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       />
                       <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-cyan, #0284c7)' }} />
                     </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Default: <code>admin</code> / <code>admin</code>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminUsername('admin');
+                          setAdminPassword('admin');
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--primary-cyan, #0284c7)',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0
+                        }}
+                      >
+                        Auto-fill Admin
+                      </button>
+                    </div>
                   </div>
 
                   {adminError && (

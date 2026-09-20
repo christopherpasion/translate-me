@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Novel, Chapter } from '../types';
-import { Upload, FileText, Check, X, Layers, Sparkles } from 'lucide-react';
+import { Upload, FileText, Check, X, Layers, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { cleanAndTranslateChapterTitle } from '../services/translationEngine';
+import { StorageService } from '../services/storage';
 
 interface ParsedChapterPreview {
   chapterNumber: number;
@@ -16,15 +17,15 @@ interface ChapterUploaderModalProps {
   novels: Novel[];
   selectedNovelId: string;
   existingChapters: Chapter[];
-  onUploadSingleChapter: (novelId: string, chapter: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>) => void;
-  onUploadBulkChapters: (novelId: string, chapters: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>[]) => void;
+  onUploadSingleChapter: (novelId: string, chapter: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>) => Promise<void> | void;
+  onUploadBulkChapters: (novelId: string, chapters: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>[]) => Promise<void> | void;
   onClose: () => void;
 }
 
 export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
   novels,
   selectedNovelId,
-  existingChapters,
+  existingChapters: _existingChaptersProp,
   onUploadSingleChapter,
   onUploadBulkChapters,
   onClose
@@ -32,24 +33,40 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
   const [novelId, setNovelId] = useState(selectedNovelId);
 
+  // Dynamically load chapters for currently selected target novel
+  const currentNovelChapters = useMemo(() => {
+    return StorageService.getChapters(novelId);
+  }, [novelId]);
+
   // Single Chapter State
   const nextChapNum = useMemo(() => {
-    if (!existingChapters || existingChapters.length === 0) return 1;
-    const maxNum = Math.max(...existingChapters.map(c => c.chapterNumber || 0));
+    if (!currentNovelChapters || currentNovelChapters.length === 0) return 1;
+    const maxNum = Math.max(...currentNovelChapters.map(c => c.chapterNumber || 0));
     return maxNum + 1;
-  }, [existingChapters]);
+  }, [currentNovelChapters]);
 
   const [chapNum, setChapNum] = useState<number>(nextChapNum);
   const [titleEn, setTitleEn] = useState(`Chapter ${nextChapNum}`);
   const [titleZh, setTitleZh] = useState('');
   const [contentEn, setContentEn] = useState('');
   const [contentZh, setContentZh] = useState('');
+  const [singleFileName, setSingleFileName] = useState('');
   const [isSingleSuccess, setIsSingleSuccess] = useState(false);
+
+  // Update chapter number and title preview when target novel changes
+  useEffect(() => {
+    setChapNum(nextChapNum);
+    setTitleEn(`Chapter ${nextChapNum}`);
+  }, [nextChapNum]);
 
   // Bulk Chapters State
   const [bulkRawText, setBulkRawText] = useState('');
   const [bulkFileName, setBulkFileName] = useState('');
   const [isBulkSuccess, setIsBulkSuccess] = useState(false);
+
+  // Submit & Error state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Parse bulk raw text into distinct chapters
   const parsedChapters = useMemo<ParsedChapterPreview[]>(() => {
@@ -58,12 +75,16 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
     const lines = bulkRawText.split('\n');
     const chapters: ParsedChapterPreview[] = [];
 
-    // Regex for matching chapter headers (e.g. "Chapter 1", "Chapter 1: The Beginning", "第1章 标题", "### Chapter 1")
-    const chapterHeaderRegex = /^(?:#{1,3}\s*)?(?:(?:Chapter|Chap|Ch\.)\s*(\d+)[:\s-]*(.*)|第([0-9一二三四五六七八九十百千万]+)章\s*(.*))$/i;
+    // Robust regex matching all English and Chinese headers:
+    // - "Chapter 1: Title", "Chapter 1 - Title", "Chapter 1. Title", "Chapter 1"
+    // - "**Chapter 1: Title**", "### Chapter 1"
+    // - "1. Title", "1 - Title", "1: Title"
+    // - "第1章 标题", "第一章 标题"
+    const chapterHeaderRegex = /^(?:[#*_\s]*)(?:(?:(?:Chapter|Chap|Ch\.)\s*(\d+)[.:\s-]*([^*_\n\r]*)|(\d+)[.:\s-]+([^*_\n\r]+)|第([0-9一二三四五六七八九十百千万]+)章\s*([^*_\n\r]*)))(?:[#*_\s]*)$/i;
 
     let currentChapter: Partial<ParsedChapterPreview> | null = null;
     let currentParagraphs: string[] = [];
-    let detectedIndex = existingChapters.length > 0 ? Math.max(...existingChapters.map(c => c.chapterNumber || 0)) + 1 : 1;
+    let detectedIndex = currentNovelChapters.length > 0 ? Math.max(...currentNovelChapters.map(c => c.chapterNumber || 0)) + 1 : 1;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -73,27 +94,28 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
         // Save previous chapter if exists
         if (currentChapter && currentParagraphs.length > 0) {
           const content = currentParagraphs.join('\n\n').trim();
+          const isChinese = /[\u4e00-\u9fa5]/.test(content);
           chapters.push({
             chapterNumber: currentChapter.chapterNumber || detectedIndex++,
             titleEn: currentChapter.titleEn || `Chapter ${currentChapter.chapterNumber}`,
             titleZh: currentChapter.titleZh || '',
-            contentEn: content,
-            contentZh: currentChapter.contentZh || '',
+            contentEn: isChinese ? '' : content,
+            contentZh: isChinese ? content : (currentChapter.contentZh || ''),
             wordCount: content.split(/\s+/).filter(Boolean).length
           });
           currentParagraphs = [];
         }
 
         // Parse new chapter
-        const numStr = match[1] || match[3];
-        const titleStr = (match[2] || match[4] || '').trim();
+        const numStr = match[1] || match[3] || match[5];
+        const rawTitle = (match[2] || match[4] || match[6] || '').trim();
         const parsedNum = numStr && /^\d+$/.test(numStr) ? parseInt(numStr, 10) : detectedIndex++;
-        const cleanedTitle = cleanAndTranslateChapterTitle(titleStr || `Chapter ${parsedNum}`, parsedNum);
+        const cleanedTitle = cleanAndTranslateChapterTitle(rawTitle || `Chapter ${parsedNum}`, parsedNum);
 
         currentChapter = {
           chapterNumber: parsedNum,
           titleEn: cleanedTitle.startsWith('Chapter') ? cleanedTitle : `Chapter ${parsedNum}: ${cleanedTitle}`,
-          titleZh: titleStr || '',
+          titleZh: rawTitle || '',
           contentZh: ''
         };
       } else {
@@ -106,31 +128,59 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
     // Flush last chapter
     if (currentChapter && currentParagraphs.length > 0) {
       const content = currentParagraphs.join('\n\n').trim();
+      const isChinese = /[\u4e00-\u9fa5]/.test(content);
       chapters.push({
         chapterNumber: currentChapter.chapterNumber || detectedIndex++,
         titleEn: currentChapter.titleEn || `Chapter ${currentChapter.chapterNumber}`,
         titleZh: currentChapter.titleZh || '',
-        contentEn: content,
-        contentZh: currentChapter.contentZh || '',
+        contentEn: isChinese ? '' : content,
+        contentZh: isChinese ? content : (currentChapter.contentZh || ''),
         wordCount: content.split(/\s+/).filter(Boolean).length
       });
     } else if (chapters.length === 0 && currentParagraphs.length > 0) {
       // Fallback: If no explicit headers found, treat entire text as single chapter
       const content = currentParagraphs.join('\n\n').trim();
+      const isChinese = /[\u4e00-\u9fa5]/.test(content);
       chapters.push({
         chapterNumber: nextChapNum,
         titleEn: `Chapter ${nextChapNum}`,
         titleZh: '',
-        contentEn: content,
-        contentZh: '',
+        contentEn: isChinese ? '' : content,
+        contentZh: isChinese ? content : '',
         wordCount: content.split(/\s+/).filter(Boolean).length
       });
     }
 
     return chapters;
-  }, [bulkRawText, existingChapters, nextChapNum]);
+  }, [bulkRawText, currentNovelChapters, nextChapNum]);
 
-  // Handle file drop / upload
+  // Handle single chapter file drop / upload
+  const handleSingleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSingleFileName(file.name);
+    const cleanName = file.name.replace(/\.[^/.]+$/, '').trim();
+    if (cleanName) {
+      setTitleEn(cleanName);
+      const numMatch = cleanName.match(/(?:Chapter|Chap|Ch\.?)\s*(\d+)/i) || cleanName.match(/^(\d+)/);
+      if (numMatch && numMatch[1]) {
+        setChapNum(parseInt(numMatch[1], 10));
+      }
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setContentEn(content.trim());
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Handle bulk file drop / upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -146,52 +196,82 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
     reader.readAsText(file);
   };
 
-  const handleSingleSubmit = (e: React.FormEvent) => {
+  const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contentEn.trim()) return;
+    setSubmitError(null);
+    const finalEn = contentEn.trim();
+    const finalZh = contentZh.trim();
+    if (!finalEn && !finalZh) {
+      setSubmitError('Please enter chapter text or choose a text file.');
+      return;
+    }
 
-    onUploadSingleChapter(novelId, {
-      novelId,
-      chapterNumber: chapNum,
-      titleEn: titleEn.trim() || `Chapter ${chapNum}`,
-      titleZh: titleZh.trim() || '',
-      contentEn: contentEn.trim(),
-      contentZh: contentZh.trim() || '',
-      status: 'translated'
-    });
+    setIsSubmitting(true);
+    try {
+      // Detect if Chinese characters were pasted into the English box
+      const isChinese = /[\u4e00-\u9fa5]/.test(finalEn);
+      const resolvedEn = isChinese ? '' : finalEn;
+      const resolvedZh = isChinese ? finalEn : finalZh;
 
-    setIsSingleSuccess(true);
-    setTimeout(() => {
-      setIsSingleSuccess(false);
-      setContentEn('');
-      setContentZh('');
-      setChapNum(prev => prev + 1);
-      setTitleEn(`Chapter ${chapNum + 1}`);
-      onClose();
-    }, 600);
+      const resolvedTitle = cleanAndTranslateChapterTitle(titleEn.trim() || `Chapter ${chapNum}`, chapNum);
+
+      await onUploadSingleChapter(novelId, {
+        novelId,
+        chapterNumber: chapNum,
+        titleEn: resolvedTitle.startsWith('Chapter') ? resolvedTitle : `Chapter ${chapNum}: ${resolvedTitle}`,
+        titleZh: titleZh.trim() || '',
+        contentEn: resolvedEn,
+        contentZh: resolvedZh,
+        status: resolvedEn ? 'translated' : 'raw'
+      });
+
+      setIsSingleSuccess(true);
+      setTimeout(() => {
+        setIsSingleSuccess(false);
+        setContentEn('');
+        setContentZh('');
+        setSingleFileName('');
+        setChapNum(prev => prev + 1);
+        setTitleEn(`Chapter ${chapNum + 1}`);
+        setIsSubmitting(false);
+        onClose();
+      }, 500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSubmitError(`Upload failed: ${msg}`);
+      setIsSubmitting(false);
+    }
   };
 
-  const handleBulkSubmit = () => {
+  const handleBulkSubmit = async () => {
     if (parsedChapters.length === 0) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const payload = parsedChapters.map(p => ({
+        novelId,
+        chapterNumber: p.chapterNumber,
+        titleEn: p.titleEn,
+        titleZh: p.titleZh,
+        contentEn: p.contentEn,
+        contentZh: p.contentZh,
+        status: (p.contentEn.trim() ? 'translated' : 'raw') as 'translated' | 'raw'
+      }));
 
-    const payload = parsedChapters.map(p => ({
-      novelId,
-      chapterNumber: p.chapterNumber,
-      titleEn: p.titleEn,
-      titleZh: p.titleZh,
-      contentEn: p.contentEn,
-      contentZh: p.contentZh,
-      status: 'translated' as const
-    }));
-
-    onUploadBulkChapters(novelId, payload);
-    setIsBulkSuccess(true);
-    setTimeout(() => {
-      setIsBulkSuccess(false);
-      setBulkRawText('');
-      setBulkFileName('');
-      onClose();
-    }, 700);
+      await onUploadBulkChapters(novelId, payload);
+      setIsBulkSuccess(true);
+      setTimeout(() => {
+        setIsBulkSuccess(false);
+        setBulkRawText('');
+        setBulkFileName('');
+        setIsSubmitting(false);
+        onClose();
+      }, 600);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSubmitError(`Bulk upload failed: ${msg}`);
+      setIsSubmitting(false);
+    }
   };
 
   const selectedNovel = novels.find(n => n.id === novelId);
@@ -350,9 +430,42 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
                 />
               </div>
 
+              {/* Single Chapter File Drop Zone */}
+              <div
+                style={{
+                  border: '1px dashed var(--accent-cyan, #0284c7)',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  textAlign: 'center',
+                  background: 'rgba(2, 132, 199, 0.04)',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+              >
+                <input
+                  type="file"
+                  accept=".txt,.md"
+                  onChange={handleSingleFileUpload}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0,
+                    cursor: 'pointer',
+                    width: '100%',
+                    height: '100%'
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--primary-cyan, #0284c7)' }}>
+                  <Upload size={16} />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                    {singleFileName ? `Loaded: ${singleFileName}` : 'Drop a .txt / .md chapter file or click to browse'}
+                  </span>
+                </div>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                  English Chapter Content (Prose) *
+                  English Chapter Content (Prose)
                 </label>
                 <textarea
                   className="form-control"
@@ -361,7 +474,6 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
                   value={contentEn}
                   onChange={(e) => setContentEn(e.target.value)}
                   style={{ fontFamily: 'var(--font-serif)', fontSize: '0.92rem', lineHeight: '1.6' }}
-                  required
                 />
               </div>
 
@@ -379,12 +491,24 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
                 />
               </div>
 
+              {submitError && (
+                <div style={{ padding: '0.65rem 0.85rem', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '8px', color: '#f87171', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
               <button
                 type="submit"
+                disabled={isSubmitting || isSingleSuccess}
                 className="btn btn-primary"
-                style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', opacity: isSubmitting ? 0.85 : 1 }}
               >
-                {isSingleSuccess ? (
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Publishing Chapter to Database...
+                  </>
+                ) : isSingleSuccess ? (
                   <>
                     <Check size={18} /> Published Successfully!
                   </>
@@ -484,13 +608,25 @@ export const ChapterUploaderModal: React.FC<ChapterUploaderModalProps> = ({
                     ))}
                   </div>
 
+                  {submitError && (
+                    <div style={{ marginTop: '0.75rem', padding: '0.65rem 0.85rem', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '8px', color: '#f87171', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                      <span>{submitError}</span>
+                    </div>
+                  )}
+
                   <button
                     type="button"
+                    disabled={isSubmitting || isBulkSuccess}
                     className="btn btn-primary"
                     onClick={handleBulkSubmit}
-                    style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                    style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', opacity: isSubmitting ? 0.85 : 1 }}
                   >
-                    {isBulkSuccess ? (
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" /> Importing Chapters to Database...
+                      </>
+                    ) : isBulkSuccess ? (
                       <>
                         <Check size={18} /> Imported {parsedChapters.length} Chapters!
                       </>

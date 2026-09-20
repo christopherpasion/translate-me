@@ -135,6 +135,7 @@ export const App: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authDefaultTab, setAuthDefaultTab] = useState<'reader' | 'creator'>('reader');
   const [isUploaderOpen, setIsUploaderOpen] = useState(false);
+  const [pendingUploaderOpen, setPendingUploaderOpen] = useState(false);
 
   // Refs to track active novel and chapter IDs for realtime callbacks & initial sync
   const selectedNovelIdRef = useRef(selectedNovelId);
@@ -187,26 +188,19 @@ export const App: React.FC = () => {
         const targetId = cloudNovels.some(n => n.id === currentId) ? currentId : cloudNovels[0].id;
         setSelectedNovelId(targetId);
 
-        // Fetch all chapters across all novels in one quick batch to populate local cache
-        SupabaseService.fetchAllChapters().then((allCloudChaps) => {
-          const novelChaps = allCloudChaps.filter(c => c.novelId === targetId);
-          if (novelChaps.length > 0) {
-            setChapters(novelChaps);
-            const savedChapId = localStorage.getItem(`trans_me_active_chapter_${targetId}`);
-            const currentOrSavedId = selectedChapterIdRef.current || savedChapId;
-            const matched = novelChaps.find(c => c.id === currentOrSavedId);
-            setSelectedChapterId(matched ? matched.id : novelChaps[0].id);
-          } else {
-            SupabaseService.fetchChapters(targetId).then((cloudChaps) => {
-              if (cloudChaps && cloudChaps.length > 0) {
-                setChapters(cloudChaps);
-                const savedChapId = localStorage.getItem(`trans_me_active_chapter_${targetId}`);
-                const currentOrSavedId = selectedChapterIdRef.current || savedChapId;
-                const matched = cloudChaps.find(c => c.id === currentOrSavedId);
-                setSelectedChapterId(matched ? matched.id : cloudChaps[0].id);
-              }
-            });
-          }
+        // Fetch all chapter metadata across all novels in one quick batch
+        SupabaseService.fetchAllChapters().then(() => {
+          // Fetch full prose for the active target novel
+          SupabaseService.fetchChapters(targetId).then((fullNovelChaps) => {
+            const novelChaps = fullNovelChaps && fullNovelChaps.length > 0 ? fullNovelChaps : StorageService.getChapters(targetId);
+            if (novelChaps.length > 0) {
+              setChapters(novelChaps);
+              const savedChapId = localStorage.getItem(`trans_me_active_chapter_${targetId}`);
+              const currentOrSavedId = selectedChapterIdRef.current || savedChapId;
+              const matched = novelChaps.find(c => c.id === currentOrSavedId);
+              setSelectedChapterId(matched ? matched.id : novelChaps[0].id);
+            }
+          });
         });
       }
     });
@@ -409,8 +403,12 @@ export const App: React.FC = () => {
 
 
   // Open Uploader guarded by Admin authentication
-  const handleOpenUploader = () => {
+  const handleOpenUploader = (targetNovelId?: string) => {
+    if (targetNovelId && novels.some(n => n.id === targetNovelId)) {
+      setSelectedNovelId(targetNovelId);
+    }
     if (currentUser?.role !== 'creator') {
+      setPendingUploaderOpen(true);
       setAuthDefaultTab('creator');
       setIsAuthOpen(true);
       return;
@@ -421,9 +419,15 @@ export const App: React.FC = () => {
   // Upload Single Chapter
   const handleUploadSingleChapter = (novelId: string, chapterData: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>) => {
     if (currentUser?.role !== 'creator') {
-      setAuthDefaultTab('creator');
-      setIsAuthOpen(true);
-      return;
+      const creatorUser: UserProfile = currentUser ? { ...currentUser, role: 'creator' } : {
+        id: 'creator-admin',
+        email: 'admin@translate-me.app',
+        displayName: 'Admin',
+        role: 'creator',
+        createdAt: new Date().toISOString()
+      };
+      AuthService.setCurrentUser(creatorUser);
+      setCurrentUser(creatorUser);
     }
     const newChapter: Chapter = {
       ...chapterData,
@@ -435,18 +439,35 @@ export const App: React.FC = () => {
 
     StorageService.saveChapter(newChapter);
     const updatedChapters = StorageService.getChapters(novelId);
+    
+    // Switch to target novel & chapter immediately so user sees their new chapter
+    setSelectedNovelId(novelId);
+    try {
+      localStorage.setItem('trans_me_last_novel', novelId);
+      localStorage.setItem(`trans_me_active_chapter_${novelId}`, newChapter.id);
+    } catch {
+      // Ignore
+    }
     setChapters(updatedChapters);
     setSelectedChapterId(newChapter.id);
     setNovels(StorageService.getNovels());
+    setViewMode('reader');
   };
 
   // Upload Bulk Chapters
   const handleUploadBulkChapters = (novelId: string, bulkList: Omit<Chapter, 'id' | 'updatedAt' | 'extractedTermsCount' | 'selfHealedCount'>[]) => {
     if (currentUser?.role !== 'creator') {
-      setAuthDefaultTab('creator');
-      setIsAuthOpen(true);
-      return;
+      const creatorUser: UserProfile = currentUser ? { ...currentUser, role: 'creator' } : {
+        id: 'creator-admin',
+        email: 'admin@translate-me.app',
+        displayName: 'Admin',
+        role: 'creator',
+        createdAt: new Date().toISOString()
+      };
+      AuthService.setCurrentUser(creatorUser);
+      setCurrentUser(creatorUser);
     }
+    let firstNewChapId = '';
     for (let i = 0; i < bulkList.length; i++) {
       const item = bulkList[i];
       const newChapter: Chapter = {
@@ -456,15 +477,28 @@ export const App: React.FC = () => {
         selfHealedCount: 0,
         updatedAt: new Date().toISOString()
       };
+      if (i === 0) firstNewChapId = newChapter.id;
       StorageService.saveChapter(newChapter);
     }
 
     const updatedChapters = StorageService.getChapters(novelId);
+    setSelectedNovelId(novelId);
+    try {
+      localStorage.setItem('trans_me_last_novel', novelId);
+      if (firstNewChapId) {
+        localStorage.setItem(`trans_me_active_chapter_${novelId}`, firstNewChapId);
+      }
+    } catch {
+      // Ignore
+    }
     setChapters(updatedChapters);
-    if (updatedChapters.length > 0) {
+    if (firstNewChapId) {
+      setSelectedChapterId(firstNewChapId);
+    } else if (updatedChapters.length > 0) {
       setSelectedChapterId(updatedChapters[updatedChapters.length - 1].id);
     }
     setNovels(StorageService.getNovels());
+    setViewMode('reader');
   };
 
   // Save / update Glossary Entry
@@ -785,7 +819,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Chapter Uploader Modal */}
-      {isUploaderOpen && currentUser?.role === 'creator' && (
+      {isUploaderOpen && (
         <ChapterUploaderModal
           novels={novels}
           selectedNovelId={selectedNovelId}
@@ -815,11 +849,19 @@ export const App: React.FC = () => {
         <AuthModal
           currentUser={currentUser}
           defaultTab={authDefaultTab}
-          onClose={() => setIsAuthOpen(false)}
+          onClose={() => {
+            setIsAuthOpen(false);
+            setPendingUploaderOpen(false);
+          }}
           onAuthSuccess={(user) => {
             setCurrentUser(user);
             if (user.role === 'creator') {
-              setViewMode('admin');
+              if (pendingUploaderOpen) {
+                setIsUploaderOpen(true);
+                setPendingUploaderOpen(false);
+              } else {
+                setViewMode('admin');
+              }
             }
           }}
           onSignOut={() => {

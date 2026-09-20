@@ -550,8 +550,23 @@ export const NovelHomepage: React.FC<NovelHomepageProps> = ({
                   <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Syncing chapters from cloud...</span>
                 </div>
               ) : filteredTocChapters.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  {tocSearch ? `No chapters found matching "${tocSearch}".` : 'No chapters uploaded yet for this novel.'}
+                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p style={{ margin: '0 0 1rem 0' }}>
+                    {tocSearch ? `No chapters found matching "${tocSearch}".` : 'No chapters uploaded yet for this novel.'}
+                  </p>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      const targetId = activeTocNovel.id;
+                      setActiveTocNovel(null);
+                      onOpenUploader();
+                      onSelectNovel(targetId);
+                    }}
+                    style={{ margin: '0 auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                  >
+                    <Upload size={14} />
+                    <span>Upload Chapter to this Novel</span>
+                  </button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

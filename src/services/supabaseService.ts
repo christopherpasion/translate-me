@@ -147,9 +147,9 @@ export class SupabaseService {
   /**
    * Save a chapter to Supabase
    */
-  static async saveChapterCloud(chapter: Chapter): Promise<void> {
+  static async saveChapterCloud(chapter: Chapter): Promise<{ success: boolean; error?: string }> {
     try {
-      await supabase.from('chapters').upsert({
+      const { error } = await supabase.from('chapters').upsert({
         id: chapter.id,
         novel_id: chapter.novelId,
         chapter_number: chapter.chapterNumber,
@@ -163,8 +163,15 @@ export class SupabaseService {
         self_healed_count: chapter.selfHealedCount || 0,
         updated_at: chapter.updatedAt || new Date().toISOString()
       });
-    } catch (err) {
-      console.warn('[SupabaseService] saveChapterCloud error:', err);
+      if (error) {
+        console.warn('[SupabaseService] saveChapterCloud error:', error.message);
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[SupabaseService] saveChapterCloud exception:', msg);
+      return { success: false, error: msg };
     }
   }
 
@@ -301,7 +308,15 @@ export class SupabaseService {
       // Cache cloud chapters locally for instant offline and dropdown display
       StorageService.cacheChapters(cloudChapters);
 
-      return cloudChapters;
+      // Guarantee any local chapters not yet in cloud are pushed and returned
+      const localChapters = StorageService.getChapters(novelId);
+      for (const loc of localChapters) {
+        if (!cloudChapters.some(c => c.id === loc.id)) {
+          this.saveChapterCloud(loc);
+        }
+      }
+
+      return localChapters;
     } catch {
       return StorageService.getChapters(novelId);
     }
@@ -314,7 +329,7 @@ export class SupabaseService {
     try {
       const { data, error } = await supabase
         .from('chapters')
-        .select('*')
+        .select('id, novel_id, chapter_number, title_zh, title_en, status, summary, extracted_terms_count, self_healed_count, updated_at')
         .order('chapter_number', { ascending: true });
 
       if (error || !data || data.length === 0) {
@@ -327,8 +342,8 @@ export class SupabaseService {
         chapterNumber: ch.chapter_number,
         titleZh: ch.title_zh,
         titleEn: ch.title_en,
-        contentZh: ch.content_zh,
-        contentEn: ch.content_en,
+        contentZh: '',
+        contentEn: '',
         status: ch.status,
         summary: ch.summary,
         extractedTermsCount: ch.extracted_terms_count || 0,

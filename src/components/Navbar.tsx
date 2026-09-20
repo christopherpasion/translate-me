@@ -198,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         {/* Uploader / Upload Chapter Shortcut for Creator */}
-        {viewMode === 'admin' && (
+        {(viewMode === 'admin' || currentUser?.role === 'creator') && (
           <button
             className="btn btn-primary desktop-uploader-btn"
             onClick={onOpenUploader}
@@ -471,7 +471,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
 
               {/* Creator Tools in mobile */}
-              {viewMode === 'admin' && (
+              {(viewMode === 'admin' || currentUser?.role === 'creator') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '0.6rem' }} onClick={() => { onOpenUploader(); setIsMobileMenuOpen(false); }}>
                     <Upload size={16} />
